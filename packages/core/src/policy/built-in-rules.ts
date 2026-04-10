@@ -4,7 +4,7 @@
  * Defaults can be overridden.
  */
 
-import type { Rule } from "./parser.js";
+import type { Rule } from "./types.js";
 
 export const HARD_BOUNDARIES: Rule[] = [
   {
