@@ -1,23 +1,11 @@
-/**
- * Instance tracking — manages running instances of each agent type.
- * Each instance gets a unique session ID, its own spend counter,
- * and its own audit trail.
- */
-
-export interface AgentInstance {
-  agentType: string;
-  instanceId: string;
-  startedAt: Date;
-  status: "running" | "idle" | "stopped";
-  spend: number;
-  callCount: number;
-}
+import { randomBytes } from "node:crypto";
+import type { AgentInstance } from "./types.js";
 
 export class InstanceTracker {
   private instances: Map<string, AgentInstance> = new Map();
 
   create(agentType: string): AgentInstance {
-    const instanceId = `${agentType}/session-${randomId()}`;
+    const instanceId = `${agentType}/session-${randomBytes(4).toString("hex")}`;
     const instance: AgentInstance = {
       agentType,
       instanceId,
@@ -44,20 +32,19 @@ export class InstanceTracker {
     return this.listByType(agentType).filter((i) => i.status === "running").length;
   }
 
+  totalSpendByType(agentType: string): number {
+    return this.listByType(agentType).reduce((sum, i) => sum + i.spend, 0);
+  }
+
   recordSpend(instanceId: string, cost: number): void {
     const instance = this.instances.get(instanceId);
-    if (instance) {
-      instance.spend += cost;
-      instance.callCount++;
-    }
+    if (!instance) return;
+    instance.spend += cost;
+    instance.callCount++;
   }
 
   stop(instanceId: string): void {
     const instance = this.instances.get(instanceId);
     if (instance) instance.status = "stopped";
   }
-}
-
-function randomId(): string {
-  return Math.random().toString(36).substring(2, 8);
 }

@@ -1,0 +1,41 @@
+export interface MatchCondition {
+  tool?: string;              // exact match or wildcard (e.g., "shell_*")
+  tool_tag?: string;          // semantic tag like "communication", "filesystem"
+  args_contain?: string[];    // substring matches against stringified args
+  command_matches?: string[]; // for shell_execute: command substring matches
+  path_starts_with?: string[];
+  registry?: string;          // which MCP registry the server came from
+  glama_grade?: string[];     // Phase 2 — placeholder for type compatibility
+  url_not_in?: string;        // path to file with allowlist of URLs
+  body_contains_file_content?: boolean;
+}
+
+export interface Rule {
+  match: MatchCondition;
+  action: "allow" | "deny" | "require_approval" | "deny_unless" | "deny_if";
+  enforcement?: "advisory" | "soft_mandatory" | "hard_mandatory";
+  condition?: Record<string, unknown>;
+  reason?: string;
+  timeout?: string;  // e.g., "5m"
+}
+
+export interface BudgetConfig {
+  daily?: number;
+  monthly?: number;
+  per_session?: number;
+  per_request?: number;
+  alert_at?: number[];
+  on_exceed?: "deny" | "warn" | "require_approval";
+}
+
+export interface ApprovalConfig {
+  timeout?: string;
+  timeout_action?: "deny" | "allow";
+  batch_similar?: boolean;
+}
+
+export interface AgentGuardConfig {
+  budget?: BudgetConfig;
+  rules?: Rule[];
+  approval?: ApprovalConfig;
+}
