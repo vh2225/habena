@@ -1,20 +1,9 @@
 #!/usr/bin/env node
-
-/**
- * AgentGuard CLI entrypoint.
- *
- * Commands:
- *   agentguard init          - Create default config at ~/.agentguard/config.yaml
- *   agentguard start         - Start MCP proxy (stdio mode)
- *   agentguard start --http  - Start MCP proxy (HTTP mode on localhost:7600)
- *   agentguard watch         - Interactive approval terminal
- *   agentguard logs          - Query audit logs
- *   agentguard learn         - Start learning/observe mode for an agent
- *   agentguard dashboard     - Open local web dashboard
- *   agentguard config        - View/edit configuration
- */
-
 import { Command } from "commander";
+import { initCommand } from "./commands/init.js";
+import { startCommand } from "./commands/start.js";
+import { logsCommand } from "./commands/logs.js";
+import { agentAddCommand, agentListCommand } from "./commands/agent.js";
 
 const program = new Command();
 
@@ -26,28 +15,13 @@ program
 program
   .command("init")
   .description("Create default config at ~/.agentguard/config.yaml")
-  .action(async () => {
-    // TODO: Import and run init command
-    console.log("agentguard init — not yet implemented");
-  });
+  .option("--force", "overwrite existing files")
+  .action(initCommand);
 
 program
   .command("start")
-  .description("Start MCP proxy server")
-  .option("--http", "Use HTTP transport instead of stdio")
-  .option("--port <port>", "HTTP port", "7600")
-  .action(async (options) => {
-    // TODO: Import and run start command
-    console.log("agentguard start — not yet implemented");
-  });
-
-program
-  .command("watch")
-  .description("Interactive approval terminal")
-  .action(async () => {
-    // TODO: Import and run watch command
-    console.log("agentguard watch — not yet implemented");
-  });
+  .description("Start MCP proxy server (stdio)")
+  .action(startCommand);
 
 program
   .command("logs")
@@ -56,28 +30,25 @@ program
   .option("--last <duration>", "Show logs from last duration (e.g., 24h, 7d)")
   .option("--decision <type>", "Filter by decision (allow, deny, require_approval)")
   .option("--limit <n>", "Max entries to show", "50")
-  .action(async (options) => {
-    // TODO: Import and run logs command
-    console.log("agentguard logs — not yet implemented");
-  });
+  .action(logsCommand);
 
-program
-  .command("learn")
-  .description("Start learning mode for an agent")
-  .requiredOption("--agent <name>", "Agent name to observe")
-  .option("--duration <duration>", "Observation duration", "24h")
-  .action(async (options) => {
-    // TODO: Import and run learn command
-    console.log("agentguard learn — not yet implemented");
-  });
+const agentCmd = program.command("agent").description("Manage agent registrations");
 
-program
-  .command("dashboard")
-  .description("Open local web dashboard")
-  .option("--port <port>", "Dashboard port", "7700")
-  .action(async (options) => {
-    // TODO: Import and run dashboard command
-    console.log("agentguard dashboard — not yet implemented");
-  });
+agentCmd
+  .command("add")
+  .description("Register a new agent type")
+  .requiredOption("--name <name>", "Agent name")
+  .option("--budget-daily <amount>", "Daily budget in USD", parseFloat)
+  .option("--budget-per-session <amount>", "Per-session budget in USD", parseFloat)
+  .option("--from <baseAgent>", "Create as variant of existing agent")
+  .action(agentAddCommand);
 
-program.parse();
+agentCmd
+  .command("list")
+  .description("List registered agents")
+  .action(agentListCommand);
+
+program.parseAsync().catch((err) => {
+  console.error(err instanceof Error ? err.message : String(err));
+  process.exit(1);
+});

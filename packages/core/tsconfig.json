@@ -4,5 +4,15 @@
     "rootDir": "src",
     "outDir": "dist"
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": [
+    "src/approval",
+    "src/learning",
+    "src/registry/glama.ts",
+    "src/registry/official.ts",
+    "src/registry/smithery.ts",
+    "src/registry/types.ts",
+    "src/threat",
+    "src/identity/fingerprint.ts"
+  ]
 }
