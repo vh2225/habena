@@ -2,7 +2,8 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import chalk from "chalk";
-import { getConfigPath, getAgentsPath, getAuditDbPath } from "../../config/paths.js";
+import { join } from "node:path";
+import { getConfigPath, getAgentsPath, getAuditDbPath, getConfigDir } from "../../config/paths.js";
 import { loadYaml } from "../../config/loader.js";
 import type { AgentGuardConfig } from "../../policy/types.js";
 import { PolicyEngine } from "../../policy/engine.js";
@@ -13,6 +14,8 @@ import { InstanceTracker } from "../../identity/instances.js";
 import { AgentRegistry } from "../../identity/registry.js";
 import { Forwarder } from "../../proxy/forwarder.js";
 import { ProxyDispatcher } from "../../proxy/server.js";
+import { ApprovalQueue } from "../../approval/queue.js";
+import { IpcServer } from "../../ipc/server.js";
 
 export async function startCommand(): Promise<void> {
   const config = loadYaml<AgentGuardConfig>(getConfigPath()) ?? {};
@@ -29,6 +32,20 @@ export async function startCommand(): Promise<void> {
   const agentRegistry = new AgentRegistry(getAgentsPath());
   const agents = agentRegistry.list();
 
+  // Approval queue + IPC server
+  const approval = new ApprovalQueue({
+    timeoutAction: config.approval?.timeout_action ?? "deny",
+  });
+  const socketPath = join(getConfigDir(), "agentguard.sock");
+  const ipcServer = new IpcServer(approval, socketPath);
+  try {
+    await ipcServer.start();
+    console.error(chalk.gray(`IPC:    ${socketPath}`));
+  } catch (err) {
+    console.error(chalk.yellow(`! Failed to start IPC server: ${(err as Error).message}`));
+    console.error(chalk.yellow("  Approval requests will auto-deny."));
+  }
+
   const dispatcher = new ProxyDispatcher({
     policy,
     tracker,
@@ -36,6 +53,8 @@ export async function startCommand(): Promise<void> {
     audit,
     instances,
     forwarder,
+    approval,
+    approvalTimeoutMs: parseDurationToMs(config.approval?.timeout ?? "5m"),
   });
 
   const server = new Server(
@@ -113,8 +132,10 @@ export async function startCommand(): Promise<void> {
   console.error(chalk.gray(`Audit: ${getAuditDbPath()}`));
   console.error(chalk.gray(`Registered agents: ${agents.length}`));
 
-  const shutdown = () => {
+  const shutdown = async () => {
     console.error(chalk.yellow("\nShutting down AgentGuard..."));
+    await ipcServer.stop().catch(() => {});
+    approval.shutdown();
     audit.close();
     process.exit(0);
   };
@@ -123,4 +144,12 @@ export async function startCommand(): Promise<void> {
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
+}
+
+function parseDurationToMs(duration: string): number {
+  const match = duration.match(/^(\d+)(s|m|h)$/);
+  if (!match) return 5 * 60 * 1000;
+  const v = parseInt(match[1], 10);
+  const unit = match[2];
+  return unit === "s" ? v * 1000 : unit === "m" ? v * 60 * 1000 : v * 60 * 60 * 1000;
 }
