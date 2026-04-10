@@ -1,12 +1,18 @@
 /**
- * 3-tier policy engine with deny-overrides-allow semantics.
+ * 3-tier policy engine.
  *
- * Evaluation order (first match wins within each tier):
- *   1. Hard boundaries (built-in, never overridable)
- *   2. Session overrides (temporary, from human approvals)
- *   3. User rules (from agentguard.yaml)
- *   4. Default rules (built-in soft defaults)
- *   5. Implicit deny (fail-safe)
+ * Evaluation strategy:
+ *   - Tier precedence (outer loop): hard boundaries → session overrides →
+ *     user rules → default rules → implicit deny.
+ *   - Within a tier, rules use **first-match-wins** (the first rule whose
+ *     `match` block applies determines the decision). This is the same
+ *     model Cloudflare WAF, iptables, and AWS security groups use. It
+ *     is NOT true "deny-overrides-allow" — operators must order rules
+ *     intentionally (put specific denies before broad allows).
+ *   - Hard boundaries always win, regardless of session overrides or
+ *     user rules. This is the one non-negotiable security guarantee.
+ *   - Session overrides CAN bypass user denies (by design — they come
+ *     from explicit human approvals). They CANNOT bypass hard boundaries.
  */
 
 import { matches, type ToolCallContext } from "./matcher.js";
@@ -79,6 +85,7 @@ export class PolicyEngine {
   }
 
   clearExpiredOverrides(): void {
+    // Strictly greater-than: an override with expiresAt === now is treated as expired.
     const now = Date.now();
     this.sessionOverrides = this.sessionOverrides.filter(
       (o) => o.expiresAt.getTime() > now

@@ -109,4 +109,33 @@ describe("PolicyEngine", () => {
     expect(decision.tier).toBe("built_in");
     expect(decision.enforcement).toBe("hard_mandatory");
   });
+
+  it("user rules use first-match-wins, not deny-overrides-allow", () => {
+    // A user who puts allow BEFORE deny gets allow. A user who puts
+    // deny BEFORE allow gets deny. Rule ORDER matters.
+    const allowFirst = new PolicyEngine([
+      { match: { tool: "stripe_charge" }, action: "allow" },
+      { match: { tool: "stripe_charge" }, action: "deny" },
+    ]);
+    const denyFirst = new PolicyEngine([
+      { match: { tool: "stripe_charge" }, action: "deny" },
+      { match: { tool: "stripe_charge" }, action: "allow" },
+    ]);
+    const call = { tool: "stripe_charge", args: {} };
+    expect(allowFirst.evaluate(call).action).toBe("allow");
+    expect(denyFirst.evaluate(call).action).toBe("deny");
+  });
+
+  it("normalizes deny_unless and deny_if rules to plain deny", () => {
+    const engine = new PolicyEngine([
+      { match: { tool: "filesystem_write" }, action: "deny_unless" },
+      { match: { tool: "http_post" }, action: "deny_if" },
+    ]);
+    expect(
+      engine.evaluate({ tool: "filesystem_write", args: { path: "/etc" } }).action
+    ).toBe("deny");
+    expect(
+      engine.evaluate({ tool: "http_post", args: { url: "https://evil.example" } }).action
+    ).toBe("deny");
+  });
 });
