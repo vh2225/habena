@@ -5,6 +5,7 @@ import { startCommand } from "./commands/start.js";
 import { logsCommand } from "./commands/logs.js";
 import { agentAddCommand, agentListCommand } from "./commands/agent.js";
 import { watchCommand } from "./commands/watch.js";
+import { installOpenclawCommand, uninstallOpenclawCommand } from "./commands/install.js";
 
 const program = new Command();
 
@@ -53,6 +54,20 @@ agentCmd
   .command("list")
   .description("List registered agents")
   .action(agentListCommand);
+
+const installCmd = program.command("install").description("Install AgentGuard into an MCP client");
+installCmd
+  .command("openclaw")
+  .description("Wire AgentGuard into OpenClaw's config")
+  .option("--dry-run", "Show what would happen without writing")
+  .option("--force", "Overwrite existing AgentGuard entry")
+  .action(installOpenclawCommand);
+
+const uninstallCmd = program.command("uninstall").description("Remove AgentGuard from an MCP client");
+uninstallCmd
+  .command("openclaw")
+  .description("Restore OpenClaw's previous MCP config from backup")
+  .action(uninstallOpenclawCommand);
 
 program.parseAsync().catch((err) => {
   console.error(err instanceof Error ? err.message : String(err));
