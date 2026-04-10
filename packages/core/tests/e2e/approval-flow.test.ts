@@ -10,6 +10,25 @@ import { encode, decodeLines, type ServerMessage } from "../../src/ipc/protocol.
 
 const CLI = "dist/cli/index.js";
 
+// Inline mock MCP server that exposes a single "gmail_send" tool.
+const MOCK_GMAIL_SERVER = `#!/usr/bin/env node
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+
+const server = new Server(
+  { name: "mock-gmail", version: "0.0.1" },
+  { capabilities: { tools: {} } }
+);
+server.setRequestHandler(ListToolsRequestSchema, async () => ({
+  tools: [{ name: "gmail_send", description: "Sends email", inputSchema: { type: "object" } }],
+}));
+server.setRequestHandler(CallToolRequestSchema, async (req) => ({
+  content: [{ type: "text", text: "sent" }],
+}));
+await server.connect(new StdioServerTransport());
+`;
+
 async function waitForFile(path: string, timeoutMs = 5000): Promise<void> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
@@ -23,6 +42,7 @@ describe("E2E approval flow", () => {
   let homeDir: string;
   let env: NodeJS.ProcessEnv;
   let socketPath: string;
+  let mockServerPath: string;
 
   beforeEach(() => {
     homeDir = mkdtempSync(join(tmpdir(), "agentguard-home-"));
@@ -31,6 +51,11 @@ describe("E2E approval flow", () => {
 
     const configDir = join(homeDir, ".agentguard");
     mkdirSync(configDir, { recursive: true });
+
+    // Write the mock gmail server script
+    mockServerPath = join(configDir, "mock-gmail.mjs");
+    writeFileSync(mockServerPath, MOCK_GMAIL_SERVER, { mode: 0o755 });
+
     writeFileSync(
       join(configDir, "config.yaml"),
       `budget:
@@ -46,6 +71,11 @@ rules:
   - match:
       tool: "*"
     action: allow
+mcp_servers:
+  gmail:
+    command: node
+    args: ["${mockServerPath}"]
+    transport: stdio
 `
     );
     writeFileSync(join(configDir, "agents.yaml"), "agents: {}\n");
@@ -90,13 +120,8 @@ rules:
     });
 
     const callPromise = mcp.callTool({
-      name: "agentguard_proxy",
-      arguments: {
-        agent_type: "openclaw",
-        tool_name: "gmail_send",
-        tool_args: { to: "bob@example.com" },
-        estimated_cost: 0,
-      },
+      name: "gmail_send",
+      arguments: { to: "bob@example.com" },
     });
 
     await new Promise<void>((resolve) => {
@@ -113,13 +138,14 @@ rules:
     watcher.write(encode({ type: "respond", id: req.id, choice: "allow_once" }));
 
     const result = await callPromise as { content?: { text?: string }[]; isError?: boolean };
+    // On allow, the downstream mock returns { content: [{ type: "text", text: "sent" }] }
+    expect(result.isError).not.toBe(true);
     const text = result.content?.[0]?.text ?? "";
-    expect(text).toContain("allow");
-    expect(result.isError).toBe(false);
+    expect(text).toBe("sent");
 
     watcher.end();
     await mcp.close();
-  }, 15000);
+  }, 20000);
 
   it("agent tool call with no watcher → timeout → auto-deny", async () => {
     const mcpTransport = new StdioClientTransport({
@@ -132,19 +158,16 @@ rules:
     await waitForFile(socketPath);
 
     const result = await mcp.callTool({
-      name: "agentguard_proxy",
-      arguments: {
-        agent_type: "openclaw",
-        tool_name: "gmail_send",
-        tool_args: { to: "x" },
-        estimated_cost: 0,
-      },
+      name: "gmail_send",
+      arguments: { to: "x" },
     }) as { content?: { text?: string }[]; isError?: boolean };
 
-    const text = result.content?.[0]?.text ?? "";
-    expect(text).toContain("deny");
+    // On deny, isError is true and content text is JSON with decision field
     expect(result.isError).toBe(true);
+    const text = result.content?.[0]?.text ?? "";
+    const parsed = JSON.parse(text) as { decision: string };
+    expect(parsed.decision).toContain("deny");
 
     await mcp.close();
-  }, 10000);
+  }, 15000);
 });

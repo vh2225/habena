@@ -1,3 +1,5 @@
+import type { DownstreamServerConfig } from "../downstream/types.js";
+
 export interface MatchCondition {
   tool?: string;              // exact match or wildcard (e.g., "shell_*")
   tool_tag?: string;          // semantic tag like "communication", "filesystem"
@@ -46,4 +48,5 @@ export interface AgentGuardConfig {
   budget?: BudgetConfig;
   rules?: Rule[];
   approval?: ApprovalConfig;
+  mcp_servers?: Record<string, DownstreamServerConfig>;
 }
