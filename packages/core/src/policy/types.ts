@@ -29,9 +29,17 @@ export interface BudgetConfig {
 }
 
 export interface ApprovalConfig {
-  timeout?: string;
+  timeout?: string;              // duration string like "5m"
   timeout_action?: "deny" | "allow";
   batch_similar?: boolean;
+  /**
+   * Tools and tool tags that always require approval, overriding user allow rules.
+   * Checked before user rules in the policy engine.
+   */
+  require_for?: {
+    tools?: string[];
+    tool_tags?: string[];
+  };
 }
 
 export interface AgentGuardConfig {
