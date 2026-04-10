@@ -5,6 +5,8 @@ import type { AuditLogger } from "../audit/logger.js";
 import type { InstanceTracker } from "../identity/instances.js";
 import type { Forwarder } from "./forwarder.js";
 import type { PolicyDecision } from "../policy/decisions.js";
+import type { ApprovalQueue } from "../approval/queue.js";
+import type { Rule } from "../policy/types.js";
 
 export interface DispatcherDeps {
   policy: PolicyEngine;
@@ -13,6 +15,8 @@ export interface DispatcherDeps {
   audit: AuditLogger;
   instances: InstanceTracker;
   forwarder: Forwarder;
+  approval?: ApprovalQueue;           // NEW
+  approvalTimeoutMs?: number;         // NEW, default 5 minutes
 }
 
 export interface ToolCallRequest {
@@ -58,6 +62,29 @@ export class ProxyDispatcher {
         tool: req.tool,
         args: req.args,
       });
+    }
+
+    // 2b. If decision is require_approval AND approval queue is available, ask the human.
+    if (decision.action === "require_approval" && this.deps.approval) {
+      const timeoutMs = this.deps.approvalTimeoutMs ?? 5 * 60 * 1000;
+      const response = await this.deps.approval.request(decision, req, timeoutMs);
+
+      if (response.choice === "allow_once") {
+        decision = { ...decision, action: "allow", reason: `approved: ${decision.reason}` };
+      } else if (response.choice === "allow_session") {
+        const durationMs = response.durationMs ?? 60 * 60 * 1000;
+        const rule: Rule = {
+          match: { tool: req.tool },
+          action: "allow",
+          reason: `session approval: ${decision.reason}`,
+        };
+        this.deps.policy.addSessionOverride(rule, new Date(Date.now() + durationMs));
+        decision = { ...decision, action: "allow", tier: "session", reason: `session approved: ${decision.reason}` };
+      } else {
+        decision = { ...decision, action: "deny", reason: `denied: ${decision.reason}` };
+      }
+    } else if (decision.action === "require_approval") {
+      decision = { ...decision, action: "deny", reason: `no approval handler: ${decision.reason}` };
     }
 
     // 3. Log the decision
