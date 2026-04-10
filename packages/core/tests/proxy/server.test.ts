@@ -9,6 +9,7 @@ import { BudgetEnforcer } from "../../src/cost/budget.js";
 import { AuditLogger } from "../../src/audit/logger.js";
 import { InstanceTracker } from "../../src/identity/instances.js";
 import { Forwarder } from "../../src/proxy/forwarder.js";
+import { ApprovalQueue } from "../../src/approval/queue.js";
 
 describe("ProxyDispatcher", () => {
   let dir: string;
@@ -98,5 +99,88 @@ describe("ProxyDispatcher", () => {
     });
     const logs = audit.query({});
     expect(logs[0].cost).toBeCloseTo(0.50);
+  });
+});
+
+describe("ProxyDispatcher with ApprovalQueue", () => {
+  let dir: string;
+  let dispatcher: ProxyDispatcher;
+  let audit: AuditLogger;
+  let queue: ApprovalQueue;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "agentguard-"));
+    const policy = new PolicyEngine([
+      { match: { tool: "gmail_send" }, action: "require_approval", reason: "needs approval" },
+    ]);
+    const tracker = new CostTracker();
+    const budget = new BudgetEnforcer(tracker, {});
+    audit = new AuditLogger(join(dir, "audit.db"));
+    const instances = new InstanceTracker();
+    const forwarder = new Forwarder();
+    queue = new ApprovalQueue();
+
+    dispatcher = new ProxyDispatcher({
+      policy,
+      tracker,
+      budget,
+      audit,
+      instances,
+      forwarder,
+      approval: queue,
+      approvalTimeoutMs: 1000,
+    });
+  });
+
+  afterEach(() => {
+    audit.close();
+    queue.shutdown();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("waits for human approval and proceeds on allow_once", async () => {
+    const pendingPromise = dispatcher.handleToolCall({
+      agentType: "openclaw",
+      instanceId: "openclaw/test",
+      tool: "gmail_send",
+      args: { to: "x" },
+      estimatedCost: 0,
+    });
+    await new Promise((r) => setTimeout(r, 10));
+    const pending = queue.list();
+    expect(pending).toHaveLength(1);
+    queue.respond(pending[0].id, { choice: "allow_once" });
+    const result = await pendingPromise;
+    expect(result.decision.action).toBe("allow");
+    expect(result.forwarded).toBe(true);
+  });
+
+  it("denies on human deny response", async () => {
+    const pendingPromise = dispatcher.handleToolCall({
+      agentType: "openclaw",
+      instanceId: "openclaw/test",
+      tool: "gmail_send",
+      args: { to: "x" },
+      estimatedCost: 0,
+    });
+    await new Promise((r) => setTimeout(r, 10));
+    const pending = queue.list();
+    queue.respond(pending[0].id, { choice: "deny" });
+    const result = await pendingPromise;
+    expect(result.decision.action).toBe("deny");
+    expect(result.forwarded).toBe(false);
+  });
+
+  it("auto-denies on timeout when no human responds", async () => {
+    const pendingPromise = dispatcher.handleToolCall({
+      agentType: "openclaw",
+      instanceId: "openclaw/test",
+      tool: "gmail_send",
+      args: { to: "x" },
+      estimatedCost: 0,
+    });
+    const result = await pendingPromise;
+    expect(result.decision.action).toBe("deny");
+    expect(result.decision.reason).toContain("denied");
   });
 });

@@ -6,7 +6,6 @@
   },
   "include": ["src"],
   "exclude": [
-    "src/approval",
     "src/learning",
     "src/registry/glama.ts",
     "src/registry/official.ts",

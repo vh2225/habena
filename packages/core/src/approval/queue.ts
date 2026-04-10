@@ -1,39 +1,102 @@
-/**
- * Holds pending approval requests and resolves them
- * when a human responds via CLI, web UI, or push notification.
- */
+import { EventEmitter } from "node:events";
+import { randomUUID } from "node:crypto";
+import type { PolicyDecision } from "../policy/decisions.js";
+import type { ToolCallRequest } from "../proxy/server.js";
+import type { PendingApproval, ApprovalResponse } from "./types.js";
 
-import type { PolicyDecision, ApprovalOption } from "../policy/decisions.js";
-
-export interface PendingApproval {
-  id: string;
-  decision: PolicyDecision;
-  createdAt: Date;
-  expiresAt: Date;
-  resolve: (option: ApprovalOption) => void;
-  reject: (reason: string) => void;
+interface QueuedApproval {
+  pending: PendingApproval;
+  resolve: (response: ApprovalResponse) => void;
+  timeoutHandle: NodeJS.Timeout;
 }
 
-export class ApprovalQueue {
-  private pending: Map<string, PendingApproval> = new Map();
+export interface ApprovalQueueOptions {
+  /** What to do when an approval times out. Default: "deny". */
+  timeoutAction?: "allow" | "deny";
+}
 
-  async request(decision: PolicyDecision, timeoutMs: number): Promise<ApprovalOption> {
-    // TODO: Create pending approval, notify user, wait for response or timeout
-    throw new Error("Not implemented");
+/**
+ * Holds pending approval requests in memory.
+ * Emits events so IPC layers can forward requests to humans.
+ *
+ * Events:
+ *  - "approval_request" (pending: PendingApproval)
+ *  - "approval_resolved" (pending: PendingApproval, response: ApprovalResponse)
+ *  - "approval_timeout" (pending: PendingApproval)
+ */
+export class ApprovalQueue extends EventEmitter {
+  private queue: Map<string, QueuedApproval> = new Map();
+  private timeoutAction: "allow" | "deny";
+
+  constructor(options: ApprovalQueueOptions = {}) {
+    super();
+    this.timeoutAction = options.timeoutAction ?? "deny";
   }
 
-  respond(id: string, option: ApprovalOption): void {
-    const approval = this.pending.get(id);
-    if (!approval) throw new Error(`No pending approval with id: ${id}`);
-    approval.resolve(option);
-    this.pending.delete(id);
+  request(
+    decision: PolicyDecision,
+    request: ToolCallRequest,
+    timeoutMs: number
+  ): Promise<ApprovalResponse> {
+    const id = randomUUID();
+    const now = new Date();
+    const pending: PendingApproval = {
+      id,
+      decision,
+      request,
+      createdAt: now,
+      expiresAt: new Date(now.getTime() + timeoutMs),
+    };
+
+    return new Promise((resolve) => {
+      const timeoutHandle = setTimeout(() => {
+        const entry = this.queue.get(id);
+        if (!entry) return;
+        this.queue.delete(id);
+        const response: ApprovalResponse = {
+          choice: this.timeoutAction === "allow" ? "allow_once" : "deny",
+          note: "auto-resolved on timeout",
+        };
+        this.emit("approval_timeout", pending);
+        this.emit("approval_resolved", pending, response);
+        entry.resolve(response);
+      }, timeoutMs);
+
+      this.queue.set(id, {
+        pending,
+        resolve,
+        timeoutHandle,
+      });
+
+      this.emit("approval_request", pending);
+    });
+  }
+
+  respond(id: string, response: ApprovalResponse): void {
+    const entry = this.queue.get(id);
+    if (!entry) return;
+    clearTimeout(entry.timeoutHandle);
+    this.queue.delete(id);
+    this.emit("approval_resolved", entry.pending, response);
+    entry.resolve(response);
   }
 
   list(): PendingApproval[] {
-    return Array.from(this.pending.values());
+    return Array.from(this.queue.values()).map((q) => q.pending);
   }
 
-  private startTimeoutCheck(): void {
-    // TODO: Periodically check for expired approvals and auto-deny
+  cancel(id: string): void {
+    const entry = this.queue.get(id);
+    if (!entry) return;
+    clearTimeout(entry.timeoutHandle);
+    this.queue.delete(id);
+  }
+
+  shutdown(): void {
+    for (const entry of this.queue.values()) {
+      clearTimeout(entry.timeoutHandle);
+    }
+    this.queue.clear();
+    this.removeAllListeners();
   }
 }

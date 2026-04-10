@@ -4,6 +4,7 @@ import { initCommand } from "./commands/init.js";
 import { startCommand } from "./commands/start.js";
 import { logsCommand } from "./commands/logs.js";
 import { agentAddCommand, agentListCommand } from "./commands/agent.js";
+import { watchCommand } from "./commands/watch.js";
 
 const program = new Command();
 
@@ -31,6 +32,11 @@ program
   .option("--decision <type>", "Filter by decision (allow, deny, require_approval)")
   .option("--limit <n>", "Max entries to show", "50")
   .action(logsCommand);
+
+program
+  .command("watch")
+  .description("Interactive approval terminal")
+  .action(watchCommand);
 
 const agentCmd = program.command("agent").description("Manage agent registrations");
 
