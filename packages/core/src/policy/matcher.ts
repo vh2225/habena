@@ -1,4 +1,4 @@
-import type { Rule, MatchCondition } from "./types.js";
+import type { Rule } from "./types.js";
 
 export interface ToolCallContext {
   tool: string;
@@ -8,6 +8,19 @@ export interface ToolCallContext {
   mcp_server?: string;
 }
 
+/**
+ * Decides whether a Rule's `match` block applies to a tool call.
+ *
+ * Semantics:
+ * - Every declared field in `match` must pass (AND across fields).
+ * - `args_contain`: ALL needles must be substrings of JSON.stringify(args) (AND within the field).
+ *   NOTE: Substring matching on serialized JSON can cause false positives for very short needles
+ *   that overlap with key names. Rule authors should use specific needles like "rm -rf", not "rm".
+ * - `command_matches`: ANY needle must be a substring of args.command (OR within the field).
+ * - `path_starts_with`: ANY prefix must match args.path (OR within the field).
+ * - Fields not used in Phase 1 (body_contains_file_content, url_not_in, glama_grade) are ignored;
+ *   they are reserved for Phase 2.
+ */
 export function matches(rule: Rule, call: ToolCallContext): boolean {
   const m = rule.match;
 
@@ -23,6 +36,11 @@ export function matches(rule: Rule, call: ToolCallContext): boolean {
   if (m.command_matches) {
     const command = String(call.args.command ?? "");
     if (!m.command_matches.some((needle) => command.includes(needle))) return false;
+  }
+
+  if (m.path_starts_with) {
+    const path = String(call.args.path ?? "");
+    if (!m.path_starts_with.some((prefix) => path.startsWith(prefix))) return false;
   }
 
   return true;

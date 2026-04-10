@@ -77,4 +77,24 @@ describe("matcher", () => {
     const both: Call = { tool: "shell_execute", args: { command: "rm -rf" } };
     expect(matches(rule, both)).toBe(true);
   });
+
+  it("matches path_starts_with when args.path has the prefix", () => {
+    const rule: Rule = {
+      match: { tool: "filesystem_write", path_starts_with: ["/tmp", "~/workspace"] },
+      action: "allow",
+    };
+    expect(
+      matches(rule, { tool: "filesystem_write", args: { path: "/tmp/cache.json" } })
+    ).toBe(true);
+  });
+
+  it("does not match path_starts_with when no prefix matches", () => {
+    const rule: Rule = {
+      match: { tool: "filesystem_write", path_starts_with: ["/tmp", "~/workspace"] },
+      action: "allow",
+    };
+    expect(
+      matches(rule, { tool: "filesystem_write", args: { path: "/etc/passwd" } })
+    ).toBe(false);
+  });
 });
