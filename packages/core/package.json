@@ -1,8 +1,12 @@
 {
   "name": "@agentguard/core",
   "version": "0.1.0",
+  "license": "UNLICENSED",
   "description": "AgentGuard MCP proxy — policy engine, cost tracking, and guardrails",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "bin": {
     "agentguard": "./dist/cli/index.js"
   },
@@ -10,8 +14,7 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "lint": "eslint src/"
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
