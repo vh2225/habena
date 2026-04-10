@@ -7,6 +7,9 @@ import type { Forwarder } from "./forwarder.js";
 import type { PolicyDecision } from "../policy/decisions.js";
 import type { ApprovalQueue } from "../approval/queue.js";
 import type { Rule } from "../policy/types.js";
+import { Server as McpServer } from "@modelcontextprotocol/sdk/server/index.js";
+import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import type { DownstreamManager } from "../downstream/manager.js";
 
 export interface DispatcherDeps {
   policy: PolicyEngine;
@@ -123,4 +126,104 @@ export class ProxyDispatcher {
 
     return { decision, forwarded: false };
   }
+}
+
+export interface McpServerDeps {
+  dispatcher: ProxyDispatcher;
+  downstream: DownstreamManager;
+  instances: InstanceTracker;
+}
+
+/**
+ * Creates the MCP stdio Server that external clients (OpenClaw, Claude Desktop, etc.)
+ * connect to. Routes tools/list to the aggregated catalog from DownstreamManager
+ * and tools/call through the policy/budget/approval dispatcher.
+ */
+export function createMcpServer(deps: McpServerDeps): McpServer {
+  const server = new McpServer(
+    { name: "agentguard", version: "0.2.0" },
+    { capabilities: { tools: {} } }
+  );
+
+  let currentInstanceId: string | null = null;
+  let currentAgentType = "unknown";
+
+  server.setRequestHandler(ListToolsRequestSchema, async () => {
+    return {
+      tools: deps.downstream.listTools().map((t) => ({
+        name: t.name,
+        description: t.description,
+        inputSchema: t.inputSchema ?? { type: "object" },
+      })),
+    };
+  });
+
+  server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    const { name, arguments: args } = request.params;
+
+    const owner = deps.downstream.findTool(name);
+    if (!owner) {
+      return {
+        content: [{ type: "text", text: `Unknown tool: ${name}` }],
+        isError: true,
+      };
+    }
+
+    // Lazily create an instance for this MCP connection.
+    if (!currentInstanceId) {
+      const instance = deps.instances.create(currentAgentType);
+      currentInstanceId = instance.instanceId;
+    }
+
+    const result = await deps.dispatcher.handleToolCall({
+      agentType: currentAgentType,
+      instanceId: currentInstanceId,
+      tool: owner.originalName,
+      args: (args as Record<string, unknown>) ?? {},
+      estimatedCost: 0,
+      mcpServer: owner.server,
+    });
+
+    if (result.decision.action !== "allow") {
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              decision: result.decision.action,
+              reason: result.decision.reason,
+              enforcement: result.decision.enforcement,
+            }),
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    try {
+      const downstreamResult = await deps.downstream.forward(
+        owner.server,
+        owner.originalName,
+        (args as Record<string, unknown>) ?? {}
+      );
+      return downstreamResult as {
+        content: Array<{ type: string; text?: string }>;
+        isError?: boolean;
+      };
+    } catch (err) {
+      return {
+        content: [
+          { type: "text", text: `Downstream error: ${(err as Error).message}` },
+        ],
+        isError: true,
+      };
+    }
+  });
+
+  // Set the agent type based on AGENTGUARD_AGENT env var if set
+  if (process.env.AGENTGUARD_AGENT) {
+    currentAgentType = process.env.AGENTGUARD_AGENT;
+  }
+
+  return server;
 }
