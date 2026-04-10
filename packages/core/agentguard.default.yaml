@@ -1,0 +1,64 @@
+# AgentGuard default configuration
+# Copy to ~/.agentguard/config.yaml and customize
+
+budget:
+  daily: 50       # USD
+  monthly: 500
+  per_session: 20
+  per_request: 5
+  alert_at: [50, 80]  # percent thresholds
+  on_exceed: deny
+
+registries:
+  official:
+    url: "https://registry.modelcontextprotocol.io"
+    trust_level: verified
+  smithery:
+    url: "https://smithery.ai"
+    trust_level: known
+    use_connect: true
+  glama:
+    url: "https://glama.ai"
+    enrich: true
+
+rules:
+  # Require approval for outbound communications
+  - match: { tool_tag: "communication" }
+    action: require_approval
+    enforcement: soft_mandatory
+    reason: "Outbound communication requires approval"
+    timeout: "5m"
+
+  # Restrict file writes to workspace and tmp
+  - match: { tool: "filesystem_write" }
+    action: deny_unless
+    enforcement: soft_mandatory
+    condition: { path_starts_with: ["~/workspace", "/tmp"] }
+    reason: "File writes restricted to workspace and tmp"
+
+  # Block data exfiltration — sending files to unknown URLs
+  - match: { tool: "http_*" }
+    action: deny_if
+    condition: { body_contains_file_content: true, url_not_in: "~/.agentguard/trusted_domains.txt" }
+    reason: "Potential data exfiltration to untrusted domain"
+
+  # Warn on low-security MCP servers
+  - match: { glama_grade: ["D", "F"] }
+    action: require_approval
+    enforcement: soft_mandatory
+    reason: "MCP server has low security grade"
+
+  # Block unknown/unregistered MCP servers
+  - match: { registry: "unknown" }
+    action: require_approval
+    enforcement: soft_mandatory
+    reason: "Unregistered MCP server"
+
+  # Allow everything else
+  - match: { tool: "*" }
+    action: allow
+
+approval:
+  timeout: "5m"
+  timeout_action: deny
+  batch_similar: true
