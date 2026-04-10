@@ -1,47 +1,44 @@
-/**
- * Tracks spend per agent, per session, per day, per month.
- */
-
-import type { BudgetConfig } from "../policy/parser.js";
-
 export interface SpendRecord {
-  agent: string;
-  sessionId: string;
+  agentType: string;
+  instanceId: string;
   tool: string;
   cost: number;
   timestamp: Date;
 }
 
-export interface SpendSummary {
-  session: number;
-  daily: number;
-  monthly: number;
-}
-
 export class CostTracker {
   private records: SpendRecord[] = [];
-  private budget: BudgetConfig;
-
-  constructor(configPath: string) {
-    // TODO: Load budget config
-    this.budget = {};
-  }
 
   record(spend: SpendRecord): void {
     this.records.push(spend);
   }
 
-  getSummary(agent: string, sessionId: string): SpendSummary {
-    // TODO: Calculate aggregated spend
-    throw new Error("Not implemented");
+  getInstanceSpend(instanceId: string): number {
+    return this.records
+      .filter((r) => r.instanceId === instanceId)
+      .reduce((sum, r) => sum + r.cost, 0);
   }
 
-  checkBudget(agent: string, sessionId: string, proposedCost: number): {
-    allowed: boolean;
-    reason?: string;
-    alertThreshold?: number;
-  } {
-    // TODO: Check if proposed cost would exceed any budget limit
-    throw new Error("Not implemented");
+  getTypeSpend(agentType: string): number {
+    return this.records
+      .filter((r) => r.agentType === agentType)
+      .reduce((sum, r) => sum + r.cost, 0);
+  }
+
+  getDailySpend(agentType: string): number {
+    const cutoff = new Date();
+    cutoff.setHours(0, 0, 0, 0);
+    return this.records
+      .filter((r) => r.agentType === agentType && r.timestamp >= cutoff)
+      .reduce((sum, r) => sum + r.cost, 0);
+  }
+
+  getMonthlySpend(agentType: string): number {
+    const cutoff = new Date();
+    cutoff.setDate(1);
+    cutoff.setHours(0, 0, 0, 0);
+    return this.records
+      .filter((r) => r.agentType === agentType && r.timestamp >= cutoff)
+      .reduce((sum, r) => sum + r.cost, 0);
   }
 }
