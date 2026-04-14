@@ -43,7 +43,7 @@ agentguard/
 
 - **MCP middleware approach**: Agents connect to AgentGuard as their MCP server. AgentGuard proxies to real MCP servers with policy enforcement.
 - **Agent identity**: Two-level model — agent type (shared permissions) + instance (tracked separately for budget/audit). Process fingerprinting for verification.
-- **Policy engine**: 3-tier rules (built-in → user → session overrides), deny-overrides-allow evaluation, structured decisions (not just boolean).
+- **Policy engine**: 3-tier evaluation (hard boundaries → session overrides → user rules → defaults → implicit deny). First-match-wins **within** a tier; hard boundaries always win across tiers. Session overrides can bypass user denies but not hard boundaries. Structured decisions (not just boolean). See `packages/core/src/policy/engine.ts` header.
 - **Enforcement levels**: advisory (log only), soft_mandatory (ask human), hard_mandatory (block, no override).
 - **Threat feed**: Periodically synced threat intelligence (blocklisted servers, pattern signatures, anomaly data). Like antivirus signature updates.
 - **Learning mode**: Observe agent behavior, generate least-privilege policy proposal.

@@ -1,0 +1,110 @@
+# AgentGuard Roadmap
+
+Living progress tracker. Update when phases start and finish. Detailed phase plans live in `docs/plans/`.
+
+Last updated: 2026-04-13.
+
+## Status key
+
+- ✅ Shipped — merged to `main`, covered by tests.
+- 🔨 In progress — has a branch / spec / plan.
+- 🧭 Next — queued, not started.
+- 💤 Later — agreed scope, no committed timeline.
+
+---
+
+## Done
+
+### ✅ Phase 1 — Core MVP
+Plan: `docs/plans/2026-04-09-phase1-core-mvp.md`
+Scope: Policy engine, cost tracker, budget enforcer, audit logger, identity registry + instances, approval queue (in-memory), CLI skeleton (`init`, `start`, `agent`, `logs`). Unit-test coverage for pure-logic modules.
+
+### ✅ Phase 2 — Transparent forwarding
+Spec: `docs/specs/2026-04-10-phase2-transparent-forwarding.md`
+Plan: `docs/plans/2026-04-10-phase2-transparent-forwarding.md`
+Scope: `DownstreamManager` + `DownstreamClient`, per-server failure isolation, tool namespace collision handling, `createMcpServer` wrapping the dispatcher, `tools/list` aggregation, E2E forwarding test against real `@modelcontextprotocol/server-filesystem`.
+
+### ✅ Phase 3a — Approval backend
+Spec: `docs/specs/2026-04-10-phase3a-approval-backend.md`
+Plan: `docs/plans/2026-04-10-phase3a-approval-backend.md`
+Scope: Unix-socket IPC with NDJSON protocol, `agentguard watch` CLI with inquirer prompts, `allow_once` / `allow_session` / deny flows, 5-minute default approval timeout, E2E approval test with real proxy subprocess.
+
+### ✅ Phase 4 — Install command
+Scope: `agentguard install openclaw` / `agentguard uninstall openclaw` — migrates stdio MCP servers out of `~/.openclaw/openclaw.json` into `~/.agentguard/config.yaml`, replaces OpenClaw's entry with a single proxied `agentguard` server, writes timestamped backups.
+
+---
+
+## Next
+
+### 🧭 Phase 5 — Lab validation (in motion)
+Runbook: `docs/runbooks/mac-mini-lab-setup.md`
+Owner: Vinh.
+Goal: end-to-end validation of the full proxy against OpenClaw on a physically isolated Mac mini. Not product code — integration confidence.
+
+Phases inside the runbook:
+- Phase 0–2 — backup, wipe, prepare encrypted external SSD.
+- Phase 3–5 — host tools, OrbStack Ubuntu VM, AgentGuard + OpenClaw wiring.
+- Phase 6 — observe mode smoke (every tool call hits the audit log).
+- Phase 7 — enforced mode with deny-default (5-test validation: allow, approval, hard deny, prompt-injection via file content, budget exhaustion).
+- Phase 8 — progressive tool expansion (fetch → git → sqlite).
+- Phase 9 — burner identity + test Slack workspace.
+- Phase 10 — optional Claude API for code-dev tests, budget-gated.
+- Phase 11 — chaos / red-team.
+
+Exit criteria: phase 7 five-test flow passes twice in a row from a clean `agentlab-baseline` snapshot; no silent allows on the red-team pass.
+
+### 🧭 Phase 6 — Observability for operators
+Rationale: the lab exposes it — `agentguard logs` tailing works but there's no single glance at "what is the agent doing right now, what's it been denied for today, how much budget is left." Before asking teams to run this against real agents, we need the dashboard.
+
+Scope sketch:
+- `packages/web` live decision feed (already scaffolded — needs wiring to the audit DB).
+- Per-agent budget gauge + daily spend breakdown.
+- Approval UI in the web dashboard as an alternative to the tmux `watch` pane (headless-host story).
+
+Not included: cloud hosting, multi-tenant, auth. Local-only.
+
+### 🧭 Phase 7 — Policy profiler end-to-end
+`learning/` scaffolding exists. `agentguard learn --agent X` needs to: read the audit log in observe mode, cluster tool-call shapes, emit a least-privilege draft `rules:` block the user can diff against. This is the onboarding story for new agents — manual rule writing doesn't scale.
+
+### 🧭 Phase 8 — Threat feed MVP
+`threat/` module exists. Need: a signed feed URL, periodic sync (cron inside the proxy), a tier-0 "blocked downstream server" list (fingerprints of known-malicious MCP servers from Smithery/Glama reports), antivirus-style version pinning.
+
+---
+
+## Later
+
+### 💤 Registry integrations
+Official MCP registry, Smithery, Glama wired into the CLI for discovery + install (`agentguard install <server-from-registry>`). Requires registry clients in `registry/` to mature beyond scaffolding.
+
+### 💤 Cloud dashboard (paid tier)
+`cloud/` directory exists as the closed-source partition. Multi-agent fleet view, team approvals, alert routing, compliance exports. Gated on phase 6 shipping first — we need the local story solid before SaaS.
+
+### 💤 Non-stdio transports
+HTTP / SSE / streamable-http downstream support. `DownstreamClient` is stdio-only. Installer already preserves HTTP servers untouched in OpenClaw's config, precisely because we can't proxy them yet.
+
+### 💤 Conditional rules
+`policy/engine.ts` already has `deny_if` / `deny_unless` action types in `normalizeAction` but evaluates them as plain `deny` today (comment at `engine.ts:111-117`). Wire the condition-expression evaluator.
+
+### 💤 Multi-agent coordination
+Today each MCP connection is one agent instance. Multi-agent fleets (e.g. supervisor + workers) share a proxy but currently also share audit attribution. Needs instance propagation via MCP connection headers.
+
+---
+
+## Known drift from spec
+
+Tracked here so the spec doesn't silently diverge further. See `docs/architecture.md` → *Drift from the spec* for details.
+
+- Policy evaluation is first-match-wins per tier, not "deny-overrides-allow."
+- Tier order is hard boundaries → session overrides → user rules → defaults → implicit deny (spec had these out of order).
+- Cloud / threat / registry components are scaffolded, not end-to-end.
+
+When we ship phase 6 or phase 8, update the spec in the same PR or mark it superseded.
+
+---
+
+## How to update this file
+
+- Moving an item between sections → change the heading + status emoji, keep history visible in git.
+- Adding a new phase → append under `🧭 Next`. If it has a plan doc, link it. If it's vague, write "scope sketch" and resist pretending it's planned.
+- Completing a phase → move under `## Done`, link the plan + spec, one-line scope summary.
+- Don't rename sections. External docs (architecture.md, runbooks) link here.
