@@ -2,7 +2,7 @@
 
 Living progress tracker. Update when phases start and finish. Detailed phase plans live in `docs/plans/`.
 
-Last updated: 2026-04-13.
+Last updated: 2026-04-15.
 
 ## Status key
 
@@ -63,11 +63,23 @@ Scope sketch:
 
 Not included: cloud hosting, multi-tenant, auth. Local-only.
 
-### 🧭 Phase 7 — Policy profiler end-to-end
-`learning/` scaffolding exists. `agentguard learn --agent X` needs to: read the audit log in observe mode, cluster tool-call shapes, emit a least-privilege draft `rules:` block the user can diff against. This is the onboarding story for new agents — manual rule writing doesn't scale.
+### 🧭 Phase 7 — Chat-channel approval forwarding
+Spec: `docs/specs/2026-04-15-phase7-approval-forwarding.md`
+Rationale: the product thesis — user goes hands-off after check-and-balance — breaks the moment pending approvals require someone staring at `agentguard watch` in a terminal. Forward approvals to Slack (V1), generic webhook (escape hatch), with `allow_respondents` gating and a denial-cache-invalidation invariant baked in.
 
-### 🧭 Phase 8 — Threat feed MVP
-`threat/` module exists. Need: a signed feed URL, periodic sync (cron inside the proxy), a tier-0 "blocked downstream server" list (fingerprints of known-malicious MCP servers from Smithery/Glama reports), antivirus-style version pinning.
+### 🧭 Phase 8 — Policy presets + rule packs
+Spec: `docs/specs/2026-04-15-phase8-policy-presets-and-rule-packs.md`
+Rationale: new users currently get `allow *` after `agentguard init` — the opposite of safe. Ship `agentguard policy preset observe|cautious|deny-all`, add a `host-policy.yaml` floor that the config can't weaken (stricter-of-two merge), and four built-in rule packs (`filesystem-readonly`, `filesystem-write-approval`, `github-no-push`, `slack-readonly`) importable via `extends:`.
+
+### 🧭 Phase 9 — `doctor` + `security audit`
+Spec: `docs/specs/2026-04-15-phase9-doctor-and-audit.md`
+Rationale: Phase 5 lab surfaced the "silent misconfiguration" failure mode (better-sqlite3 ABI mismatch, OpenClaw not actually pointed at us, stale approval queue after watcher died). `doctor` runs eight operational checks with actionable fix hints; `security audit` does static analysis over the resolved policy to flag unreachable rules, weakened hard boundaries, and missing approval forwarders.
+
+### 🧭 Phase 10 — Policy profiler end-to-end
+`learning/` scaffolding exists. `agentguard learn --agent X` needs to: read the audit log in observe mode, cluster tool-call shapes, emit a least-privilege draft `rules:` block the user can diff against. Complements phase 8's preset/rule-pack story — presets give a safe floor, the profiler closes the loop so users can auto-generate the custom rules above that floor instead of writing them by hand. (Was Phase 7.)
+
+### 🧭 Phase 11 — Threat feed MVP
+`threat/` module exists. Need: a signed feed URL, periodic sync (cron inside the proxy), a tier-0 "blocked downstream server" list (fingerprints of known-malicious MCP servers from Smithery/Glama reports), antivirus-style version pinning. (Was Phase 8.)
 
 ---
 
@@ -98,7 +110,7 @@ Tracked here so the spec doesn't silently diverge further. See `docs/architectur
 - Tier order is hard boundaries → session overrides → user rules → defaults → implicit deny (spec had these out of order).
 - Cloud / threat / registry components are scaffolded, not end-to-end.
 
-When we ship phase 6 or phase 8, update the spec in the same PR or mark it superseded.
+When we ship phase 6 or phase 11, update the spec in the same PR or mark it superseded.
 
 ---
 
