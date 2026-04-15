@@ -5,3 +5,5 @@ dist/
 .env
 .env.local
 *.db
+.claude/settings.local.json
+packages/*/*.tgz
