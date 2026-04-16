@@ -63,9 +63,9 @@ Scope sketch:
 
 Not included: cloud hosting, multi-tenant, auth. Local-only.
 
-### 🧭 Phase 7 — Chat-channel approval forwarding
-Spec: `docs/specs/2026-04-15-phase7-approval-forwarding.md`
-Rationale: the product thesis — user goes hands-off after check-and-balance — breaks the moment pending approvals require someone staring at `agentguard watch` in a terminal. Forward approvals to Slack (V1), generic webhook (escape hatch), with `allow_respondents` gating and a denial-cache-invalidation invariant baked in.
+### 🧭 Phase 7 — Chat channels (inbound + outbound)
+Spec: `docs/specs/2026-04-15-phase7-chat-channels.md`
+Rationale: hands-off operation breaks in both directions — when approvals only reach a terminal, and when the user has no way to command an agent from their phone. One channel registry serves both: outbound approvals to Slack + inbound commands from Signal, with per-remote scope binding, two-channel confirmation for irreversible actions, rate-limit circuit breakers, and an SMS-is-never-a-command-transport rule enforced at config parse.
 
 ### 🧭 Phase 8 — Policy presets + rule packs
 Spec: `docs/specs/2026-04-15-phase8-policy-presets-and-rule-packs.md`
