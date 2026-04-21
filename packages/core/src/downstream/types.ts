@@ -12,6 +12,17 @@ export interface DownstreamServerConfig {
    * multiple servers expose the same tool name.
    */
   namespace?: string;
+  /**
+   * Optional read-only tool call to verify credentials after the server starts.
+   * listTools() succeeds even when a server is unauthenticated, so without a
+   * probe "alive" only means the child process started. Set this to a cheap
+   * tool (e.g. gmail_list_labels, list-calendars) to surface auth failures up
+   * front instead of on the first real call.
+   */
+  auth_probe?: {
+    tool: string;
+    args?: Record<string, unknown>;
+  };
 }
 
 export interface AggregatedTool {
@@ -30,9 +41,17 @@ export interface ToolOwner {
   originalName: string;
 }
 
+export type AuthProbeStatus =
+  | "unchecked"     // no auth_probe configured
+  | "authenticated" // probe call succeeded
+  | "auth_failed";  // probe call returned an error
+
 export interface DownstreamServerStatus {
   name: string;
   alive: boolean;
   toolCount: number;
   error?: string;
+  authStatus: AuthProbeStatus;
+  /** Error text from the auth probe (only present when authStatus === "auth_failed"). */
+  authError?: string;
 }

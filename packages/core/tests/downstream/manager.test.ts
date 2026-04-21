@@ -43,17 +43,41 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => ({
 await server.connect(new StdioServerTransport());
 `;
 
+// A server whose listTools() always succeeds but whose only tool returns
+// isError: true — emulates a downstream that starts but is unauthenticated.
+const MOCK_SERVER_UNAUTH = `#!/usr/bin/env node
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+
+const server = new Server(
+  { name: "mock-unauth", version: "0.0.1" },
+  { capabilities: { tools: {} } }
+);
+server.setRequestHandler(ListToolsRequestSchema, async () => ({
+  tools: [{ name: "ping", description: "probe", inputSchema: { type: "object" } }],
+}));
+server.setRequestHandler(CallToolRequestSchema, async () => ({
+  isError: true,
+  content: [{ type: "text", text: "Authentication tokens are no longer valid." }],
+}));
+await server.connect(new StdioServerTransport());
+`;
+
 describe("DownstreamManager", () => {
   let dir: string;
   let aPath: string;
   let bPath: string;
+  let unauthPath: string;
 
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), "agentguard-dmgr-"));
     aPath = join(dir, "a.mjs");
     bPath = join(dir, "b.mjs");
+    unauthPath = join(dir, "unauth.mjs");
     writeFileSync(aPath, MOCK_SERVER_A);
     writeFileSync(bPath, MOCK_SERVER_B);
+    writeFileSync(unauthPath, MOCK_SERVER_UNAUTH);
   });
 
   afterEach(() => {
@@ -136,6 +160,48 @@ describe("DownstreamManager", () => {
     await mgr.start();
     const tools = mgr.listTools();
     expect(tools[0].name).toBe("fs/read");
+    await mgr.stop();
+  });
+
+  it("authStatus defaults to 'unchecked' when no probe is configured", async () => {
+    const mgr = new DownstreamManager({
+      alpha: { command: "node", args: [aPath] },
+    });
+    await mgr.start();
+    const status = mgr.status();
+    expect(status[0].authStatus).toBe("unchecked");
+    expect(status[0].alive).toBe(true);
+    await mgr.stop();
+  });
+
+  it("authStatus becomes 'authenticated' when the probe call succeeds", async () => {
+    const mgr = new DownstreamManager({
+      alpha: {
+        command: "node",
+        args: [aPath],
+        auth_probe: { tool: "read" }, // mock returns success
+      },
+    });
+    await mgr.start();
+    const status = mgr.status();
+    expect(status[0].authStatus).toBe("authenticated");
+    expect(status[0].authError).toBeUndefined();
+    await mgr.stop();
+  });
+
+  it("authStatus becomes 'auth_failed' when the probe returns isError", async () => {
+    const mgr = new DownstreamManager({
+      broken: {
+        command: "node",
+        args: [unauthPath],
+        auth_probe: { tool: "ping" },
+      },
+    });
+    await mgr.start();
+    const status = mgr.status();
+    expect(status[0].alive).toBe(true); // process started fine
+    expect(status[0].authStatus).toBe("auth_failed");
+    expect(status[0].authError).toContain("Authentication tokens");
     await mgr.stop();
   });
 

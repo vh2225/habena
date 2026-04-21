@@ -67,13 +67,20 @@ export class DownstreamManager {
     for (const name of Object.keys(this.configs)) {
       const client = this.clients.get(name);
       if (client && client.isAlive()) {
-        all.push({ name, alive: true, toolCount: client.listTools().length });
+        all.push({
+          name,
+          alive: true,
+          toolCount: client.listTools().length,
+          authStatus: client.authStatus(),
+          authError: client.authError(),
+        });
       } else {
         all.push({
           name,
           alive: false,
           toolCount: 0,
           error: this.errors.get(name) ?? "not started",
+          authStatus: "unchecked",
         });
       }
     }

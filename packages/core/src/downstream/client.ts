@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import type {
   DownstreamServerConfig,
   AggregatedTool,
+  AuthProbeStatus,
 } from "./types.js";
 import { expandEnvInConfig } from "./env-expand.js";
 
@@ -18,6 +19,8 @@ export class DownstreamClient {
   private transport: StdioClientTransport | null = null;
   private tools: AggregatedTool[] = [];
   private alive = false;
+  private authProbeStatus: AuthProbeStatus = "unchecked";
+  private authProbeError: string | undefined;
 
   constructor(
     public readonly name: string,
@@ -72,6 +75,30 @@ export class DownstreamClient {
       inputSchema: t.inputSchema,
       server: this.name,
     }));
+
+    // Auth probe: listTools() succeeds even for servers that can't
+    // authenticate. If the user configured a probe, call it now and record
+    // the result so `status()` can surface auth failures at startup.
+    if (this.config.auth_probe) {
+      const { tool, args } = this.config.auth_probe;
+      try {
+        const res = await this.client.callTool({ name: tool, arguments: args ?? {} });
+        // MCP convention: isError === true means the tool returned a
+        // structured error (auth failure, permission denied, etc.) even
+        // though the RPC itself succeeded.
+        const resErr = (res as { isError?: boolean; content?: Array<{ type?: string; text?: string }> });
+        if (resErr.isError) {
+          this.authProbeStatus = "auth_failed";
+          const firstText = resErr.content?.find((c) => c.type === "text")?.text;
+          this.authProbeError = firstText?.slice(0, 300) ?? "probe returned isError with no message";
+        } else {
+          this.authProbeStatus = "authenticated";
+        }
+      } catch (err) {
+        this.authProbeStatus = "auth_failed";
+        this.authProbeError = (err as Error).message.slice(0, 300);
+      }
+    }
   }
 
   async stop(): Promise<void> {
@@ -90,6 +117,14 @@ export class DownstreamClient {
 
   isAlive(): boolean {
     return this.alive;
+  }
+
+  authStatus(): AuthProbeStatus {
+    return this.authProbeStatus;
+  }
+
+  authError(): string | undefined {
+    return this.authProbeError;
   }
 
   listTools(): AggregatedTool[] {

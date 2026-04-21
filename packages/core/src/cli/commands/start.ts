@@ -62,14 +62,24 @@ export async function startCommand(): Promise<void> {
   try {
     await downstream.start();
     const status = downstream.status();
-    const alive = status.filter((s) => s.alive).length;
+    const healthy = status.filter((s) => s.alive && s.authStatus !== "auth_failed").length;
     const total = status.length;
-    console.error(chalk.gray(`Downstreams: ${alive}/${total} alive`));
+    console.error(chalk.gray(`Downstreams: ${healthy}/${total} healthy`));
     for (const s of status) {
-      if (s.alive) {
-        console.error(chalk.gray(`  ✓ ${s.name} (${s.toolCount} tools)`));
-      } else {
+      if (!s.alive) {
         console.error(chalk.yellow(`  ✗ ${s.name}: ${s.error}`));
+        continue;
+      }
+      if (s.authStatus === "auth_failed") {
+        console.error(
+          chalk.yellow(
+            `  ⚠ ${s.name} (${s.toolCount} tools, auth failed: ${s.authError ?? "unknown"})`
+          )
+        );
+      } else if (s.authStatus === "authenticated") {
+        console.error(chalk.gray(`  ✓ ${s.name} (${s.toolCount} tools, authenticated)`));
+      } else {
+        console.error(chalk.gray(`  ✓ ${s.name} (${s.toolCount} tools, auth unchecked)`));
       }
     }
   } catch (err) {
