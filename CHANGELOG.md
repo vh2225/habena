@@ -5,8 +5,11 @@ Notable user-visible changes. Not every internal refactor appears here — see t
 ## Unreleased
 
 ### Added
+- `agentguard downstream add filesystem <path>` — one-command setup of the filesystem MCP server (auto-registers an `auth_probe` of `list_allowed_directories`).
+- `agentguard downstream add gmail` — interactive OAuth flow for `@antidrift/mcp-gmail`. Prompts for Google OAuth client credentials (or accepts `--client-id` / `--client-secret`), walks the user through the browser consent step, exchanges the code for tokens, saves them at the path the MCP expects, optionally `npm install -g`s the package, and registers the server in `config.yaml` with an `auth_probe` of `gmail_list_labels`. Replaces ~4 manual steps.
+- `agentguard downstream list` / `agentguard downstream remove <name>` for managing downstream entries without hand-editing YAML.
 - `agentguard policy preset observe|cautious|deny-all` — named policy postures with backup-before-overwrite and `--dry-run`. New users get a safe baseline in one command.
-- `agentguard doctor` — operational health check with 5 checks (proxy-reachable, audit-db-writable, downstream-reachable, openclaw-pointed-at-us, node-version). Flags: `--only`, `--skip`, `--fix`, `--json`. Exit code = number of failures.
+- `agentguard doctor` — operational health check with 7 checks (proxy-reachable, audit-db-writable, downstream-reachable, approval-queue-draining, openclaw-pointed-at-us, node-version, clock-skew). Flags: `--only`, `--skip`, `--fix`, `--json`. Exit code = number of failures.
 - Boot-time doctor subset runs in background during `agentguard start`; prints warnings on non-pass checks.
 - Optional `auth_probe: {tool, args?}` per `mcp_servers` entry — AgentGuard calls the probe at startup and reports `authenticated` / `auth_failed` / `unchecked` instead of only checking process liveness.
 - `agentguard install openclaw` now aborts if the absolute binary path it would write doesn't exist on disk.

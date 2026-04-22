@@ -12,6 +12,12 @@ import {
   policyPresetListCommand,
   policyPresetShowCommand,
 } from "./commands/policy.js";
+import {
+  downstreamListCommand,
+  downstreamRemoveCommand,
+  downstreamAddFilesystemCommand,
+  downstreamAddGmailCommand,
+} from "./commands/downstream.js";
 
 const program = new Command();
 
@@ -68,6 +74,38 @@ installCmd
   .option("--dry-run", "Show what would happen without writing")
   .option("--force", "Overwrite existing AgentGuard entry")
   .action(installOpenclawCommand);
+
+const downstreamCmd = program
+  .command("downstream")
+  .description("Manage downstream MCP servers");
+downstreamCmd
+  .command("list")
+  .description("List configured downstream MCP servers")
+  .action(downstreamListCommand);
+downstreamCmd
+  .command("remove <name>")
+  .description("Remove a downstream server from config.yaml")
+  .action(downstreamRemoveCommand);
+const downstreamAddCmd = downstreamCmd
+  .command("add")
+  .description("Add and wire up a new downstream MCP server");
+downstreamAddCmd
+  .command("filesystem <path>")
+  .description("Add the @modelcontextprotocol/server-filesystem, rooted at <path>")
+  .option("--name <name>", "Server name to register (default: filesystem)")
+  .option("--force", "Replace an existing entry with the same name")
+  .option("--dry-run", "Show what would be written without touching the config")
+  .action(downstreamAddFilesystemCommand);
+downstreamAddCmd
+  .command("gmail")
+  .description("Add @antidrift/mcp-gmail via an interactive OAuth flow")
+  .option("--name <name>", "Server name to register (default: gmail)")
+  .option("--client-id <id>", "Google OAuth client ID (skips prompt)")
+  .option("--client-secret <s>", "Google OAuth client secret (skips prompt)")
+  .option("--skip-install", "Don't install the MCP server npm package even if missing")
+  .option("--force", "Replace an existing gmail entry")
+  .option("--dry-run", "Show what would be written without touching the config")
+  .action(downstreamAddGmailCommand);
 
 const policyCmd = program.command("policy").description("Manage AgentGuard policy");
 const presetCmd = policyCmd
