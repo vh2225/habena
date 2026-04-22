@@ -2,7 +2,7 @@
 
 Living progress tracker. Update when phases start and finish. Detailed phase plans live in `docs/plans/`.
 
-Last updated: 2026-04-15.
+Last updated: 2026-04-21.
 
 ## Status key
 
@@ -30,7 +30,17 @@ Plan: `docs/plans/2026-04-10-phase3a-approval-backend.md`
 Scope: Unix-socket IPC with NDJSON protocol, `agentguard watch` CLI with inquirer prompts, `allow_once` / `allow_session` / deny flows, 5-minute default approval timeout, E2E approval test with real proxy subprocess.
 
 ### ✅ Phase 4 — Install command
-Scope: `agentguard install openclaw` / `agentguard uninstall openclaw` — migrates stdio MCP servers out of `~/.openclaw/openclaw.json` into `~/.agentguard/config.yaml`, replaces OpenClaw's entry with a single proxied `agentguard` server, writes timestamped backups.
+Scope: `agentguard install openclaw` / `agentguard uninstall openclaw` — migrates stdio MCP servers out of `~/.openclaw/openclaw.json` into `~/.agentguard/config.yaml`, replaces AgentGuard's entry with a single proxied `agentguard` server, writes timestamped backups, validates the target binary path exists before writing.
+
+### ✅ Downstream auth probe (Phase 9 prep)
+Scope: optional `auth_probe: {tool, args?}` per `mcp_servers` entry. Dogfooding against the Mac-mini lab revealed that `Downstreams N/N alive` reported healthy even when a downstream couldn't authenticate. Now each downstream can declare a cheap read-only probe; at startup, AgentGuard calls it and reports `authenticated`, `auth_failed`, or `unchecked`. Three new tests; no config changes required for existing deployments (unchecked = previous behavior).
+
+### ✅ Phase 9 V1 — `agentguard doctor`
+Spec: `docs/specs/2026-04-15-phase9-doctor-and-audit.md`
+Scope: operational health-check command with 5 checks — proxy-reachable (IPC hello ping), audit-db-writable (open + schema check + test write + rollback), downstream-reachable (reuses auth-probe output), openclaw-pointed-at-us (validates paths actually exist on disk), node-version (>=20 + better-sqlite3 ABI compatibility). Flags: `--only`, `--skip`, `--fix`, `--json`. Exit code = number of failures. Wired into `agentguard start` boot so misconfigurations surface before the first tool call.
+
+### ✅ Policy presets (Phase 8 V1 slice)
+Scope: `agentguard policy preset observe|cautious|deny-all`. Three named postures with backup-before-overwrite and `--dry-run`. New users get a safe baseline in one command without authoring rule YAML. Deliberately not in this slice: host-policy floor, rule pack imports, named scopes — the larger Phase 8 story.
 
 ---
 

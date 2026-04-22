@@ -1,7 +1,25 @@
 {
   "name": "agentguard",
   "private": true,
-  "description": "Open-core MCP middleware proxy for AI agent safety — cost limits, guardrails, and human approval",
+  "description": "MCP middleware proxy for AI agent safety — policy enforcement, cost budgets, and human approvals with a full audit trail.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vh2225/agentguard.git"
+  },
+  "homepage": "https://github.com/vh2225/agentguard#readme",
+  "bugs": {
+    "url": "https://github.com/vh2225/agentguard/issues"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "agent",
+    "ai-safety",
+    "policy",
+    "middleware",
+    "proxy"
+  ],
   "scripts": {
     "build": "pnpm -r build",
     "dev": "pnpm -r --parallel dev",
