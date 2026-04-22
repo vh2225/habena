@@ -5,6 +5,10 @@ Notable user-visible changes. Not every internal refactor appears here — see t
 ## Unreleased
 
 ### Added
+- `agentguard approvals list|respond|forward` — thin IPC-client subcommands so you can script the approval flow without the interactive `watch` TUI.
+  - `list [--json]` prints pending approvals one-shot.
+  - `respond <id> <choice> [--duration-ms …] [--note …]` resolves one programmatically.
+  - `forward --url <URL> [--hmac-secret …]` streams every `approval_request` as a signed HTTP POST to a webhook — point it at Zapier, Discord, ntfy, your own endpoint. First slice of Phase 7 chat-channel forwarding.
 - `agentguard downstream add filesystem <path>` — one-command setup of the filesystem MCP server (auto-registers an `auth_probe` of `list_allowed_directories`).
 - `agentguard downstream add gmail` — interactive OAuth flow for `@antidrift/mcp-gmail`. Prompts for Google OAuth client credentials (or accepts `--client-id` / `--client-secret`), walks the user through the browser consent step, exchanges the code for tokens, saves them at the path the MCP expects, optionally `npm install -g`s the package, and registers the server in `config.yaml` with an `auth_probe` of `gmail_list_labels`. Replaces ~4 manual steps.
 - `agentguard downstream list` / `agentguard downstream remove <name>` for managing downstream entries without hand-editing YAML.

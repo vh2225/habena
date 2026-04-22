@@ -18,6 +18,11 @@ import {
   downstreamAddFilesystemCommand,
   downstreamAddGmailCommand,
 } from "./commands/downstream.js";
+import {
+  approvalsListCommand,
+  approvalsRespondCommand,
+  approvalsForwardCommand,
+} from "./commands/approvals.js";
 
 const program = new Command();
 
@@ -74,6 +79,28 @@ installCmd
   .option("--dry-run", "Show what would happen without writing")
   .option("--force", "Overwrite existing AgentGuard entry")
   .action(installOpenclawCommand);
+
+const approvalsCmd = program
+  .command("approvals")
+  .description("List, respond to, or forward pending approvals via IPC");
+approvalsCmd
+  .command("list")
+  .description("Print pending approvals (one-shot IPC query)")
+  .option("--json", "Output as JSON")
+  .action(approvalsListCommand);
+approvalsCmd
+  .command("respond <id> <choice>")
+  .description("Resolve a pending approval (choice: allow_once|allow_session|deny)")
+  .option("--duration-ms <ms>", "Session duration when choice=allow_session")
+  .option("--note <text>", "Optional note recorded in the audit log")
+  .action(approvalsRespondCommand);
+approvalsCmd
+  .command("forward")
+  .description("Stream approval events to a webhook URL (for Zapier/Discord/ntfy/etc)")
+  .requiredOption("--url <url>", "Webhook URL to POST approval events to")
+  .option("--hmac-secret <s>", "Secret for signing payloads with HMAC-SHA256 (or set AGENTGUARD_WEBHOOK_HMAC)")
+  .option("--hmac-header <name>", "Header name carrying the HMAC (default: x-agentguard-signature)")
+  .action(approvalsForwardCommand);
 
 const downstreamCmd = program
   .command("downstream")
