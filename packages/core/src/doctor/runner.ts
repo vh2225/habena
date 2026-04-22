@@ -4,13 +4,17 @@ import { auditDbWritableCheck } from "./checks/audit-db-writable.js";
 import { downstreamReachableCheck } from "./checks/downstream-reachable.js";
 import { openclawPointedAtUsCheck } from "./checks/openclaw-pointed-at-us.js";
 import { nodeVersionCheck } from "./checks/node-version.js";
+import { clockSkewCheck } from "./checks/clock-skew.js";
+import { approvalQueueDrainingCheck } from "./checks/approval-queue-draining.js";
 
 export const ALL_CHECKS: Check[] = [
   proxyReachableCheck,
   auditDbWritableCheck,
   downstreamReachableCheck,
+  approvalQueueDrainingCheck,
   openclawPointedAtUsCheck,
   nodeVersionCheck,
+  clockSkewCheck,
 ];
 
 export interface RunOptions {
