@@ -35,6 +35,15 @@ Out-of-scope:
 
 Once a fix is merged and released, we'll credit reporters in the release notes unless you prefer anonymity.
 
+## Known transitive advisories
+
+`pnpm audit` currently surfaces advisories against transitive dependencies that don't ship in the AgentGuard runtime:
+
+- `esbuild` / `vite` — pulled in via `vitest` (test runner, dev-dep only). Not on any production code path.
+- `hono` — pulled in via `@modelcontextprotocol/sdk` as a transitive. We don't use hono directly; the advisory (HTML injection in hono/jsx SSR) doesn't apply to our use of the SDK. Pinned resolution will arrive when the upstream SDK bumps its dep.
+
+If you're packaging AgentGuard into a system with stricter supply-chain requirements, run `pnpm audit --prod` to get only the runtime advisories. In that view the tree is currently clean.
+
 ## Hardening recommendations
 
 If you're deploying AgentGuard, consider:
