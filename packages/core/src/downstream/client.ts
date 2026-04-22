@@ -10,6 +10,35 @@ import type {
 import { expandEnvInConfig } from "./env-expand.js";
 
 /**
+ * Environment variables a downstream config must NOT override. A
+ * malicious config with `env: { PATH: "/tmp/evil:${PATH}" }` would
+ * otherwise poison the lookup path of the spawned child. Callers that
+ * write config.yaml can still set their own PATH on purpose by
+ * providing the full absolute `command`. Security review M1.
+ */
+const ENV_SHADOW_DENYLIST = new Set([
+  "PATH",
+  "NODE_OPTIONS",
+  "NODE_PATH",
+  "LD_PRELOAD",
+  "LD_LIBRARY_PATH",
+  "DYLD_INSERT_LIBRARIES",
+  "DYLD_LIBRARY_PATH",
+]);
+
+export function sanitizeEnv(
+  configEnv: Record<string, string> | undefined
+): Record<string, string> {
+  if (!configEnv) return {};
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(configEnv)) {
+    if (ENV_SHADOW_DENYLIST.has(k)) continue;
+    out[k] = v;
+  }
+  return out;
+}
+
+/**
  * A single downstream MCP server under AgentGuard's management.
  * Spawns the configured child process, maintains an MCP Client,
  * caches the tool list, and forwards callTool requests.
@@ -28,27 +57,37 @@ export class DownstreamClient {
   ) {}
 
   async start(): Promise<void> {
-    const expandedConfig = expandEnvInConfig(this.config, {
+    // Security M1: sanitize config.env before using it as the expansion
+    // context. Otherwise `env: { PATH: "/tmp/evil:${PATH}" }` would let a
+    // poisoned config redirect the `command` lookup. Only expand string
+    // interpolation against process.env; ignore any shadow keys the
+    // config tries to set.
+    const sanitizedConfigEnv = sanitizeEnv(this.config.env);
+    const expansionContext = {
       ...(process.env as Record<string, string | undefined>),
-      ...(this.config.env ?? {}),
-    });
+      ...sanitizedConfigEnv,
+    };
+    const expandedConfig = expandEnvInConfig(
+      { ...this.config, env: sanitizedConfigEnv },
+      expansionContext
+    );
 
-    // When the first arg is a .mjs script that lives outside the workspace
-    // (e.g. in a temp directory during tests), ESM bare-specifier resolution
-    // won't find packages in this project's node_modules.  Create a temporary
-    // node_modules symlink next to the script so that Node's standard upward
-    // search finds the workspace packages.
+    // Scripts written to a tmpdir or test fixture often can't resolve
+    // MCP SDK imports. Drop a node_modules symlink pointing at our
+    // workspace so the child can find them. Best-effort — failures are
+    // fine (the server may have its own node_modules or be installed
+    // globally). The symlink target is always our own trusted tree;
+    // the location follows whatever script the user configured.
     const firstArg = expandedConfig.args?.[0];
     if (firstArg && /\.(mjs|js)$/.test(firstArg)) {
       const scriptDir = dirname(firstArg);
-      const symlinkPath = join(scriptDir, "node_modules");
       const workspaceNodeModules = new URL("../../node_modules", import.meta.url).pathname;
+      const symlinkPath = join(scriptDir, "node_modules");
       if (!existsSync(symlinkPath) && existsSync(workspaceNodeModules)) {
         try {
           symlinkSync(workspaceNodeModules, symlinkPath, "dir");
         } catch {
-          // If we can't create the symlink, proceed anyway — the server may
-          // have its own node_modules or be globally installed.
+          // ignore
         }
       }
     }
