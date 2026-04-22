@@ -6,6 +6,7 @@ import { logsCommand } from "./commands/logs.js";
 import { agentAddCommand, agentListCommand } from "./commands/agent.js";
 import { watchCommand } from "./commands/watch.js";
 import { installOpenclawCommand, uninstallOpenclawCommand } from "./commands/install.js";
+import { doctorCommand } from "./commands/doctor.js";
 
 const program = new Command();
 
@@ -62,6 +63,15 @@ installCmd
   .option("--dry-run", "Show what would happen without writing")
   .option("--force", "Overwrite existing AgentGuard entry")
   .action(installOpenclawCommand);
+
+program
+  .command("doctor")
+  .description("Run operational health checks and print a report")
+  .option("--only <names>", "Comma-separated check names to run exclusively")
+  .option("--skip <names>", "Comma-separated check names to skip")
+  .option("--fix", "Attempt auto-fix on failing checks that advertise it")
+  .option("--json", "Output JSON instead of human-readable")
+  .action(doctorCommand);
 
 const uninstallCmd = program.command("uninstall").description("Remove AgentGuard from an MCP client");
 uninstallCmd
