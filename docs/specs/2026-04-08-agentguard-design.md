@@ -1,14 +1,16 @@
 # AgentGuard — Design Spec
 
 **Date:** 2026-04-08 (updated 2026-04-09)
-**Status:** Approved
+**Status:** Approved — historical
 **Timeline:** 1-2 months to MVP
+
+> **Note (2026-04-22):** This document was written when the project was planned as open-core. The business model has since been decided as **fully open source (MIT)**, no paid tier. Sections below that reference "paid tier" / "cloud dashboard (SaaS)" are historical and no longer represent the project direction. All features described here — including what was scoped as paid — are open source.
 
 ## Overview
 
-AgentGuard is an open-core MCP middleware proxy that sits between autonomous AI agents (OpenClaw, CrewAI, AutoGen, etc.) and the MCP servers they consume. It enforces cost limits, blocks dangerous actions, requires human approval for risky operations, and provides audit trails.
+AgentGuard is an open-source (MIT) MCP middleware proxy that sits between autonomous AI agents (OpenClaw, CrewAI, AutoGen, etc.) and the MCP servers they consume. It enforces cost limits, blocks dangerous actions, requires human approval for risky operations, and provides audit trails.
 
-**Business model:** Open-core. Free local proxy (open source) + paid cloud dashboard (SaaS).
+**Goal:** adoption, not revenue.
 
 **Target users:** Developers (v1) → Non-technical users → Businesses/teams (v2+).
 

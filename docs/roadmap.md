@@ -98,8 +98,8 @@ Rationale: Phase 5 lab surfaced the "silent misconfiguration" failure mode (bett
 ### 💤 Registry integrations
 Official MCP registry, Smithery, Glama wired into the CLI for discovery + install (`agentguard install <server-from-registry>`). Requires registry clients in `registry/` to mature beyond scaffolding.
 
-### 💤 Cloud dashboard (paid tier)
-`cloud/` directory exists as the closed-source partition. Multi-agent fleet view, team approvals, alert routing, compliance exports. Gated on phase 6 shipping first — we need the local story solid before SaaS.
+### 💤 Hosted fleet view
+Multi-agent fleet view, team approvals, alert routing, compliance exports. If demand materialises, this could run as a separate deployment (docker-compose reference) — not a gated paid tier. AgentGuard itself is fully open source.
 
 ### 💤 Non-stdio transports
 HTTP / SSE / streamable-http downstream support. `DownstreamClient` is stdio-only. Installer already preserves HTTP servers untouched in OpenClaw's config, precisely because we can't proxy them yet.

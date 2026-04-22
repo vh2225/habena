@@ -1,6 +1,6 @@
 # AgentGuard
 
-Open-core MCP middleware proxy for AI agent safety — cost limits, guardrails, and human approval.
+Open-source (MIT) MCP middleware proxy for AI agent safety — cost limits, guardrails, and human approval.
 
 ## Project Structure
 
@@ -24,7 +24,6 @@ agentguard/
 │   └── web/                     # Local dashboard (localhost:7700)
 │       └── src/app/             # Next.js app
 │
-├── cloud/                       # Cloud dashboard (closed source, paid tier — future)
 ├── docs/specs/                  # Design specs
 └── package.json                 # pnpm monorepo root
 ```
@@ -47,7 +46,7 @@ agentguard/
 - **Enforcement levels**: advisory (log only), soft_mandatory (ask human), hard_mandatory (block, no override).
 - **Threat feed**: Periodically synced threat intelligence (blocklisted servers, pattern signatures, anomaly data). Like antivirus signature updates.
 - **Learning mode**: Observe agent behavior, generate least-privilege policy proposal.
-- **Open-core**: Free local proxy, paid cloud dashboard for teams.
+- **Fully open source** (MIT). Goal is adoption, not revenue. No gated features.
 
 ## Design Spec
 

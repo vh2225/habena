@@ -9,6 +9,8 @@ An agent connects to AgentGuard as its MCP server; AgentGuard forwards tool call
 
 **Status: early, working, single-operator tested.** Not yet recommended for production fleets.
 
+**License: MIT.** Fully open source. No paid tier, no gated features, no "open-core" split. Goal is adoption.
+
 ---
 
 ## What it does
