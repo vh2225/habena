@@ -1,4 +1,5 @@
 import chalk from "chalk";
+import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { installOpenclaw, uninstallOpenclaw } from "../../install/openclaw.js";
@@ -17,6 +18,17 @@ export async function installOpenclawCommand(options: {
 }): Promise<void> {
   const binary = resolveAgentguardBinary();
   console.log(chalk.gray(`AgentGuard binary: ${binary}`));
+
+  // Sanity check: the absolute path we're about to write into OpenClaw's
+  // config must actually exist. Prevents the class of bug where we
+  // install from a temp location or from a package that later gets
+  // upgraded to a different path, leaving openclaw.json pointing at a
+  // dead file. Doctor catches this post-hoc; install should prevent it.
+  if (!existsSync(binary)) {
+    console.error(chalk.red(`✗ Install aborted: computed binary path does not exist: ${binary}`));
+    console.error(chalk.gray("  This usually means the module is being imported from a stale or moved install."));
+    process.exit(1);
+  }
 
   try {
     const result = await installOpenclaw({

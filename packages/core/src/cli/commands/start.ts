@@ -16,6 +16,7 @@ import { ApprovalQueue } from "../../approval/queue.js";
 import { IpcServer } from "../../ipc/server.js";
 import { DownstreamManager } from "../../downstream/manager.js";
 import { createMcpServer } from "../../proxy/server.js";
+import { runDoctor } from "../../doctor/runner.js";
 
 export async function startCommand(): Promise<void> {
   const config = loadYaml<AgentGuardConfig>(getConfigPath()) ?? {};
@@ -96,6 +97,23 @@ export async function startCommand(): Promise<void> {
   console.error(chalk.gray(`Config: ${getConfigPath()}`));
   console.error(chalk.gray(`Audit: ${getAuditDbPath()}`));
   console.error(chalk.gray(`Registered agents: ${agents.length}`));
+
+  // Boot-time doctor subset — checks that are safe to run at startup
+  // (skip proxy-reachable + downstream-reachable: we just started them,
+  // they're covered above). Silent on pass; prints a one-liner if any
+  // check comes back non-green.
+  runDoctor({ only: ["node-version", "audit-db-writable", "openclaw-pointed-at-us"] })
+    .then((results) => {
+      const problems = results.filter((r) => r.status !== "pass");
+      if (problems.length === 0) return;
+      for (const p of problems) {
+        const icon = p.status === "warn" ? chalk.yellow("⚠") : chalk.red("✗");
+        console.error(`${icon} ${chalk.bold(p.name)}: ${p.detail}`);
+        if (p.fixHint) console.error(chalk.gray(`  └─ ${p.fixHint}`));
+      }
+      console.error(chalk.gray("  (run `agentguard doctor` for the full report)"));
+    })
+    .catch(() => { /* boot checks are advisory; never block startup */ });
 
   const shutdown = async () => {
     console.error(chalk.yellow("\nShutting down AgentGuard..."));
