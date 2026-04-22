@@ -5,6 +5,7 @@ Notable user-visible changes. Not every internal refactor appears here — see t
 ## Unreleased
 
 ### Added
+- **Rule packs** — six shipped packs (`gmail-readonly`, `gmail-draft-only`, `filesystem-readonly`, `filesystem-write-approval`, `github-no-push`, `slack-readonly`) under `packages/core/rule-packs/`. Import via `extends:` in `config.yaml`; user-authored packs live at `~/.agentguard/rule-packs/` and override shipped ones. Managed via `agentguard packs list|show <name>`. First slice of Phase 8 V2.
 - `agentguard learn` — reads the audit DB, buckets tool calls by `(agent_type, tool)`, and proposes a least-privilege rule set. Suggests `allow` for tools consistently allowed, `deny` for ones consistently denied, `require_approval` for mixed. `--write` emits YAML you can paste into `config.yaml`. `--days`, `--agent`, `--json` flags. Never proposes to weaken a hard-boundary match. First slice of Phase 10 (observe → propose rules).
 - `agentguard approvals list|respond|forward` — thin IPC-client subcommands so you can script the approval flow without the interactive `watch` TUI.
   - `list [--json]` prints pending approvals one-shot.
@@ -26,6 +27,14 @@ Notable user-visible changes. Not every internal refactor appears here — see t
 
 ### Fixed
 - 20 pre-existing test failures caused by missing `better-sqlite3` native binding on Node 22; suite now runs 156/156 on a fresh `pnpm install`.
+
+### Security
+- Pre-launch review addressed. See commit history + `SECURITY.md` for detail.
+  - `respond` IPC now ACKs — prevented a silent-success bug where a non-owner on a shared socket could try to resolve unknown approval IDs and the sender would never know.
+  - Webhook HMAC envelope is now Stripe-style `t=<unix>,v1=<hex>` with a separate `X-AgentGuard-Timestamp` header so receivers can reject replays.
+  - Audit-log args capped at 64 KB with a structured truncation marker — prevents a broken downstream from ballooning the SQLite DB.
+  - `extractAuthCode` regex tightened to match Google's real code shape, not arbitrary path-like strings.
+  - Webhook forwarder now bails after 5 consecutive POST failures instead of retrying indefinitely.
 
 ---
 

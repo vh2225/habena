@@ -44,6 +44,24 @@ Once a fix is merged and released, we'll credit reporters in the release notes u
 
 If you're packaging AgentGuard into a system with stricter supply-chain requirements, run `pnpm audit --prod` to get only the runtime advisories. In that view the tree is currently clean.
 
+## Webhook signature verification
+
+`agentguard approvals forward --url <URL> --hmac-secret <S>` signs each POST to the webhook with a Stripe/GitHub-style envelope:
+
+```
+X-AgentGuard-Timestamp: 1745301841
+X-AgentGuard-Signature: t=1745301841,v1=<hex-sha256>
+```
+
+To verify on the receiving side:
+
+1. Extract the `t=` and `v1=` values from `X-AgentGuard-Signature`.
+2. Check that the timestamp is recent (reject if `|now - t| > 5m` — prevents replay).
+3. Compute `HMAC_SHA256(shared_secret, timestamp + "." + raw_body)` and compare to `v1` using a constant-time comparison.
+4. Only act on the payload if all three checks pass.
+
+A receiver that doesn't verify freshness is vulnerable to replay attacks — anyone who captures a single POST body + header pair can replay the approval request indefinitely.
+
 ## Hardening recommendations
 
 If you're deploying AgentGuard, consider:
