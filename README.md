@@ -1,5 +1,8 @@
 # AgentGuard
 
+[![CI](https://github.com/vh2225/agentguard/actions/workflows/ci.yml/badge.svg)](https://github.com/vh2225/agentguard/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 MCP middleware proxy that makes AI agents safer **and** more automated — not either alone.
 
 An agent connects to AgentGuard as its MCP server; AgentGuard forwards tool calls to the real MCP servers downstream, enforcing a policy engine, cost budget, and human-approval queue on every call. Every decision is audited to SQLite. The thesis: once you've written the check-and-balance rules once, you should be able to run the agent hands-off.
@@ -50,7 +53,7 @@ git clone https://github.com/vh2225/agentguard.git
 cd agentguard
 pnpm install
 pnpm -F @agentguard/core build
-pnpm -F @agentguard/core link --global
+cd packages/core && pnpm link --global && cd ../..
 ```
 
 Then:
@@ -126,6 +129,18 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Short version: open an issue before star
 ## Security
 
 See [SECURITY.md](SECURITY.md) for reporting vulnerabilities. AgentGuard sits in the authority chain between your agent and the outside world — treat it as security-sensitive infrastructure.
+
+## What's missing (be realistic before you depend on this)
+
+AgentGuard is early. Public because it's more useful to others than sitting on my laptop, not because it's production-grade.
+
+- **Single-operator tested.** I use it daily against my own agent. Multi-user scenarios, high-volume deployments, and adversarial threat models aren't yet exercised.
+- **stdio MCP transport only.** HTTP / SSE / streamable-http downstream support isn't wired (the installer preserves HTTP-mode servers untouched rather than proxying them).
+- **No web dashboard yet** (`packages/web` is a scaffold). Phase 6 on the roadmap.
+- **Chat-channel approvals are spec'd, not built.** Right now approvals come through the `agentguard watch` CLI or raw IPC. See [Phase 7 spec](docs/specs/2026-04-15-phase7-chat-channels.md).
+- **Learning mode** (observe → propose rules) is a stub in `packages/core/src/learning/`, excluded from the TS build.
+
+If any of these matter to you, open an issue — prioritization is driven by real use cases.
 
 ## License
 
