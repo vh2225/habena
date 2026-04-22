@@ -46,6 +46,15 @@ export interface ApprovalConfig {
 
 export interface AgentGuardConfig {
   budget?: BudgetConfig;
+  /**
+   * Named rule packs to import and prepend to `rules`. Pack rules come
+   * FIRST in the effective rule list; the user's `rules` come after, so
+   * user overrides still win under first-match-wins semantics.
+   * Resolved from `packages/core/rule-packs/` (shipped) or
+   * `~/.agentguard/rule-packs/` (user-authored); user packs with the
+   * same name override shipped ones.
+   */
+  extends?: string[];
   rules?: Rule[];
   approval?: ApprovalConfig;
   mcp_servers?: Record<string, DownstreamServerConfig>;

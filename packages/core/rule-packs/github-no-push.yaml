@@ -1,0 +1,66 @@
+name: github-no-push
+description: Allow reading repos, issues, PRs, files, comments. Hard-deny anything that mutates the remote (push, merge, release, branch-delete).
+server: github
+rules:
+  # Reads — allowed
+  - match: { tool: get_repository }
+    action: allow
+    reason: "pack:github-no-push"
+  - match: { tool: list_repositories }
+    action: allow
+    reason: "pack:github-no-push"
+  - match: { tool: get_issue }
+    action: allow
+    reason: "pack:github-no-push"
+  - match: { tool: list_issues }
+    action: allow
+    reason: "pack:github-no-push"
+  - match: { tool: get_pull_request }
+    action: allow
+    reason: "pack:github-no-push"
+  - match: { tool: list_pull_requests }
+    action: allow
+    reason: "pack:github-no-push"
+  - match: { tool: get_file_contents }
+    action: allow
+    reason: "pack:github-no-push"
+  - match: { tool: search_code }
+    action: allow
+    reason: "pack:github-no-push"
+  - match: { tool: search_issues }
+    action: allow
+    reason: "pack:github-no-push"
+  # Comment-style writes — approval
+  - match: { tool: create_issue }
+    action: require_approval
+    enforcement: soft_mandatory
+    reason: "pack:github-no-push — issues externally visible"
+  - match: { tool: create_issue_comment }
+    action: require_approval
+    enforcement: soft_mandatory
+    reason: "pack:github-no-push — comments externally visible"
+  - match: { tool: create_pull_request_review }
+    action: require_approval
+    enforcement: soft_mandatory
+    reason: "pack:github-no-push"
+  # Destructive / remote-state — hard deny
+  - match: { tool: push_files }
+    action: deny
+    enforcement: hard_mandatory
+    reason: "pack:github-no-push — no pushes to remote"
+  - match: { tool: create_branch }
+    action: deny
+    enforcement: hard_mandatory
+    reason: "pack:github-no-push — no remote branch creation"
+  - match: { tool: delete_file }
+    action: deny
+    enforcement: hard_mandatory
+    reason: "pack:github-no-push — no deletes"
+  - match: { tool: merge_pull_request }
+    action: deny
+    enforcement: hard_mandatory
+    reason: "pack:github-no-push — no merges"
+  - match: { tool: create_release }
+    action: deny
+    enforcement: hard_mandatory
+    reason: "pack:github-no-push — no releases"

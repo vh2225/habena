@@ -1,0 +1,35 @@
+name: gmail-draft-only
+description: Allow reads and draft creation, but hard-deny actual sends. Useful when an agent should prepare email for human review but never deliver it.
+server: gmail
+rules:
+  - match: { tool: gmail_search }
+    action: allow
+    reason: "pack:gmail-draft-only"
+  - match: { tool: gmail_read }
+    action: allow
+    reason: "pack:gmail-draft-only"
+  - match: { tool: gmail_list_labels }
+    action: allow
+    reason: "pack:gmail-draft-only"
+  - match: { tool: gmail_list_drafts }
+    action: allow
+    reason: "pack:gmail-draft-only"
+  - match: { tool: gmail_create_draft }
+    action: allow
+    reason: "pack:gmail-draft-only — drafts are safe"
+  - match: { tool: gmail_add_label }
+    action: require_approval
+    enforcement: soft_mandatory
+    reason: "pack:gmail-draft-only — label changes need approval"
+  - match: { tool: gmail_send }
+    action: deny
+    enforcement: hard_mandatory
+    reason: "pack:gmail-draft-only — sends are hard-blocked"
+  - match: { tool: gmail_reply }
+    action: deny
+    enforcement: hard_mandatory
+    reason: "pack:gmail-draft-only — replies are hard-blocked"
+  - match: { tool: "gmail_*" }
+    action: require_approval
+    enforcement: soft_mandatory
+    reason: "pack:gmail-draft-only — unlisted gmail tool, ask first"

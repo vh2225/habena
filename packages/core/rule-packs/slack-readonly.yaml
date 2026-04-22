@@ -1,0 +1,39 @@
+name: slack-readonly
+description: Allow reading Slack channels and messages. Deny all posts, DMs, reactions, file uploads.
+server: slack
+rules:
+  - match: { tool: list_channels }
+    action: allow
+    reason: "pack:slack-readonly"
+  - match: { tool: get_channel_history }
+    action: allow
+    reason: "pack:slack-readonly"
+  - match: { tool: get_users }
+    action: allow
+    reason: "pack:slack-readonly"
+  - match: { tool: get_thread_replies }
+    action: allow
+    reason: "pack:slack-readonly"
+  - match: { tool: search_messages }
+    action: allow
+    reason: "pack:slack-readonly"
+  - match: { tool: post_message }
+    action: deny
+    enforcement: hard_mandatory
+    reason: "pack:slack-readonly — no posts"
+  - match: { tool: post_thread_reply }
+    action: deny
+    enforcement: hard_mandatory
+    reason: "pack:slack-readonly — no replies"
+  - match: { tool: add_reaction }
+    action: deny
+    enforcement: hard_mandatory
+    reason: "pack:slack-readonly — no reactions"
+  - match: { tool: upload_file }
+    action: deny
+    enforcement: hard_mandatory
+    reason: "pack:slack-readonly — no uploads"
+  - match: { tool: create_channel }
+    action: deny
+    enforcement: hard_mandatory
+    reason: "pack:slack-readonly — no channel ops"

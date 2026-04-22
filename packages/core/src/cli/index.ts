@@ -24,6 +24,7 @@ import {
   approvalsForwardCommand,
 } from "./commands/approvals.js";
 import { learnCommand } from "./commands/learn.js";
+import { packsListCommand, packsShowCommand } from "./commands/packs.js";
 
 const program = new Command();
 
@@ -154,6 +155,16 @@ presetCmd
   .command("list")
   .description("List available presets")
   .action(policyPresetListCommand);
+
+const packsCmd = program.command("packs").description("Manage rule packs (for use in config.yaml `extends:`)");
+packsCmd
+  .command("list")
+  .description("List available rule packs (shipped + user-authored)")
+  .action(packsListCommand);
+packsCmd
+  .command("show <name>")
+  .description("Print the rules inside a pack")
+  .action(packsShowCommand);
 
 program
   .command("learn")

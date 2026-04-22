@@ -2,7 +2,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import chalk from "chalk";
 import { join } from "node:path";
 import { getConfigPath, getAgentsPath, getAuditDbPath, getConfigDir } from "../../config/paths.js";
-import { loadYaml } from "../../config/loader.js";
+import { loadYaml, loadConfigWithPacks } from "../../config/loader.js";
 import type { AgentGuardConfig } from "../../policy/types.js";
 import { PolicyEngine } from "../../policy/engine.js";
 import { CostTracker } from "../../cost/tracker.js";
@@ -19,7 +19,14 @@ import { createMcpServer } from "../../proxy/server.js";
 import { runDoctor } from "../../doctor/runner.js";
 
 export async function startCommand(): Promise<void> {
-  const config = loadYaml<AgentGuardConfig>(getConfigPath()) ?? {};
+  const { config, missingPacks } = loadConfigWithPacks(getConfigPath());
+  if (missingPacks.length > 0) {
+    console.error(
+      chalk.yellow(
+        `! extends: could not resolve pack(s): ${missingPacks.join(", ")} — continuing without them`
+      )
+    );
+  }
   const rules = config.rules ?? [];
   const budgetConfig = config.budget ?? {};
 

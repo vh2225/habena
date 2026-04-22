@@ -1,0 +1,50 @@
+name: filesystem-readonly
+description: Allow all filesystem reads (list_directory, read_file, search_files, etc.). Hard-deny any write, move, or delete.
+server: filesystem
+rules:
+  - match: { tool: list_directory }
+    action: allow
+    reason: "pack:filesystem-readonly"
+  - match: { tool: list_directory_with_sizes }
+    action: allow
+    reason: "pack:filesystem-readonly"
+  - match: { tool: list_allowed_directories }
+    action: allow
+    reason: "pack:filesystem-readonly"
+  - match: { tool: directory_tree }
+    action: allow
+    reason: "pack:filesystem-readonly"
+  - match: { tool: read_file }
+    action: allow
+    reason: "pack:filesystem-readonly"
+  - match: { tool: read_text_file }
+    action: allow
+    reason: "pack:filesystem-readonly"
+  - match: { tool: read_media_file }
+    action: allow
+    reason: "pack:filesystem-readonly"
+  - match: { tool: read_multiple_files }
+    action: allow
+    reason: "pack:filesystem-readonly"
+  - match: { tool: search_files }
+    action: allow
+    reason: "pack:filesystem-readonly"
+  - match: { tool: get_file_info }
+    action: allow
+    reason: "pack:filesystem-readonly"
+  - match: { tool: write_file }
+    action: deny
+    enforcement: hard_mandatory
+    reason: "pack:filesystem-readonly — writes blocked"
+  - match: { tool: edit_file }
+    action: deny
+    enforcement: hard_mandatory
+    reason: "pack:filesystem-readonly — writes blocked"
+  - match: { tool: create_directory }
+    action: deny
+    enforcement: hard_mandatory
+    reason: "pack:filesystem-readonly — creates blocked"
+  - match: { tool: move_file }
+    action: deny
+    enforcement: hard_mandatory
+    reason: "pack:filesystem-readonly — moves blocked"

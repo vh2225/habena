@@ -1,0 +1,20 @@
+name: gmail-readonly
+description: Allow reads of Gmail (search / read / list labels). Deny everything else — no send, no reply, no label changes, no delete.
+server: gmail
+rules:
+  - match: { tool: gmail_search }
+    action: allow
+    reason: "pack:gmail-readonly"
+  - match: { tool: gmail_read }
+    action: allow
+    reason: "pack:gmail-readonly"
+  - match: { tool: gmail_list_labels }
+    action: allow
+    reason: "pack:gmail-readonly"
+  - match: { tool: gmail_list_drafts }
+    action: allow
+    reason: "pack:gmail-readonly"
+  - match: { tool: "gmail_*" }
+    action: deny
+    enforcement: soft_mandatory
+    reason: "pack:gmail-readonly — writes/sends blocked"

@@ -1,0 +1,47 @@
+name: filesystem-write-approval
+description: Reads allowed, writes require human approval, deletes hard-denied. Appropriate default for an agent working on scratch / workspace directories.
+server: filesystem
+rules:
+  - match: { tool: list_directory }
+    action: allow
+    reason: "pack:filesystem-write-approval"
+  - match: { tool: list_directory_with_sizes }
+    action: allow
+    reason: "pack:filesystem-write-approval"
+  - match: { tool: list_allowed_directories }
+    action: allow
+    reason: "pack:filesystem-write-approval"
+  - match: { tool: directory_tree }
+    action: allow
+    reason: "pack:filesystem-write-approval"
+  - match: { tool: read_file }
+    action: allow
+    reason: "pack:filesystem-write-approval"
+  - match: { tool: read_text_file }
+    action: allow
+    reason: "pack:filesystem-write-approval"
+  - match: { tool: read_multiple_files }
+    action: allow
+    reason: "pack:filesystem-write-approval"
+  - match: { tool: search_files }
+    action: allow
+    reason: "pack:filesystem-write-approval"
+  - match: { tool: get_file_info }
+    action: allow
+    reason: "pack:filesystem-write-approval"
+  - match: { tool: write_file }
+    action: require_approval
+    enforcement: soft_mandatory
+    reason: "pack:filesystem-write-approval — writes need human approval"
+  - match: { tool: edit_file }
+    action: require_approval
+    enforcement: soft_mandatory
+    reason: "pack:filesystem-write-approval — edits need human approval"
+  - match: { tool: create_directory }
+    action: require_approval
+    enforcement: soft_mandatory
+    reason: "pack:filesystem-write-approval — mkdir needs approval"
+  - match: { tool: move_file }
+    action: deny
+    enforcement: hard_mandatory
+    reason: "pack:filesystem-write-approval — moves are irreversible from agent's perspective; hard-deny"
