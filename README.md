@@ -59,10 +59,11 @@ cd packages/core && pnpm link --global && cd ../..
 Then:
 
 ```bash
-agentguard init                        # creates ~/.agentguard/config.yaml
-agentguard policy preset cautious      # safe default rule set
-agentguard start                       # run proxy (stdio)
-agentguard doctor                      # verify everything's healthy
+agentguard init                                    # creates ~/.agentguard/config.yaml (cautious preset)
+agentguard downstream add filesystem ~/workspace   # wire the filesystem MCP
+agentguard downstream add gmail                    # wire Gmail via guided OAuth (optional)
+agentguard start                                   # run proxy (stdio)
+agentguard doctor                                  # verify everything's healthy
 ```
 
 To wire into OpenClaw:
