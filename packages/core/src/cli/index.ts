@@ -23,6 +23,7 @@ import {
   approvalsRespondCommand,
   approvalsForwardCommand,
 } from "./commands/approvals.js";
+import { learnCommand } from "./commands/learn.js";
 
 const program = new Command();
 
@@ -153,6 +154,15 @@ presetCmd
   .command("list")
   .description("List available presets")
   .action(policyPresetListCommand);
+
+program
+  .command("learn")
+  .description("Read the audit log and propose a least-privilege rule set")
+  .option("--days <n>", "Observation window in days (default: 14)", "14")
+  .option("--agent <name>", "Filter to a specific agent_type")
+  .option("--json", "Output observations + suggestions as JSON")
+  .option("--write", "Output the suggested rules as YAML (pipe to a file)")
+  .action(learnCommand);
 
 program
   .command("doctor")

@@ -5,6 +5,7 @@ Notable user-visible changes. Not every internal refactor appears here — see t
 ## Unreleased
 
 ### Added
+- `agentguard learn` — reads the audit DB, buckets tool calls by `(agent_type, tool)`, and proposes a least-privilege rule set. Suggests `allow` for tools consistently allowed, `deny` for ones consistently denied, `require_approval` for mixed. `--write` emits YAML you can paste into `config.yaml`. `--days`, `--agent`, `--json` flags. Never proposes to weaken a hard-boundary match. First slice of Phase 10 (observe → propose rules).
 - `agentguard approvals list|respond|forward` — thin IPC-client subcommands so you can script the approval flow without the interactive `watch` TUI.
   - `list [--json]` prints pending approvals one-shot.
   - `respond <id> <choice> [--duration-ms …] [--note …]` resolves one programmatically.

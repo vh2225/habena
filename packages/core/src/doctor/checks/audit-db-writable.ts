@@ -28,21 +28,31 @@ export const auditDbWritableCheck: Check = {
       db = new Database(dbPath);
       // Check table exists first — a DB file can exist without the schema
       // (e.g. created then truncated, or by an older version)
-      const tableRow = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='audit_log'").get();
+      const tableRow = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='audit_entries'").get();
       if (!tableRow) {
         return {
           name: "audit-db-writable",
           status: "warn",
-          detail: `Audit DB exists but has no audit_log table (nothing has been logged yet)`,
+          detail: `Audit DB exists but has no audit_entries table (nothing has been logged yet)`,
           fixHint: "Run a tool call through the proxy to initialize the schema, or delete the file and let `agentguard start` recreate it.",
         };
       }
-      const { rowCount } = db.prepare("SELECT COUNT(*) as rowCount FROM audit_log").get() as { rowCount: number };
+      const { rowCount } = db.prepare("SELECT COUNT(*) as rowCount FROM audit_entries").get() as { rowCount: number };
       // Non-destructive write test: start a transaction, do a write, roll back.
       const tx = db.transaction(() => {
         db!.prepare(
-          "INSERT INTO audit_log (timestamp, agent_id, instance_id, tool, decision, reason) VALUES (?, ?, ?, ?, ?, ?)"
-        ).run(Date.now(), "__doctor_probe__", "__doctor_probe__", "__probe__", "allow", "doctor write test");
+          "INSERT INTO audit_entries (timestamp, agent_type, instance_id, tool, args, mcp_server, decision, tier, result_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        ).run(
+          new Date().toISOString(),
+          "__doctor_probe__",
+          "__doctor_probe__",
+          "__probe__",
+          "{}",
+          "__probe__",
+          "allow",
+          "built_in",
+          "success"
+        );
         throw new Error("rollback");
       });
       try { tx(); } catch (err) {
