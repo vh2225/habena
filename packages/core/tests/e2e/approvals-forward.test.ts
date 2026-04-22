@@ -140,7 +140,9 @@ mcp_servers:
       type: "approval_request",
       pending: expect.objectContaining({ tool: "risky_send" }),
     });
-    expect(post.headers["x-agentguard-signature"]).toMatch(/^[a-f0-9]{64}$/);
+    // Stripe/GitHub-style envelope: t=<unix>,v1=<hex64>
+    expect(post.headers["x-agentguard-signature"]).toMatch(/^t=\d+,v1=[a-f0-9]{64}$/);
+    expect(post.headers["x-agentguard-timestamp"]).toMatch(/^\d+$/);
     expect(post.headers["user-agent"]).toContain("agentguard-forwarder");
 
     // Let the tool call time out (deny) so the proxy teardown is clean.

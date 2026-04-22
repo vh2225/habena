@@ -54,8 +54,11 @@ export function extractAuthCode(input: string): string | null {
   // ?code=...&scope=... fragment
   const m = trimmed.match(/code=([^&\s]+)/);
   if (m) return decodeURIComponent(m[1]);
-  // Bare code (usually starts with `4/0`)
-  if (/^[A-Za-z0-9_\-/]{10,}$/.test(trimmed)) return trimmed;
+  // Bare Google auth code. Google's codes start `4/0` and are long,
+  // URL-safe base64. Tightened from a broader regex that would have
+  // accepted arbitrary path-like strings (e.g. `/etc/passwd`) and
+  // sent them to Google as a code= value. Security review M3.
+  if (/^4\/[A-Za-z0-9_-]{20,}$/.test(trimmed)) return trimmed;
   return null;
 }
 

@@ -25,25 +25,35 @@ describe("buildAuthUrl", () => {
 });
 
 describe("extractAuthCode", () => {
+  const REAL_CODE = "4/0AciIabc123def456ghi789jklmno";
+
   it("handles a full callback URL", () => {
-    const url = "http://localhost:3847/callback?iss=https://accounts.google.com&code=4/0Aci98E-abc123&scope=email profile";
-    expect(extractAuthCode(url)).toBe("4/0Aci98E-abc123");
+    const url = `http://localhost:3847/callback?iss=https://accounts.google.com&code=${REAL_CODE}&scope=email profile`;
+    expect(extractAuthCode(url)).toBe(REAL_CODE);
   });
 
   it("handles just the query string fragment", () => {
-    expect(extractAuthCode("?code=4/0Aci98E-abc123&scope=email")).toBe("4/0Aci98E-abc123");
+    expect(extractAuthCode(`?code=${REAL_CODE}&scope=email`)).toBe(REAL_CODE);
   });
 
-  it("handles a bare code", () => {
-    expect(extractAuthCode("4/0Aci98E-abc123_xyz")).toBe("4/0Aci98E-abc123_xyz");
+  it("handles a bare Google-shaped code", () => {
+    expect(extractAuthCode(REAL_CODE)).toBe(REAL_CODE);
   });
 
-  it("trims whitespace", () => {
-    expect(extractAuthCode("   4/0Aci98E-abc123_xyz   ")).toBe("4/0Aci98E-abc123_xyz");
+  it("trims whitespace around a bare code", () => {
+    expect(extractAuthCode(`   ${REAL_CODE}   `)).toBe(REAL_CODE);
   });
 
   it("returns null for obvious junk", () => {
     expect(extractAuthCode("hello")).toBe(null);
     expect(extractAuthCode("")).toBe(null);
+  });
+
+  it("rejects path-shaped strings that are not Google auth codes (security: M3)", () => {
+    // Old regex `^[A-Za-z0-9_\-/]{10,}$` would have matched these and
+    // POSTed them to Google. New regex requires the `4/` Google prefix.
+    expect(extractAuthCode("/etc/passwd/foo")).toBe(null);
+    expect(extractAuthCode("../../../bin/sh")).toBe(null);
+    expect(extractAuthCode("some-long-opaque-string-without-prefix")).toBe(null);
   });
 });

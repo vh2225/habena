@@ -6,6 +6,7 @@ export type ServerMessage =
   | { type: "hello"; version: string }
   | { type: "approval_request"; id: string; pending: SerializedPendingApproval }
   | { type: "approval_resolved"; id: string; outcome: ApprovalResponse["choice"] }
+  | { type: "respond_ack"; id: string; ok: boolean; reason?: string }
   | { type: "pending_list"; pending: SerializedPendingApproval[] }
   | { type: "audit"; entry: AuditEntry }
   | { type: "error"; message: string };

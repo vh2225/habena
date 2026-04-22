@@ -63,26 +63,35 @@ export async function approvalsRespondCommand(
     process.exit(1);
   }
 
-  // Watch for the resolved event confirming our response; bail after 3s.
-  const resolved = new Promise<void>((resolve) => {
-    const timer = setTimeout(resolve, 3000);
+  // Wait for the explicit respond_ack before claiming success. Without
+  // this, the server silently no-ops when the id doesn't exist and the
+  // CLI reports ✓ — which hid real bugs before (security review H1).
+  const ack = await new Promise<{ ok: boolean; reason?: string }>((resolve) => {
+    const timer = setTimeout(
+      () => resolve({ ok: false, reason: "timeout waiting for server ack" }),
+      3000
+    );
     client.onMessage((msg: ServerMessage) => {
-      if (msg.type === "approval_resolved" && msg.id === id) {
+      if (msg.type === "respond_ack" && msg.id === id) {
         clearTimeout(timer);
-        resolve();
+        resolve({ ok: msg.ok, reason: msg.reason });
       }
+    });
+
+    client.send({
+      type: "respond",
+      id,
+      choice: choice as "allow_once" | "allow_session" | "deny",
+      durationMs,
+      note: options.note,
     });
   });
 
-  client.send({
-    type: "respond",
-    id,
-    choice: choice as "allow_once" | "allow_session" | "deny",
-    durationMs,
-    note: options.note,
-  });
-  await resolved;
   client.close();
+  if (!ack.ok) {
+    console.error(chalk.red(`✗ Server rejected respond: ${ack.reason ?? "no reason"}`));
+    process.exit(1);
+  }
   console.log(chalk.green(`✓ Sent ${choice} for approval ${id}`));
 }
 
@@ -120,8 +129,12 @@ export async function approvalsForwardCommand(options: ForwardOptions): Promise<
   console.log();
 
   let forwarded = 0;
+  let consecutiveFailures = 0;
+  const MAX_CONSECUTIVE_FAILURES = 5;
+
   client.onMessage(async (msg) => {
     if (msg.type !== "approval_request") return;
+    const timestamp = Math.floor(Date.now() / 1000).toString();
     const payload = {
       type: "approval_request",
       id: msg.id,
@@ -132,18 +145,44 @@ export async function approvalsForwardCommand(options: ForwardOptions): Promise<
     const headers: Record<string, string> = {
       "content-type": "application/json",
       "user-agent": "agentguard-forwarder/0.1",
+      "x-agentguard-timestamp": timestamp,
     };
     if (secret) {
-      headers[hmacHeader] = createHmac("sha256", secret).update(body).digest("hex");
+      // Stripe/GitHub-style signed envelope: sign `timestamp.body` so a
+      // passive observer can't replay the exact POST after the receiver's
+      // freshness window elapses. Receivers must verify both the HMAC
+      // and that |now - timestamp| < their tolerance.
+      const signed = `${timestamp}.${body}`;
+      headers[hmacHeader] = "t=" + timestamp + ",v1=" + createHmac("sha256", secret).update(signed).digest("hex");
     }
     try {
       const r = await fetch(options.url, { method: "POST", body, headers });
       forwarded += 1;
       const line = `[${new Date().toISOString()}] ${msg.pending.tool} → ${r.status}`;
-      if (r.ok) console.log(chalk.gray(line));
-      else console.error(chalk.yellow(line));
+      if (r.ok) {
+        consecutiveFailures = 0;
+        console.log(chalk.gray(line));
+      } else {
+        consecutiveFailures += 1;
+        console.error(chalk.yellow(line));
+      }
     } catch (err) {
+      consecutiveFailures += 1;
       console.error(chalk.red(`[${new Date().toISOString()}] POST failed: ${(err as Error).message}`));
+    }
+
+    // Circuit-breaker: after N consecutive failures, exit. systemd (or
+    // whatever supervisor) should restart us on a backoff schedule.
+    // Without this, a broken webhook URL eats every approval event
+    // silently forever. Security review L1.
+    if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+      console.error(
+        chalk.red(
+          `\n✗ ${MAX_CONSECUTIVE_FAILURES} consecutive webhook failures — giving up. Check the URL and restart.`
+        )
+      );
+      client.close();
+      process.exit(2);
     }
   });
 

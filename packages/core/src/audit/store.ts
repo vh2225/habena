@@ -3,6 +3,23 @@ import { dirname } from "node:path";
 import { existsSync, mkdirSync } from "node:fs";
 import type { AuditEntry, AuditQueryFilters } from "./types.js";
 
+/**
+ * Cap serialized args at 64 KB. A downstream MCP server returning a
+ * multi-MB payload (or a poisoned agent sending a huge string) would
+ * otherwise balloon the audit DB. The marker field lets querying code
+ * tell a truncated row from a legitimately large-but-intact one.
+ */
+const MAX_ARGS_BYTES = 64 * 1024;
+function truncateArgs(args: Record<string, unknown>): string {
+  const json = JSON.stringify(args);
+  if (json.length <= MAX_ARGS_BYTES) return json;
+  return JSON.stringify({
+    __truncated__: true,
+    __original_size_bytes__: json.length,
+    __preview__: json.slice(0, 2048),
+  });
+}
+
 export class AuditStore {
   private db: Database.Database;
 
@@ -51,7 +68,7 @@ export class AuditStore {
       entry.agentType,
       entry.instanceId,
       entry.tool,
-      JSON.stringify(entry.args),
+      truncateArgs(entry.args),
       entry.mcpServer,
       entry.decision,
       entry.tier,

@@ -122,11 +122,28 @@ export class IpcServer {
     if (!msg || typeof msg !== "object" || !("type" in msg)) return;
 
     if (msg.type === "respond") {
+      // Check that the id exists *before* we respond, so we can tell the
+      // originating client whether the call actually resolved something.
+      const pending = this.queue.list().find((p) => p.id === msg.id);
+      if (!pending) {
+        socket.write(encode({
+          type: "respond_ack",
+          id: msg.id,
+          ok: false,
+          reason: "unknown approval id (already resolved, expired, or never existed)",
+        }));
+        return;
+      }
       this.queue.respond(msg.id, {
         choice: msg.choice,
         durationMs: msg.durationMs,
         note: msg.note,
       });
+      socket.write(encode({
+        type: "respond_ack",
+        id: msg.id,
+        ok: true,
+      }));
     } else if (msg.type === "list_pending") {
       socket.write(encode({
         type: "pending_list",
