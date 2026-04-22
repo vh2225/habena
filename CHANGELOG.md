@@ -5,6 +5,7 @@ Notable user-visible changes. Not every internal refactor appears here — see t
 ## Unreleased
 
 ### Added
+- **Local web dashboard** — live view of decisions at http://localhost:7700. Reads `~/.agentguard/audit.db` read-only and polls for new rows every 2s. Shows total allow/deny/approval counts and a rolling table of the last 100 decisions (agent, tool, server, decision, tier, rule, latency). Run with `pnpm --filter @agentguard/web dev`. First slice of Phase 6.
 - **Rule packs** — six shipped packs (`gmail-readonly`, `gmail-draft-only`, `filesystem-readonly`, `filesystem-write-approval`, `github-no-push`, `slack-readonly`) under `packages/core/rule-packs/`. Import via `extends:` in `config.yaml`; user-authored packs live at `~/.agentguard/rule-packs/` and override shipped ones. Managed via `agentguard packs list|show <name>`. First slice of Phase 8 V2.
 - `agentguard learn` — reads the audit DB, buckets tool calls by `(agent_type, tool)`, and proposes a least-privilege rule set. Suggests `allow` for tools consistently allowed, `deny` for ones consistently denied, `require_approval` for mixed. `--write` emits YAML you can paste into `config.yaml`. `--days`, `--agent`, `--json` flags. Never proposes to weaken a hard-boundary match. First slice of Phase 10 (observe → propose rules).
 - `agentguard approvals list|respond|forward` — thin IPC-client subcommands so you can script the approval flow without the interactive `watch` TUI.

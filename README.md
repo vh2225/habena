@@ -141,7 +141,7 @@ AgentGuard is early. Public because it's more useful to others than sitting on m
 
 - **Single-operator tested.** I use it daily against my own agent. Multi-user scenarios, high-volume deployments, and adversarial threat models aren't yet exercised.
 - **stdio MCP transport only.** HTTP / SSE / streamable-http downstream support isn't wired (the installer preserves HTTP-mode servers untouched rather than proxying them).
-- **No web dashboard yet** (`packages/web` is a scaffold). Phase 6 on the roadmap.
+- **Web dashboard is v0.** `pnpm --filter @agentguard/web dev` serves a live read-only decision stream at localhost:7700 (Phase 6 first slice). No configuration UI, no approval UI, no per-agent drill-down yet.
 - **Chat-channel approvals are spec'd, not built.** Right now approvals come through the `agentguard watch` CLI or raw IPC. See [Phase 7 spec](docs/specs/2026-04-15-phase7-chat-channels.md).
 - **Learning mode** (observe → propose rules) is a stub in `packages/core/src/learning/`, excluded from the TS build.
 
