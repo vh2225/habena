@@ -7,6 +7,11 @@ import { agentAddCommand, agentListCommand } from "./commands/agent.js";
 import { watchCommand } from "./commands/watch.js";
 import { installOpenclawCommand, uninstallOpenclawCommand } from "./commands/install.js";
 import { doctorCommand } from "./commands/doctor.js";
+import {
+  policyPresetApplyCommand,
+  policyPresetListCommand,
+  policyPresetShowCommand,
+} from "./commands/policy.js";
 
 const program = new Command();
 
@@ -63,6 +68,26 @@ installCmd
   .option("--dry-run", "Show what would happen without writing")
   .option("--force", "Overwrite existing AgentGuard entry")
   .action(installOpenclawCommand);
+
+const policyCmd = program.command("policy").description("Manage AgentGuard policy");
+const presetCmd = policyCmd
+  .command("preset")
+  .description("Manage policy presets (observe, cautious, deny-all)")
+  .argument("[name]", "Preset to apply (omit to list)")
+  .option("--dry-run", "Print the resulting config without writing")
+  .option("--force", "Overwrite existing rules without confirmation")
+  .action(async (name: string | undefined, options: { dryRun?: boolean; force?: boolean }) => {
+    if (!name) return policyPresetListCommand();
+    return policyPresetApplyCommand(name, options);
+  });
+presetCmd
+  .command("show <name>")
+  .description("Print the preset's rules without applying")
+  .action(policyPresetShowCommand);
+presetCmd
+  .command("list")
+  .description("List available presets")
+  .action(policyPresetListCommand);
 
 program
   .command("doctor")
