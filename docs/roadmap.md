@@ -2,7 +2,7 @@
 
 Living progress tracker. Update when phases start and finish. Detailed phase plans live in `docs/plans/`.
 
-Last updated: 2026-04-21.
+Last updated: 2026-04-22.
 
 ## Status key
 
@@ -41,6 +41,15 @@ Scope: operational health-check command with 5 checks — proxy-reachable (IPC h
 
 ### ✅ Policy presets (Phase 8 V1 slice)
 Scope: `agentguard policy preset observe|cautious|deny-all`. Three named postures with backup-before-overwrite and `--dry-run`. New users get a safe baseline in one command without authoring rule YAML. Deliberately not in this slice: host-policy floor, rule pack imports, named scopes — the larger Phase 8 story.
+
+### ✅ Downstream onboarding (`downstream add`)
+Scope: `agentguard downstream add filesystem <path>`, `agentguard downstream add gmail` (guided OAuth flow that prompts for client creds or accepts flags, walks the user through the browser consent step, exchanges the code, saves tokens at the MCP's expected path, auto-installs the npm package, registers the server with a matching `auth_probe`). Plus `downstream list|remove`. Closes the third dogfood finding (2026-04-21).
+
+### ✅ Phase 7 V0 — approvals list/respond/forward
+Scope: three thin IPC-client subcommands — `approvals list [--json]`, `approvals respond <id> <choice>`, and `approvals forward --url <URL> [--hmac-secret S]` streams approval events as signed webhooks (Zapier / Discord / ntfy / custom). End-to-end tested with a real proxy + inline HTTP receiver. Full Phase 7 (scope-bound inbound remotes, two-channel confirmation, circuit breakers) stays spec'd for V1.
+
+### ✅ Phase 10 V0 — `agentguard learn`
+Scope: reads the audit DB, buckets tool calls by `(agent_type, tool)` over a rolling window, proposes `allow` / `deny` / `require_approval` rules based on observed decision history. `--write` emits YAML the user can review and paste into `config.yaml`. Never proposes to weaken a hard-boundary match. This is the observation loop the product thesis hinges on — safer AND more automated by learning from real behavior, not guessing up front.
 
 ---
 

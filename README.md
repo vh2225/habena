@@ -43,7 +43,9 @@ LLM agents are getting powerful faster than they're getting safe. Most projects 
 - **Human-in-the-loop approvals.** `require_approval` rules pause the tool call and wait for a human via `agentguard watch` (CLI) or an IPC client.
 - **Cost tracking + budgets** per agent instance.
 - **Structured audit log** in SQLite.
-- **`agentguard doctor`.** Operational health check — detects misconfigured OpenClaw paths, ABI-mismatched native deps, unreachable downstreams, non-writable audit DB.
+- **`agentguard doctor`.** Operational health check with 7 checks — detects misconfigured OpenClaw paths, ABI-mismatched native deps, unreachable downstreams, stale approval queues, non-writable audit DB, clock drift, and more.
+- **`agentguard learn`.** Reads the audit log, buckets tool calls by shape, proposes a least-privilege rule set. Safer AND more automated by observation, not guesswork.
+- **`agentguard approvals forward --url <webhook>`.** Stream approvals to any webhook — Zapier, Discord, ntfy, your own endpoint. HMAC-signed.
 - **`agentguard install openclaw`.** One command to wire AgentGuard as OpenClaw's MCP proxy; backs up existing config, validates paths before writing.
 
 ## Install
