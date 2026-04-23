@@ -26,6 +26,7 @@ import {
 } from "./commands/approvals.js";
 import { learnCommand } from "./commands/learn.js";
 import { packsListCommand, packsShowCommand } from "./commands/packs.js";
+import { securityAuditCommand } from "./commands/security.js";
 
 const program = new Command();
 
@@ -177,6 +178,13 @@ packsCmd
   .command("show <name>")
   .description("Print the rules inside a pack")
   .action(packsShowCommand);
+
+const securityCmd = program.command("security").description("Policy security checks");
+securityCmd
+  .command("audit")
+  .description("Static analysis over the resolved policy (config.yaml + host-policy.yaml)")
+  .option("--json", "Emit findings as JSON; exit code = number of error-severity findings")
+  .action(securityAuditCommand);
 
 program
   .command("learn")
