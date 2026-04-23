@@ -6,7 +6,7 @@ export interface AuditEntry {
   args: Record<string, unknown>;
   mcpServer: string;
   decision: "allow" | "deny" | "require_approval";
-  tier: "built_in" | "user" | "session";
+  tier: "built_in" | "host" | "user" | "session";
   ruleMatched?: string;
   reason?: string;
   cost: number | null;

@@ -21,6 +21,10 @@ export function getConfigPath(): string {
   return join(getConfigDir(), "config.yaml");
 }
 
+export function getHostPolicyPath(): string {
+  return join(getConfigDir(), "host-policy.yaml");
+}
+
 export function getAgentsPath(): string {
   return join(getConfigDir(), "agents.yaml");
 }

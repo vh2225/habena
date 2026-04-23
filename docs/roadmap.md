@@ -86,9 +86,9 @@ Not included: cloud hosting, multi-tenant, auth. Local-only.
 Spec: `docs/specs/2026-04-15-phase7-chat-channels.md`
 Rationale: hands-off operation breaks in both directions — when approvals only reach a terminal, and when the user has no way to command an agent from their phone. One channel registry serves both: outbound approvals to Slack + inbound commands from Signal, with per-remote scope binding, two-channel confirmation for irreversible actions, rate-limit circuit breakers, and an SMS-is-never-a-command-transport rule enforced at config parse.
 
-### 🧭 Phase 8 — Policy presets + rule packs
+### ✅ Phase 8 — Policy presets + rule packs
 Spec: `docs/specs/2026-04-15-phase8-policy-presets-and-rule-packs.md`
-Rationale: new users currently get `allow *` after `agentguard init` — the opposite of safe. Ship `agentguard policy preset observe|cautious|deny-all`, add a `host-policy.yaml` floor that the config can't weaken (stricter-of-two merge), and four built-in rule packs (`filesystem-readonly`, `filesystem-write-approval`, `github-no-push`, `slack-readonly`) importable via `extends:`.
+Status: V1 (presets) + V2 (`extends:` + six shipped rule packs) + V3 (host-policy floor with stricter-of-two merge) are all shipped. `agentguard init` now writes `cautious` by default; `~/.agentguard/host-policy.yaml` is respected if present. Remaining work is the `policy explain <tool-call-json>` debug command (V4, Phase 9-adjacent).
 
 ### 🧭 Phase 9 — `doctor` + `security audit`
 Spec: `docs/specs/2026-04-15-phase9-doctor-and-audit.md`

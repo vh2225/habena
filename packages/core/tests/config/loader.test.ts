@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { loadYaml } from "../../src/config/loader.js";
+import { loadYaml, loadHostPolicy } from "../../src/config/loader.js";
 
 describe("loader", () => {
   let dir: string;
@@ -31,5 +31,52 @@ describe("loader", () => {
     const path = join(dir, "bad.yaml");
     writeFileSync(path, "foo: [unclosed");
     expect(() => loadYaml(path)).toThrow();
+  });
+});
+
+describe("loadHostPolicy", () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "agentguard-host-"));
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("returns empty rules when file does not exist", () => {
+    const p = join(dir, "host-policy.yaml");
+    const result = loadHostPolicy(p);
+    expect(result.exists).toBe(false);
+    expect(result.rules).toEqual([]);
+    expect(result.missingPacks).toEqual([]);
+  });
+
+  it("loads rules directly from the file", () => {
+    const p = join(dir, "host-policy.yaml");
+    writeFileSync(
+      p,
+      `rules:
+  - match: { tool: "fs_delete" }
+    action: deny
+    enforcement: hard_mandatory
+  - match: { tool: "github_push" }
+    action: require_approval
+`
+    );
+    const result = loadHostPolicy(p);
+    expect(result.exists).toBe(true);
+    expect(result.rules).toHaveLength(2);
+    expect(result.rules[0].action).toBe("deny");
+    expect(result.rules[0].enforcement).toBe("hard_mandatory");
+  });
+
+  it("records missing packs without throwing", () => {
+    const p = join(dir, "host-policy.yaml");
+    writeFileSync(p, `extends:\n  - does-not-exist\nrules: []\n`);
+    const result = loadHostPolicy(p);
+    expect(result.exists).toBe(true);
+    expect(result.missingPacks).toContain("does-not-exist");
   });
 });

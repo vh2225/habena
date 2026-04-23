@@ -2,7 +2,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import chalk from "chalk";
 import { join } from "node:path";
 import { getConfigPath, getAgentsPath, getAuditDbPath, getConfigDir } from "../../config/paths.js";
-import { loadYaml, loadConfigWithPacks } from "../../config/loader.js";
+import { loadYaml, loadConfigWithPacks, loadHostPolicy } from "../../config/loader.js";
 import type { AgentGuardConfig } from "../../policy/types.js";
 import { PolicyEngine } from "../../policy/engine.js";
 import { CostTracker } from "../../cost/tracker.js";
@@ -30,7 +30,23 @@ export async function startCommand(): Promise<void> {
   const rules = config.rules ?? [];
   const budgetConfig = config.budget ?? {};
 
-  const policy = new PolicyEngine(rules);
+  const hostPolicy = loadHostPolicy();
+  if (hostPolicy.missingPacks.length > 0) {
+    console.error(
+      chalk.yellow(
+        `! host-policy extends: could not resolve pack(s): ${hostPolicy.missingPacks.join(", ")} — continuing without them`
+      )
+    );
+  }
+  if (hostPolicy.exists) {
+    console.error(
+      chalk.gray(
+        `Host policy: ${hostPolicy.path} (${hostPolicy.rules.length} floor rule${hostPolicy.rules.length === 1 ? "" : "s"})`
+      )
+    );
+  }
+
+  const policy = new PolicyEngine(rules, hostPolicy.rules);
   const tracker = new CostTracker();
   const budget = new BudgetEnforcer(tracker, budgetConfig);
   const audit = new AuditLogger(getAuditDbPath());

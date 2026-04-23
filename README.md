@@ -110,6 +110,21 @@ AgentGuard health report
 agentguard watch   # in a separate terminal; interactive prompt on each require_approval
 ```
 
+**Pin a policy floor the config can't weaken** (shared laptops, multi-user hosts):
+
+```yaml
+# ~/.agentguard/host-policy.yaml — loaded as a strict floor
+extends:
+  - rule-packs/filesystem-readonly
+
+rules:
+  - match: { tool: "fs_delete" }
+    action: deny
+    enforcement: hard_mandatory
+```
+
+When both a host rule and a `config.yaml` rule match the same tool call, the engine keeps the stricter one (`deny` > `require_approval` > `allow`). A user editing `config.yaml` can tighten the host policy but cannot weaken it.
+
 ## Architecture
 
 - [`docs/architecture.md`](docs/architecture.md) — high-level design
@@ -143,7 +158,7 @@ AgentGuard is early. Public because it's more useful to others than sitting on m
 - **stdio MCP transport only.** HTTP / SSE / streamable-http downstream support isn't wired (the installer preserves HTTP-mode servers untouched rather than proxying them).
 - **Web dashboard is v0.** `pnpm --filter @agentguard/web dev` serves a live read-only decision stream at localhost:7700 (Phase 6 first slice). No configuration UI, no approval UI, no per-agent drill-down yet.
 - **Chat-channel approvals are spec'd, not built.** Right now approvals come through the `agentguard watch` CLI or raw IPC. See [Phase 7 spec](docs/specs/2026-04-15-phase7-chat-channels.md).
-- **Learning mode** (observe → propose rules) is a stub in `packages/core/src/learning/`, excluded from the TS build.
+- **Learning mode** ships as `agentguard learn` (proposes least-privilege rules from the audit log). Clustering beyond `(agent_type, tool)` buckets — by arg shape, time-of-day, calling chain — is future work.
 
 If any of these matter to you, open an issue — prioritization is driven by real use cases.
 
