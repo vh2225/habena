@@ -88,7 +88,7 @@ Rationale: hands-off operation breaks in both directions — when approvals only
 
 ### ✅ Phase 8 — Policy presets + rule packs
 Spec: `docs/specs/2026-04-15-phase8-policy-presets-and-rule-packs.md`
-Status: V1 (presets) + V2 (`extends:` + six shipped rule packs) + V3 (host-policy floor with stricter-of-two merge) are all shipped. `agentguard init` now writes `cautious` by default; `~/.agentguard/host-policy.yaml` is respected if present. Remaining work is the `policy explain <tool-call-json>` debug command (V4, Phase 9-adjacent).
+Status: V1 (presets) + V2 (`extends:` + six shipped rule packs) + V3 (host-policy floor with stricter-of-two merge) + V4 (`policy explain`) all shipped. `agentguard init` now writes `cautious` by default; `~/.agentguard/host-policy.yaml` is respected if present; `policy explain` traces rule matches against the loaded engine.
 
 ### 🧭 Phase 9 — `doctor` + `security audit`
 Spec: `docs/specs/2026-04-15-phase9-doctor-and-audit.md`

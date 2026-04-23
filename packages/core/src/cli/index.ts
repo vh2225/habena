@@ -11,6 +11,7 @@ import {
   policyPresetApplyCommand,
   policyPresetListCommand,
   policyPresetShowCommand,
+  policyExplainCommand,
 } from "./commands/policy.js";
 import {
   downstreamListCommand,
@@ -155,6 +156,17 @@ presetCmd
   .command("list")
   .description("List available presets")
   .action(policyPresetListCommand);
+
+policyCmd
+  .command("explain")
+  .description("Trace which rule would match a tool call against the loaded policy")
+  .argument("[call-json]", 'Tool call as JSON, e.g. \'{"tool":"gmail_send","args":{"to":"x"}}\'')
+  .option("--tool <name>", "Tool name (alternative to positional JSON)")
+  .option("--args <json>", "Tool arguments as JSON")
+  .option("--json", "Emit the decision as JSON")
+  .action((callJson: string | undefined, opts: { tool?: string; args?: string; json?: boolean }) =>
+    policyExplainCommand(callJson, opts)
+  );
 
 const packsCmd = program.command("packs").description("Manage rule packs (for use in config.yaml `extends:`)");
 packsCmd
