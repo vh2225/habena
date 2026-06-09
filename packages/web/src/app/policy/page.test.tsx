@@ -20,6 +20,8 @@ describe("Policy page", () => {
     const Page = (await import("./page")).default;
     render(<Page />);
     await waitFor(() => expect(screen.getByText(/require_approval/)).toBeInTheDocument());
+    // honest framing: the page must label itself as config.yaml, not the effective policy
+    expect(screen.getByText(/config\.yaml/i)).toBeInTheDocument();
     expect(screen.getByText(/hard_mandatory/)).toBeInTheDocument();
     expect(screen.getByText(/filesystem-readonly/)).toBeInTheDocument();
     expect(screen.getByText(/\$50/)).toBeInTheDocument();

@@ -54,7 +54,7 @@ export default function PolicyPage() {
 
       {p.configured && (
         <div className="flex flex-col gap-3">
-          {p.budget && (
+          {p.budget && (p.budget.daily !== null || p.budget.monthly !== null || p.budget.perSession !== null || p.budget.perRequest !== null || p.budget.onExceed) && (
             <Section title="Budget">
               <div className="grid grid-cols-2 gap-2 text-xs text-[var(--color-muted-foreground)] sm:grid-cols-3">
                 {p.budget.daily !== null && <div>daily: <span className="text-[var(--color-fg)]">${p.budget.daily}</span></div>}
