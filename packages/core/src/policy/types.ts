@@ -1,4 +1,5 @@
 import type { DownstreamServerConfig } from "../downstream/types.js";
+import type { ThreatConfig } from "../threat/types.js";
 
 export interface MatchCondition {
   tool?: string;              // exact match or wildcard (e.g., "shell_*")
@@ -71,4 +72,6 @@ export interface AgentGuardConfig {
   rules?: Rule[];
   approval?: ApprovalConfig;
   mcp_servers?: Record<string, DownstreamServerConfig>;
+  /** Per-detector enforcement; resolveThreatConfig() applies defaults. */
+  threat?: Partial<ThreatConfig>;
 }
