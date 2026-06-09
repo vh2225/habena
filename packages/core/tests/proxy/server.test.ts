@@ -22,7 +22,7 @@ describe("ProxyDispatcher", () => {
       { match: { tool: "stripe_*" }, action: "deny", reason: "No payments" },
     ]);
     const tracker = new CostTracker();
-    const budget = new BudgetEnforcer(tracker, { per_request: 5 });
+    const budget = new BudgetEnforcer(tracker, { per_request: 5, on_exceed: "deny" });
     audit = new AuditLogger(join(dir, "audit.db"));
     const instances = new InstanceTracker();
 

@@ -32,9 +32,14 @@ function buildDefaultConfig(): string {
     "",
     "# Budgets: the call-count limits below are a runaway-loop guard and",
     "# enforce today (every allowed call counts as one, per agent type).",
-    "# Dollar limits (daily/monthly/per_session/per_request) are accepted",
-    "# in this block but do NOT enforce yet — per-call cost attribution",
-    "# hasn't shipped, so every call is currently $0.",
+    "# Also available under budget:",
+    "#   result_tokens: { per_hour: N, per_day: N }   # cap est. tokens of tool",
+    "#                                                # results (hard-denies)",
+    "#   daily/monthly/per_session/per_request: USD   # dollar limits — enforce",
+    "#       against `pricing:` below; overruns warn by default (on_exceed)",
+    "# Declare USD-per-call for metered tools at the top level:",
+    "#   pricing:",
+    '#     web_search: 0.01        # bare tool name, or "server/tool", "server/*"',
     "",
   ].join("\n");
   return header + stringifyYaml(config) + TELEGRAM_TEMPLATE + THREAT_TEMPLATE;

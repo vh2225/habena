@@ -8,9 +8,23 @@ export interface SpendRecord {
 
 export class CostTracker {
   private records: SpendRecord[] = [];
+  private tokenRecords: Array<{ agentType: string; instanceId: string; tokens: number; timestamp: Date }> = [];
 
   record(spend: SpendRecord): void {
     this.records.push(spend);
+  }
+
+  /** Record the estimated tokens a tool result injected into the agent's context. */
+  recordResultTokens(agentType: string, instanceId: string, tokens: number, timestamp: Date = new Date()): void {
+    if (tokens <= 0) return;
+    this.tokenRecords.push({ agentType, instanceId, tokens, timestamp });
+  }
+
+  /** Total estimated result tokens for an agent type since `since`. */
+  resultTokensSince(agentType: string, since: Date): number {
+    return this.tokenRecords
+      .filter((r) => r.agentType === agentType && r.timestamp >= since)
+      .reduce((sum, r) => sum + r.tokens, 0);
   }
 
   getInstanceSpend(instanceId: string): number {

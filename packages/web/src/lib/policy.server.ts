@@ -25,10 +25,12 @@ export function parsePolicy(text: string | null): PolicyView {
 
   const b = doc.budget as Record<string, unknown> | undefined;
   const calls = (b?.calls && typeof b.calls === "object" ? b.calls : {}) as Record<string, unknown>;
+  const rtok = (b?.result_tokens && typeof b.result_tokens === "object" ? b.result_tokens : {}) as Record<string, unknown>;
   const budget: BudgetView | null = b && typeof b === "object"
     ? {
         daily: num(b.daily), monthly: num(b.monthly), perSession: num(b.per_session), perRequest: num(b.per_request),
         callsPerMinute: num(calls.per_minute), callsPerHour: num(calls.per_hour), callsPerDay: num(calls.per_day),
+        resultTokensPerHour: num(rtok.per_hour), resultTokensPerDay: num(rtok.per_day),
         onExceed: str(b.on_exceed), alertAt: Array.isArray(b.alert_at) ? (b.alert_at.filter((x): x is number => typeof x === "number")) : null,
       }
     : null;

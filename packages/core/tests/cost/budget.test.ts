@@ -106,6 +106,45 @@ describe("BudgetEnforcer", () => {
     expect(enforcer.check({ agentType: "research-bot", instanceId: "i2", proposedCost: 0 })).toBeNull();
   });
 
+  it("dollar limits default to alert-only (warn): no deny, onAlert fires once per limit", () => {
+    // Declared per-tool pricing is a config guess — blocking an agent
+    // mid-task over a guess is worse than alerting. on_exceed: deny opts in.
+    const alerts: string[] = [];
+    const enforcer = new BudgetEnforcer(tracker, { per_request: 5 }, (msg) => alerts.push(msg));
+    const call = { agentType: "openclaw", instanceId: "i1", proposedCost: 6 };
+    expect(enforcer.check(call)).toBeNull();
+    expect(enforcer.check(call)).toBeNull();
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toContain("per-request");
+  });
+
+  it("on_exceed: require_approval escalates dollar overruns instead of denying", () => {
+    const enforcer = new BudgetEnforcer(tracker, { per_request: 5, on_exceed: "require_approval" });
+    const d = enforcer.check({ agentType: "openclaw", instanceId: "i1", proposedCost: 6 });
+    expect(d?.action).toBe("require_approval");
+    expect(d?.enforcement).toBe("soft_mandatory");
+  });
+
+  it("result_tokens limits hard-deny regardless of on_exceed", () => {
+    const enforcer = new BudgetEnforcer(tracker, { result_tokens: { per_day: 1000 }, on_exceed: "warn" });
+    const call = { agentType: "openclaw", instanceId: "i1", proposedCost: 0 };
+    expect(enforcer.check(call)).toBeNull();
+    tracker.recordResultTokens("openclaw", "i1", 1200);
+    const d = enforcer.check(call);
+    expect(d?.action).toBe("deny");
+    expect(d?.enforcement).toBe("hard_mandatory");
+    expect(d?.reason).toMatch(/1200.*tokens/);
+  });
+
+  it("result_tokens per_hour uses a rolling window per agent type", () => {
+    const enforcer = new BudgetEnforcer(tracker, { result_tokens: { per_hour: 500 } });
+    tracker.recordResultTokens("openclaw", "i1", 600, new Date(Date.now() - 2 * 3_600_000));
+    expect(enforcer.check({ agentType: "openclaw", instanceId: "i1", proposedCost: 0 })).toBeNull();
+    tracker.recordResultTokens("openclaw", "i1", 600);
+    expect(enforcer.check({ agentType: "openclaw", instanceId: "i1", proposedCost: 0 })?.action).toBe("deny");
+    expect(enforcer.check({ agentType: "research-bot", instanceId: "i2", proposedCost: 0 })).toBeNull();
+  });
+
   it("returns null when no budget configured", () => {
     const enforcer = new BudgetEnforcer(tracker, {});
     const decision = enforcer.check({

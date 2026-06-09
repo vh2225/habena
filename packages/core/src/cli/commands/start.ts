@@ -53,7 +53,9 @@ export async function startCommand(): Promise<void> {
 
   const policy = new PolicyEngine(rules, hostPolicy.rules);
   const tracker = new CostTracker();
-  const budget = new BudgetEnforcer(tracker, budgetConfig);
+  const budget = new BudgetEnforcer(tracker, budgetConfig, (msg) =>
+    console.error(chalk.yellow(`! ${msg}`))
+  );
   const audit = new AuditLogger(getAuditDbPath());
   const instances = new InstanceTracker();
 
@@ -113,6 +115,7 @@ export async function startCommand(): Promise<void> {
     instances,
     approval,
     threat,
+    pricing: config.pricing,
     approvalTimeoutMs: parseDurationToMs(config.approval?.timeout ?? "5m"),
   });
 
@@ -162,6 +165,7 @@ export async function startCommand(): Promise<void> {
     dispatcher,
     downstream,
     instances,
+    tracker,
   });
 
   // Mid-session threat re-scan: a rug-pull can happen while the proxy is

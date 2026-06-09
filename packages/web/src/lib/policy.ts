@@ -16,6 +16,9 @@ export interface BudgetView {
   callsPerMinute: number | null;
   callsPerHour: number | null;
   callsPerDay: number | null;
+  /** Result-size (estimated tokens) caps — also hard-enforcing. */
+  resultTokensPerHour: number | null;
+  resultTokensPerDay: number | null;
   onExceed: string | null;
   alertAt: number[] | null;
 }

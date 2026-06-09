@@ -2,19 +2,29 @@
 # Copy to ~/.habena/config.yaml and customize
 
 # Call-count limits enforce today (every allowed call counts as one, per
-# agent type) — they are the runaway-loop guard. Dollar limits
-# (daily/monthly/per_session/per_request) are accepted but do NOT enforce
-# yet: per-call cost attribution hasn't shipped, so every call is $0.
+# agent type) — they are the runaway-loop guard. result_tokens caps the
+# estimated tokens tool results inject into the agent's context (also
+# hard-denies). Dollar limits enforce against `pricing:` below; since
+# declared prices are a guess, overruns warn by default (set
+# on_exceed: deny to block, or require_approval to escalate).
 budget:
   calls:
     per_minute: 120   # rolling 60s window
     per_day: 5000     # calendar day
-  # daily: 50         # USD — once cost attribution ships
+  # result_tokens:
+  #   per_hour: 400000
+  #   per_day: 2000000
+  # daily: 50         # USD/day against declared pricing
   # monthly: 500
   # per_session: 20
   # per_request: 5
-  alert_at: [50, 80]  # percent thresholds
-  on_exceed: deny
+  on_exceed: warn     # dollar overruns: warn | require_approval | deny
+
+# USD-per-call for metered tools (anything undeclared costs $0).
+# Keys: bare tool name, "server/tool", or "server/*".
+# pricing:
+#   web_search: 0.01
+#   scraper/*: 0.002
 
 registries:
   official:

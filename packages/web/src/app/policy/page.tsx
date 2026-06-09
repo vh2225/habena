@@ -54,12 +54,14 @@ export default function PolicyPage() {
 
       {p.configured && (
         <div className="flex flex-col gap-3">
-          {p.budget && (p.budget.daily !== null || p.budget.monthly !== null || p.budget.perSession !== null || p.budget.perRequest !== null || p.budget.callsPerMinute !== null || p.budget.callsPerHour !== null || p.budget.callsPerDay !== null || p.budget.onExceed) && (
+          {p.budget && (p.budget.daily !== null || p.budget.monthly !== null || p.budget.perSession !== null || p.budget.perRequest !== null || p.budget.callsPerMinute != null || p.budget.callsPerHour != null || p.budget.callsPerDay != null || p.budget.resultTokensPerHour != null || p.budget.resultTokensPerDay != null || p.budget.onExceed) && (
             <Section title="Budget">
               <div className="grid grid-cols-2 gap-2 text-xs text-[var(--color-muted-foreground)] sm:grid-cols-3">
-                {p.budget.callsPerMinute !== null && <div>calls/min: <span className="text-[var(--color-fg)]">{p.budget.callsPerMinute}</span></div>}
-                {p.budget.callsPerHour !== null && <div>calls/hr: <span className="text-[var(--color-fg)]">{p.budget.callsPerHour}</span></div>}
-                {p.budget.callsPerDay !== null && <div>calls/day: <span className="text-[var(--color-fg)]">{p.budget.callsPerDay}</span></div>}
+                {p.budget.callsPerMinute != null && <div>calls/min: <span className="text-[var(--color-fg)]">{p.budget.callsPerMinute}</span></div>}
+                {p.budget.callsPerHour != null && <div>calls/hr: <span className="text-[var(--color-fg)]">{p.budget.callsPerHour}</span></div>}
+                {p.budget.callsPerDay != null && <div>calls/day: <span className="text-[var(--color-fg)]">{p.budget.callsPerDay}</span></div>}
+                {p.budget.resultTokensPerHour != null && <div>result tok/hr: <span className="text-[var(--color-fg)]">{p.budget.resultTokensPerHour.toLocaleString()}</span></div>}
+                {p.budget.resultTokensPerDay != null && <div>result tok/day: <span className="text-[var(--color-fg)]">{p.budget.resultTokensPerDay.toLocaleString()}</span></div>}
                 {p.budget.daily !== null && <div>daily: <span className="text-[var(--color-fg)]">${p.budget.daily}</span></div>}
                 {p.budget.monthly !== null && <div>monthly: <span className="text-[var(--color-fg)]">${p.budget.monthly}</span></div>}
                 {p.budget.perSession !== null && <div>per session: <span className="text-[var(--color-fg)]">${p.budget.perSession}</span></div>}

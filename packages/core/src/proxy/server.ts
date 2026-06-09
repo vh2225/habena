@@ -2,6 +2,7 @@ import type { PolicyEngine } from "../policy/engine.js";
 import { stricter } from "../policy/engine.js";
 import type { ThreatEngine } from "../threat/engine.js";
 import type { CostTracker } from "../cost/tracker.js";
+import { resolveToolPrice, estimateResultTokens } from "../cost/tool-pricing.js";
 import type { BudgetEnforcer } from "../cost/budget.js";
 import type { AuditLogger } from "../audit/logger.js";
 import type { InstanceTracker } from "../identity/instances.js";
@@ -21,6 +22,8 @@ export interface DispatcherDeps {
   approval?: ApprovalQueue;           // NEW
   approvalTimeoutMs?: number;         // NEW, default 5 minutes
   threat?: ThreatEngine;
+  /** Declared USD-per-call pricing from config.yaml (see cost/tool-pricing.ts). */
+  pricing?: Record<string, number>;
 }
 
 export interface ToolCallRequest {
@@ -57,22 +60,27 @@ export class ProxyDispatcher {
   async handleToolCall(req: ToolCallRequest): Promise<ToolCallResult> {
     const startTime = Date.now();
 
-    // 1. Budget check (hard_mandatory, runs first)
+    // Cost: the caller's estimate, or the declared per-tool price from config.
+    const estimatedCost =
+      req.estimatedCost > 0
+        ? req.estimatedCost
+        : resolveToolPrice(this.deps.pricing, req.mcpServer ?? "unknown", req.tool);
+
+    // 1. Budget check — combined with the policy decision via stricter()
+    // below, so a budget require_approval can never bypass a policy deny.
     const budgetDecision = this.deps.budget.check({
       agentType: req.agentType,
       instanceId: req.instanceId,
-      proposedCost: req.estimatedCost,
+      proposedCost: estimatedCost,
     });
 
-    let decision: PolicyDecision;
+    // 2. Policy engine evaluation
+    let decision: PolicyDecision = this.deps.policy.evaluate({
+      tool: req.tool,
+      args: req.args,
+    });
     if (budgetDecision) {
-      decision = budgetDecision;
-    } else {
-      // 2. Policy engine evaluation
-      decision = this.deps.policy.evaluate({
-        tool: req.tool,
-        args: req.args,
-      });
+      decision = stricter(decision, budgetDecision);
     }
 
     // 2a. Threat check — may escalate the decision (deny / require_approval).
@@ -123,7 +131,7 @@ export class ProxyDispatcher {
       tier: decision.tier,
       ruleMatched: decision.rule_matched,
       reason: decision.reason,
-      cost: decision.action === "allow" ? req.estimatedCost : null,
+      cost: decision.action === "allow" ? estimatedCost : null,
       latencyMs,
       resultStatus: decision.action === "allow" ? "success" : "error",
     });
@@ -134,10 +142,10 @@ export class ProxyDispatcher {
         agentType: req.agentType,
         instanceId: req.instanceId,
         tool: req.tool,
-        cost: req.estimatedCost,
+        cost: estimatedCost,
         timestamp: new Date(),
       });
-      this.deps.instances.recordSpend(req.instanceId, req.estimatedCost);
+      this.deps.instances.recordSpend(req.instanceId, estimatedCost);
 
       // Authorized: the MCP server layer will forward this call downstream.
       return { decision, forwarded: true };
@@ -151,6 +159,8 @@ export interface McpServerDeps {
   dispatcher: ProxyDispatcher;
   downstream: DownstreamManager;
   instances: InstanceTracker;
+  /** When present, tool-result sizes are metered for `budget.result_tokens`. */
+  tracker?: CostTracker;
 }
 
 /**
@@ -226,6 +236,13 @@ export function createMcpServer(deps: McpServerDeps): McpServer {
         owner.server,
         owner.originalName,
         (args as Record<string, unknown>) ?? {}
+      );
+      // Meter the result size: tool results feed the agent's context, which
+      // is the measurable driver of LLM spend (see budget.result_tokens).
+      deps.tracker?.recordResultTokens(
+        currentAgentType,
+        currentInstanceId,
+        estimateResultTokens(downstreamResult)
       );
       return downstreamResult as {
         content: Array<{ type: string; text?: string }>;

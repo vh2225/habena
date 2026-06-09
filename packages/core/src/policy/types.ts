@@ -38,7 +38,22 @@ export interface BudgetConfig {
     per_hour?: number;   // rolling 60min window
     per_day?: number;    // calendar day, matching the dollar `daily` limit
   };
+  /**
+   * Caps on the estimated tokens tool RESULTS inject into the agent's
+   * context (per agent type) — the measurable driver of LLM spend when an
+   * agent loops over large results. Hard-denies once exhausted.
+   */
+  result_tokens?: {
+    per_hour?: number; // rolling 60min window
+    per_day?: number;  // calendar day
+  };
   alert_at?: number[];
+  /**
+   * What dollar-limit overruns do: "warn" (default — alert, don't block;
+   * declared pricing is a config guess), "require_approval", or "deny".
+   * Call-count and result-token limits always hard-deny — they're loop
+   * guards built on measured data, not guesses.
+   */
   on_exceed?: "deny" | "warn" | "require_approval";
 }
 
@@ -81,6 +96,12 @@ export interface AgentGuardConfig {
    */
   extends?: string[];
   rules?: Rule[];
+  /**
+   * Declared USD-per-call for metered tools. Keys: bare tool name
+   * (`web_search`), server-qualified (`brave/web_search`), or server
+   * wildcard (`brave/*`). Undeclared tools cost $0.
+   */
+  pricing?: Record<string, number>;
   approval?: ApprovalConfig;
   mcp_servers?: Record<string, DownstreamServerConfig>;
   /** Per-detector enforcement; resolveThreatConfig() applies defaults. */

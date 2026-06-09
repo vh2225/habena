@@ -120,16 +120,22 @@ Today: stdio MCP transport only; approvals via CLI/IPC, one-tap Telegram, or the
 > block in `config.yaml` (`off` | `warn` | `require_approval` | `block`; the
 > re-scan cadence via `rescan_interval`, default `10m`).
 
-> **Runaway-loop guard works today; dollar budgets don't yet.** The
-> `budget.calls` limits (`per_minute` / `per_hour` / `per_day`) count every
-> allowed tool call per agent type and hard-deny past the limit — that's the
-> cap that stops a looping agent. Dollar limits (`daily`, `monthly`,
-> `per_session`, `per_request`) are accepted in config but don't enforce yet:
-> per-call cost attribution hasn't shipped, so every call is currently $0.
+> **What the budget block actually enforces.** Habena sits between the agent
+> and its tools, not between the agent and its LLM, so it never sees token
+> bills directly. Three honest mechanisms instead: `budget.calls`
+> (`per_minute`/`per_hour`/`per_day`) hard-denies past a call count — the cap
+> that stops a looping agent. `budget.result_tokens` caps the estimated tokens
+> tool results inject into the agent's context (the measurable driver of LLM
+> spend) — also a hard deny. Dollar limits (`daily`, `monthly`, `per_session`,
+> `per_request`) enforce against `pricing:` — USD-per-call you declare for
+> metered tools; since declared prices are a guess, overruns warn by default
+> (`on_exceed: deny` or `require_approval` to block/escalate). For true dollar
+> caps on LLM spend itself, put an LLM gateway with budgets (e.g. LiteLLM) in
+> front of your model API — Habena and a gateway compose cleanly.
 
 Roadmap:
 
-- **Cost attribution** — real per-call dollar costs, so the `budget` dollar limits enforce (call-count limits already do).
+- **Provider-side cost ingestion** — pull real LLM spend from provider usage APIs / gateways and attribute it per agent, on top of the declared per-tool pricing that ships today.
 - **Cloud-backed threat intel** — shared signatures for known-bad servers, layered on the local heuristic detection that already ships.
 - **Mac guarded-sandbox recipe** — a documented, locked-down setup for running an assistant under Habena on macOS.
 
