@@ -30,4 +30,18 @@ describe("detectCredentialEgress", () => {
     expect(detectCredentialEgress({ message: "deploy the staging branch please" })).toEqual([]);
     expect(detectCredentialEgress({ sha: "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0" })).toEqual([]);
   });
+
+  it("catches a secret nested within the depth limit", () => {
+    let v: unknown = "AKIAIOSFODNN7EXAMPLE";
+    for (let i = 0; i < 50; i++) v = { x: v };
+    expect(detectCredentialEgress({ root: v }).some((f) => f.message.includes("AWS"))).toBe(true);
+  });
+
+  it("FAILS CLOSED (flags, never returns clean) on pathologically deep args", () => {
+    let v: unknown = "AKIAIOSFODNN7EXAMPLE";
+    for (let i = 0; i < 6000; i++) v = { x: v };
+    const f = detectCredentialEgress({ root: v });
+    expect(f.length).toBeGreaterThan(0); // NOT [] — the old recursive walk overflowed + returned [] (fail-open)
+    expect(f.some((x) => x.evidence === "truncated")).toBe(true);
+  });
 });
