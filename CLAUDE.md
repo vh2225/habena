@@ -13,13 +13,13 @@ agentguard/
 │   │   ├── src/
 │   │   │   ├── proxy/           # MCP server + forwarder to downstream servers
 │   │   │   ├── identity/        # Agent registration, fingerprinting, instance tracking
-│   │   │   ├── policy/          # Rule engine, parser, built-in rules, decisions
-│   │   │   ├── threat/          # Threat feed sync + checker
+│   │   │   ├── policy/          # Rule engine, matcher, built-in rules, decisions
+│   │   │   ├── threat/          # Local heuristic threat detection (poison/egress/drift)
 │   │   │   ├── cost/            # Spend tracking, model pricing, budget enforcement
 │   │   │   ├── approval/        # Human-in-the-loop approval queue + timeouts
 │   │   │   ├── audit/           # Structured logging to SQLite
-│   │   │   ├── registry/        # Official, Smithery, Glama registry clients
-│   │   │   ├── learning/        # Observe mode + policy profiler
+│   │   │   ├── registry/        # Official, Smithery, Glama registry clients (stubs)
+│   │   │   ├── learn/           # Learning mode: observe audit history, propose rules
 │   │   │   └── cli/             # CLI entrypoint + commands
 │   │   └── habena.default.yaml  # Default config
 │   │
