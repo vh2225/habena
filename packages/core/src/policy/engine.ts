@@ -143,7 +143,7 @@ const ENFORCEMENT_STRICTNESS: Record<EnforcementLevel, number> = {
  *   2. enforcement strictness: hard_mandatory > soft_mandatory > advisory
  *   3. tie-break: host wins over user (host-policy is the floor)
  */
-function stricter(a: PolicyDecision, b: PolicyDecision): PolicyDecision {
+export function stricter(a: PolicyDecision, b: PolicyDecision): PolicyDecision {
   if (ACTION_STRICTNESS[a.action] !== ACTION_STRICTNESS[b.action]) {
     return ACTION_STRICTNESS[a.action] > ACTION_STRICTNESS[b.action] ? a : b;
   }
