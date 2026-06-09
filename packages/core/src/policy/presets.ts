@@ -2,7 +2,7 @@ import type { Rule, AgentGuardConfig } from "./types.js";
 
 /**
  * Named preset = a canned `rules:` block + a note explaining what it's for.
- * Applying a preset writes to the user's ~/.agentguard/config.yaml; it does
+ * Applying a preset writes to the user's ~/.habena/config.yaml; it does
  * NOT touch the host-policy floor (that's a separate feature).
  */
 export interface Preset {

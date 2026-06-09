@@ -21,7 +21,7 @@ export interface AddServerResult {
 }
 
 /**
- * Atomically add (or replace) a named MCP server in ~/.agentguard/config.yaml.
+ * Atomically add (or replace) a named MCP server in ~/.habena/config.yaml.
  * Backs the existing config up before writing. Callers own the OAuth /
  * package-install side effects — this function only touches config.yaml.
  */

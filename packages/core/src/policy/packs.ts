@@ -2,7 +2,7 @@ import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { join, dirname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
-import { homedir } from "node:os";
+import { getConfigDir } from "../config/paths.js";
 import type { Rule } from "./types.js";
 
 export interface RulePack {
@@ -16,14 +16,14 @@ export interface RulePack {
 
 /**
  * Rule packs ship with the package (packages/core/rule-packs/) AND can be
- * authored by the user (~/.agentguard/rule-packs/). User packs with the
- * same name override shipped ones.
+ * authored by the user (~/.habena/rule-packs/, or legacy ~/.agentguard/).
+ * User packs with the same name override shipped ones.
  */
 export function packSearchDirs(): string[] {
   const here = dirname(fileURLToPath(import.meta.url));
   // Shipped: dist/policy/packs.js → ../../rule-packs/
   const shippedDir = join(here, "..", "..", "rule-packs");
-  const userDir = join(homedir(), ".agentguard", "rule-packs");
+  const userDir = join(getConfigDir(), "rule-packs");
   return [shippedDir, userDir];
 }
 
