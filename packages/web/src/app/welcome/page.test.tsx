@@ -28,6 +28,19 @@ describe("Welcome wizard", () => {
     expect(screen.getByText(/--budget-daily 50/)).toBeInTheDocument();
   });
 
+  it("toggles aria-pressed on the target picker", async () => {
+    stubStatus(EMPTY);
+    const Page = (await import("./page")).default;
+    render(<Page />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "OpenClaw" })).toBeInTheDocument());
+    // OpenClaw is the default selection
+    expect(screen.getByRole("button", { name: "OpenClaw" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Hermes" })).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(screen.getByRole("button", { name: "Hermes" }));
+    expect(screen.getByRole("button", { name: "Hermes" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "OpenClaw" })).toHaveAttribute("aria-pressed", "false");
+  });
+
   it("celebrates when everything is set up and a decision has been recorded", async () => {
     stubStatus({ configExists: true, downstreams: ["filesystem"], agents: ["openclaw"], telegramConfigured: false, proxyRunning: true, decisionCount: 1 });
     const Page = (await import("./page")).default;

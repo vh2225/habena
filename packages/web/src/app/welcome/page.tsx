@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { CommandBlock } from "@/components/command-block";
 import { downstreamAddCommand, agentAddCommand, type SetupStatus } from "@/lib/setup-status";
@@ -14,20 +14,21 @@ const TARGETS = [
   { id: "manual", label: "Guard tools manually", installable: false },
 ];
 
-function StepShell({ n, title, done, children }: { n: number; title: string; done: boolean; children: React.ReactNode }) {
+function StepShell({ n, title, done, staticStep, children }: { n: number; title: string; done?: boolean; staticStep?: boolean; children: React.ReactNode }) {
+  const isDone = !staticStep && Boolean(done);
   return (
     <Card className="p-4">
       <div className="flex items-center gap-2">
         <span
           aria-hidden
           className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${
-            done ? "bg-[var(--color-allow)] text-black" : "border border-[var(--color-border)] text-[var(--color-muted-foreground)]"
+            isDone ? "bg-[var(--color-allow)] text-black" : "border border-[var(--color-border)] text-[var(--color-muted-foreground)]"
           }`}
         >
-          {done ? "✓" : n}
+          {isDone ? "✓" : n}
         </span>
         <h2 className="text-sm font-semibold">{title}</h2>
-        {done && <span className="text-xs text-[var(--color-allow)]">done</span>}
+        {isDone && <span className="text-xs text-[var(--color-allow)]">done</span>}
       </div>
       <div className="mt-3 pl-7 text-sm text-[var(--color-muted-foreground)]">{children}</div>
     </Card>
@@ -54,7 +55,7 @@ export default function Welcome() {
   }, []);
 
   const agentName = target === "manual" ? "my-agent" : target;
-  const installable = useMemo(() => TARGETS.find((t) => t.id === target)?.installable ?? false, [target]);
+  const installable = TARGETS.find((t) => t.id === target)?.installable ?? false;
   const allDone = status.configExists && status.downstreams.length > 0 && status.agents.length > 0 && status.proxyRunning && status.decisionCount > 0;
 
   return (
@@ -73,7 +74,7 @@ export default function Welcome() {
       )}
 
       <div className="flex flex-col gap-3">
-        <StepShell n={1} title="Pick what you're guarding" done={status.configExists}>
+        <StepShell n={1} title="Pick what you're guarding" staticStep>
           <div className="flex flex-wrap gap-2">
             {TARGETS.map((t) => (
               <button
