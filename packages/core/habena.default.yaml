@@ -1,5 +1,5 @@
-# AgentGuard default configuration
-# Copy to ~/.agentguard/config.yaml and customize
+# Habena default configuration
+# Copy to ~/.habena/config.yaml and customize
 
 budget:
   daily: 50       # USD
@@ -39,7 +39,7 @@ rules:
   # Block data exfiltration — sending files to unknown URLs
   - match: { tool: "http_*" }
     action: deny_if
-    condition: { body_contains_file_content: true, url_not_in: "~/.agentguard/trusted_domains.txt" }
+    condition: { body_contains_file_content: true, url_not_in: "~/.habena/trusted_domains.txt" }
     reason: "Potential data exfiltration to untrusted domain"
 
   # Warn on low-security MCP servers
