@@ -36,6 +36,9 @@ export function parsePolicy(text: string | null): PolicyView {
     const rule = (r && typeof r === "object" ? r : {}) as Record<string, unknown>;
     return {
       index: i,
+      // `match` is copied verbatim — it holds matching criteria (tool/server/path/
+      // arg substrings), which are not secrets. This is the only verbatim-copy path;
+      // if rule shapes ever grow to carry sensitive values, whitelist keys here.
       match: (rule.match && typeof rule.match === "object" ? rule.match : {}) as Record<string, unknown>,
       action: str(rule.action) ?? "",
       enforcement: str(rule.enforcement),
