@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+@theme {
+  /* Surfaces (dark-first) */
+  --color-bg: #0b0b0d;
+  --color-surface: #141417;
+  --color-surface-2: #1a1a1f;
+  --color-border: #2a2a32;
+
+  /* Text — muted is #a1a1ac on #0b0b0d ≈ 7.7:1, well past WCAG AA 4.5:1
+     (fixes shadcn issue #8088's 4.34:1 default we deliberately avoid). */
+  --color-fg: #eaeaea;
+  --color-muted-foreground: #a1a1ac;
+
+  /* One accent + status ramp (each used with a SECOND channel — icon/shape — never color alone) */
+  --color-accent: #6e8bff;
+  --color-allow: #34d399;   /* green  ≈ 7:1 on bg */
+  --color-deny: #f87171;    /* red    ≈ 5.9:1 on bg */
+  --color-warn: #fbbf24;    /* amber  ≈ 10:1 on bg */
+
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { background: var(--color-bg); color: var(--color-fg); }
+
+/* Focus ring ≥3:1 non-text contrast on every interactive element (verified a11y req). */
+:where(button, a, input, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
