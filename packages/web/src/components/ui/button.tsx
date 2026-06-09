@@ -13,7 +13,7 @@ export function Button(
 ) {
   return (
     <button
-      className={`inline-flex items-center justify-center gap-1.5 rounded px-3 py-1.5 text-sm font-medium transition disabled:opacity-40 disabled:cursor-not-allowed ${VARIANT[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-1.5 rounded px-3 py-1.5 text-sm font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] disabled:opacity-40 disabled:cursor-not-allowed ${VARIANT[variant]} ${className}`}
       {...props}
     />
   );

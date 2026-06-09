@@ -1,24 +1,23 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ApprovalCard } from "@/components/approval-card";
 import type { SerializedPendingApproval, ApprovalChoice } from "@/lib/approval-protocol";
 
 type ListResp = { ok: boolean; reason?: string; hint?: string; pending: SerializedPendingApproval[] };
+type RespondResp = { ok: boolean; reason?: string };
 const POLL_MS = 1000;
 
 export default function ApprovalsPage() {
   const [pending, setPending] = useState<SerializedPendingApproval[]>([]);
   const [hint, setHint] = useState<string | null>(null);
   const [down, setDown] = useState(false);
-  const resolving = useRef<Set<string>>(new Set());
 
   const tick = useCallback(async () => {
     try {
       const r = (await fetch("/api/approvals", { cache: "no-store" }).then((x) => x.json())) as ListResp;
       setDown(!r.ok);
       setHint(r.hint ?? r.reason ?? null);
-      // Drop any we've optimistically resolved this cycle.
-      setPending(r.pending.filter((p) => !resolving.current.has(p.id)));
+      setPending(r.pending);
     } catch (e) {
       setDown(true);
       setHint((e as Error).message);
@@ -31,18 +30,24 @@ export default function ApprovalsPage() {
     return () => clearInterval(t);
   }, [tick]);
 
-  const onResolve = useCallback(async (id: string, choice: ApprovalChoice) => {
-    resolving.current.add(id);
-    setPending((prev) => prev.filter((p) => p.id !== id)); // optimistic
+  // Resolve, then let the next poll (≤1s) confirm removal. Returns success so the
+  // card can re-enable + explain if the id was stale/expired or the proxy was unreachable.
+  const onResolve = useCallback(async (id: string, choice: ApprovalChoice): Promise<boolean> => {
     try {
-      await fetch("/api/approvals/respond", {
+      const res = await fetch("/api/approvals/respond", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ id, choice }),
       });
-    } finally {
-      // Re-sync soon; keep it in the resolved-set briefly so the poll doesn't resurrect it.
-      setTimeout(() => resolving.current.delete(id), 3000);
+      const body = (await res.json().catch(() => ({ ok: false }))) as RespondResp;
+      if (res.ok && body.ok) {
+        // Drop immediately for snappy feedback; the poll keeps it gone.
+        setPending((prev) => prev.filter((p) => p.id !== id));
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
     }
   }, []);
 
@@ -54,6 +59,12 @@ export default function ApprovalsPage() {
           Tool calls your agent paused for your decision.
         </p>
       </header>
+
+      <div aria-live="polite" className="sr-only">
+        {pending.length === 0
+          ? "No approvals waiting"
+          : `${pending.length} approval${pending.length === 1 ? "" : "s"} waiting`}
+      </div>
 
       {down && (
         <div className="mb-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-sm text-[var(--color-muted-foreground)]">
@@ -69,7 +80,7 @@ export default function ApprovalsPage() {
 
       <div className="flex flex-col gap-3">
         {pending.map((p) => (
-          <ApprovalCard key={p.id} p={p} onResolve={onResolve} />
+          <ApprovalCard key={p.id} approval={p} onResolve={onResolve} />
         ))}
       </div>
     </main>
