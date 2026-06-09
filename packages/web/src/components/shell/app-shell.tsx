@@ -2,6 +2,7 @@
 import type { ReactNode } from "react";
 import { Nav } from "./nav";
 import { StatusBar } from "./status-bar";
+import { CommandPalette } from "@/components/command-palette";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -13,6 +14,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <StatusBar />
         <div className="flex-1">{children}</div>
       </div>
+      <CommandPalette />
     </div>
   );
 }
