@@ -2,6 +2,7 @@ import Database from "better-sqlite3";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { configDir, expandHome } from "./config-dir";
+import type { AgentActivity } from "./agents";
 
 export interface DecisionRow {
   id: number;
@@ -99,6 +100,58 @@ export function summary(): AuditSummary {
       byAgent: byAgent.map((r) => ({ agentType: r.agent_type, count: r.c })),
       byTool: byTool.map((r) => ({ tool: r.tool, count: r.c })),
     };
+  } finally {
+    db.close();
+  }
+}
+
+export function agentActivity(): AgentActivity[] {
+  const db = openReadOnly();
+  if (!db) return [];
+  try {
+    const decisionRows = db
+      .prepare(`SELECT agent_type, decision, COUNT(*) c FROM audit_entries GROUP BY agent_type, decision`)
+      .all() as Array<{ agent_type: string; decision: string; c: number }>;
+    const toolRows = db
+      .prepare(`SELECT agent_type, tool, COUNT(*) c FROM audit_entries GROUP BY agent_type, tool`)
+      .all() as Array<{ agent_type: string; tool: string; c: number }>;
+    const instRows = db
+      .prepare(`SELECT agent_type, COUNT(DISTINCT instance_id) c FROM audit_entries GROUP BY agent_type`)
+      .all() as Array<{ agent_type: string; c: number }>;
+    const seenRows = db
+      .prepare(`SELECT agent_type, MAX(timestamp) ts FROM audit_entries GROUP BY agent_type`)
+      .all() as Array<{ agent_type: string; ts: string }>;
+
+    const map = new Map<string, AgentActivity>();
+    const get = (t: string): AgentActivity => {
+      let a = map.get(t);
+      if (!a) {
+        a = { agentType: t, total: 0, allow: 0, deny: 0, approval: 0, topTools: [], instancesSeen: 0, lastSeen: null };
+        map.set(t, a);
+      }
+      return a;
+    };
+
+    for (const r of decisionRows) {
+      const a = get(r.agent_type);
+      a.total += r.c;
+      if (r.decision === "allow") a.allow += r.c;
+      else if (r.decision === "deny") a.deny += r.c;
+      else if (r.decision === "require_approval") a.approval += r.c;
+    }
+    const tools = new Map<string, { tool: string; count: number }[]>();
+    for (const r of toolRows) {
+      const list = tools.get(r.agent_type) ?? [];
+      list.push({ tool: r.tool, count: r.c });
+      tools.set(r.agent_type, list);
+    }
+    for (const [t, list] of tools) {
+      get(t).topTools = list.sort((x, y) => y.count - x.count).slice(0, 5);
+    }
+    for (const r of instRows) get(r.agent_type).instancesSeen = r.c;
+    for (const r of seenRows) get(r.agent_type).lastSeen = r.ts ?? null;
+
+    return Array.from(map.values());
   } finally {
     db.close();
   }
