@@ -26,6 +26,7 @@ function Stat({ label, value, accent }: { label: string; value: number; accent?:
 export default function Overview() {
   const [sum, setSum] = useState<Summary | null>(null);
   const [hint, setHint] = useState<string | null>(null);
+  const [configured, setConfigured] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -37,6 +38,12 @@ export default function Overview() {
         setHint(r.ok ? null : r.hint ?? r.reason ?? null);
       } catch (e) {
         if (!cancelled) setHint((e as Error).message);
+      }
+      try {
+        const setup = await fetch("/api/setup-status", { cache: "no-store" }).then((x) => x.json());
+        if (!cancelled) setConfigured(Boolean(setup?.configExists));
+      } catch {
+        /* leave configured as-is on transient failure */
       }
     }
     tick();
@@ -55,6 +62,12 @@ export default function Overview() {
         <div className="mb-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-sm text-[var(--color-muted-foreground)]">
           {hint}
         </div>
+      )}
+
+      {!configured && (
+        <a href="/welcome" className="mb-4 block rounded-lg border border-[var(--color-accent)]/50 bg-[var(--color-accent)]/10 p-4 text-sm">
+          <strong>Finish setup</strong> — you haven&apos;t configured Habena yet. <span className="underline">Open the setup wizard →</span>
+        </a>
       )}
 
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
