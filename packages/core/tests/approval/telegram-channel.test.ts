@@ -344,4 +344,102 @@ describe("TelegramApprovalChannel", () => {
 
     await c.stop(); // must settle cleanly, not hang
   });
+
+  describe("D5: expiring-soon warning", () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("9. warns exactly once shortly before the approval times out", async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(0);
+      // warnBeforeMs:10000 with a 60s expiry → warning fires at t=50s.
+      const c = new TelegramApprovalChannel(queue, {
+        api: api as never,
+        ownerId: OWNER_ID,
+        autoPoll: false,
+        warnBeforeMs: 10000,
+      });
+      await c.start();
+      void queue.request(sampleDecision(), sampleRequest(), 60000);
+      // handleRequest awaits sendMessage (a resolved promise) before scheduling.
+      await vi.advanceTimersByTimeAsync(0);
+      expect(api.sent).toHaveLength(1);
+      expect(api.edited).toHaveLength(0); // nothing yet
+
+      // Advance to just before the warning window — still nothing.
+      await vi.advanceTimersByTimeAsync(49000);
+      expect(api.edited).toHaveLength(0);
+
+      // Cross the warning instant.
+      await vi.advanceTimersByTimeAsync(2000);
+      const warnEdits = api.edited.filter((e) => /expir/i.test(e.text));
+      expect(warnEdits).toHaveLength(1);
+      expect(String(warnEdits[0].chatId)).toBe(String(OWNER_ID));
+
+      // Keep advancing well past — still exactly one (no spam, no repeat).
+      await vi.advanceTimersByTimeAsync(60000);
+      expect(api.edited.filter((e) => /expir/i.test(e.text))).toHaveLength(1);
+
+      await c.stop();
+    });
+
+    it("10. no warning fires after the owner resolves before the window", async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(0);
+      const c = new TelegramApprovalChannel(queue, {
+        api: api as never,
+        ownerId: OWNER_ID,
+        backoffMs: 0,
+        idlePollMs: 0,
+        autoPoll: false,
+        warnBeforeMs: 10000,
+      });
+      await c.start();
+      const p = queue.request(sampleDecision(), sampleRequest(), 60000);
+      await vi.advanceTimersByTimeAsync(0);
+      const token = tokenFromKeyboard(api.sent[0]);
+
+      // Owner taps Deny well before the warning window (t≈1s).
+      await vi.advanceTimersByTimeAsync(1000);
+      api.inject([callbackUpdate(1, OWNER_ID, `ag:deny:${token}`)]);
+      // pollOnce ends in a real (faked) delay(idlePollMs); advance concurrently
+      // so it settles under fake timers instead of hanging.
+      await Promise.all([c.pollOnce(), vi.advanceTimersByTimeAsync(1)]);
+      const res = await p;
+      expect(res.choice).toBe("deny");
+
+      const editsAfterResolve = api.edited.length;
+      expect(api.edited.some((e) => /deny|denied|⛔/i.test(e.text))).toBe(true);
+
+      // Advance past when the warning WOULD have fired (t=50s and beyond).
+      await vi.advanceTimersByTimeAsync(120000);
+      // No "expiring" edit, and no extra edits beyond the resolution edit.
+      expect(api.edited.some((e) => /expir/i.test(e.text))).toBe(false);
+      expect(api.edited.length).toBe(editsAfterResolve);
+
+      await c.stop();
+    });
+
+    it("11. stop() cancels pending warning timers — none fire afterward", async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(0);
+      const c = new TelegramApprovalChannel(queue, {
+        api: api as never,
+        ownerId: OWNER_ID,
+        autoPoll: false,
+        warnBeforeMs: 10000,
+      });
+      await c.start();
+      void queue.request(sampleDecision(), sampleRequest(), 60000);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(api.sent).toHaveLength(1);
+
+      await c.stop();
+
+      // Advance well past the warning instant — the timer was cleared on stop().
+      await vi.advanceTimersByTimeAsync(120000);
+      expect(api.edited.some((e) => /expir/i.test(e.text))).toBe(false);
+    });
+  });
 });

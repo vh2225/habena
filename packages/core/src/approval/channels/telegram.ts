@@ -29,6 +29,11 @@ interface TrackedPrompt {
   approvalId: string;
   chatId: string | number;
   messageId: number;
+  /**
+   * One-time "expiring soon" warning timer (D5). Cleared in EVERY consume path
+   * and in stop(), so a consumed/stopped prompt never edits the message later.
+   */
+  warnTimer?: ReturnType<typeof setTimeout>;
 }
 
 export interface TelegramApprovalChannelOptions {
@@ -55,6 +60,14 @@ export interface TelegramApprovalChannelOptions {
    * getUpdates / offset, so assertions stay deterministic.
    */
   autoPoll?: boolean;
+  /**
+   * D5: how long before `expiresAt` to send the owner a one-time "expiring soon"
+   * heads-up in the chat (ms). Purely a courtesy edit — it does NOT change when
+   * or how the approval actually times out (the queue's timeout is the source of
+   * truth). Default 30000ms. If a delivered approval already has less than this
+   * left, the warning fires ~immediately (delay clamped to 0).
+   */
+  warnBeforeMs?: number;
 }
 
 export class TelegramApprovalChannel implements ApprovalChannel {
@@ -67,6 +80,7 @@ export class TelegramApprovalChannel implements ApprovalChannel {
   private readonly pollTimeoutSec: number;
   private readonly idlePollMs: number;
   private readonly autoPoll: boolean;
+  private readonly warnBeforeMs: number;
 
   private running = false;
   private offset = 0;
@@ -95,6 +109,7 @@ export class TelegramApprovalChannel implements ApprovalChannel {
     this.pollTimeoutSec = opts.pollTimeoutSec ?? 30;
     this.idlePollMs = opts.idlePollMs ?? 250;
     this.autoPoll = opts.autoPoll ?? true;
+    this.warnBeforeMs = opts.warnBeforeMs ?? 30000;
   }
 
   async start(): Promise<void> {
@@ -111,6 +126,11 @@ export class TelegramApprovalChannel implements ApprovalChannel {
     this.running = false;
     this.queue.off("approval_request", this.onRequest);
     this.queue.off("approval_resolved", this.onResolved);
+    // D5: cancel every outstanding "expiring soon" warning timer so none fires
+    // after stop() — no dangling timers, no edit on a stopped channel.
+    for (const prompt of this.prompts.values()) {
+      if (prompt.warnTimer) clearTimeout(prompt.warnTimer);
+    }
     // Let the in-flight getUpdates settle; never propagate.
     const lp = this.loopPromise;
     this.loopPromise = null;
@@ -129,12 +149,14 @@ export class TelegramApprovalChannel implements ApprovalChannel {
         ],
       ]);
       // Only track once we actually have a message to edit later.
-      this.prompts.set(token, {
+      const tracked: TrackedPrompt = {
         approvalId: p.id,
         chatId: this.ownerId,
         messageId: sent.message_id,
-      });
+      };
+      this.prompts.set(token, tracked);
       this.tokenByApprovalId.set(p.id, token);
+      this.scheduleWarning(token, tracked, p.expiresAt);
     } catch {
       // Telegram unreachable — the approval still lives in the queue and will
       // time out (or be answered via CLI watch). Do not throw; do not log the
@@ -252,8 +274,45 @@ export class TelegramApprovalChannel implements ApprovalChannel {
       .catch(() => {});
   }
 
+  /**
+   * D5: schedule a single "expiring soon" edit at `expiresAt - warnBeforeMs`.
+   * Fires at most once, and ONLY if the token is still pending (not consumed).
+   * It is a best-effort outbound edit — it never resolves the queue, never
+   * throws, never logs the token. The timer is unref'd so it can't keep the
+   * process alive past stop(), and it's stored on the prompt so consume()/stop()
+   * can clear it.
+   */
+  private scheduleWarning(
+    token: string,
+    tracked: TrackedPrompt,
+    expiresAt: Date
+  ): void {
+    const delayMs = Math.max(
+      0,
+      expiresAt.getTime() - Date.now() - this.warnBeforeMs
+    );
+    const timer = setTimeout(() => {
+      // Re-check by identity: the entry must still be THIS prompt (not consumed,
+      // not replaced). If it was consumed, the warning is a no-op.
+      if (this.prompts.get(token) !== tracked) return;
+      void this.api
+        .editMessageText(
+          tracked.chatId,
+          tracked.messageId,
+          "⏳ Expiring soon — tap to decide before this approval times out."
+        )
+        .catch(() => {
+          // best-effort; swallow (transport detail must not surface)
+        });
+    }, delayMs);
+    timer.unref?.();
+    tracked.warnTimer = timer;
+  }
+
   /** One-shot: drop both indexes so the token can never act again. */
   private consume(token: string, approvalId: string): void {
+    const prompt = this.prompts.get(token);
+    if (prompt?.warnTimer) clearTimeout(prompt.warnTimer);
     this.prompts.delete(token);
     this.tokenByApprovalId.delete(approvalId);
   }
