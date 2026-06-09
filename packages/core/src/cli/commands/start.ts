@@ -13,6 +13,8 @@ import { AgentRegistry } from "../../identity/registry.js";
 import { ProxyDispatcher } from "../../proxy/server.js";
 import { ApprovalQueue } from "../../approval/queue.js";
 import { startChannels, stopChannels, type ApprovalChannel } from "../../approval/channel.js";
+import { TelegramApprovalChannel } from "../../approval/channels/telegram.js";
+import { TelegramApi } from "../../approval/channels/telegram-api.js";
 import { IpcServer } from "../../ipc/server.js";
 import { DownstreamManager } from "../../downstream/manager.js";
 import { createMcpServer } from "../../proxy/server.js";
@@ -73,9 +75,26 @@ export async function startCommand(): Promise<void> {
   // is otherwise up, stopped in the shutdown path. A channel that fails to
   // start must never crash the proxy (startChannels logs + continues).
   const channels: ApprovalChannel[] = [];
-  // SEAM (Phase D3): when `config.approval?.channels?.telegram` is present,
-  // push a `new TelegramApprovalChannel(approval, config.approval.channels.telegram)`
-  // here. Not instantiated in D1 — TelegramApprovalChannel does not exist yet.
+  const telegramCfg = config.approval?.channels?.telegram;
+  if (telegramCfg) {
+    const token =
+      telegramCfg.token ??
+      (telegramCfg.token_env ? process.env[telegramCfg.token_env] : undefined);
+    if (!token || telegramCfg.owner_id === undefined || telegramCfg.owner_id === "") {
+      console.error(
+        chalk.yellow(
+          "! telegram approval channel configured but no token/owner_id; skipping"
+        )
+      );
+    } else {
+      channels.push(
+        new TelegramApprovalChannel(approval, {
+          api: new TelegramApi(token),
+          ownerId: telegramCfg.owner_id,
+        })
+      );
+    }
+  }
 
   const dispatcher = new ProxyDispatcher({
     policy,
