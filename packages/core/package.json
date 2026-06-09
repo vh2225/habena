@@ -1,8 +1,30 @@
 {
   "name": "habena",
-  "version": "0.1.0",
-  "license": "UNLICENSED",
-  "description": "Habena MCP proxy — policy engine, cost tracking, and guardrails",
+  "version": "0.2.0",
+  "license": "MIT",
+  "description": "Habena — keep your AI agent on a short rein. MCP middleware proxy: policy guardrails, spend caps, and human approval for AI agents.",
+  "author": "Vinh Hoang",
+  "homepage": "https://github.com/vh2225/agentguard#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vh2225/agentguard.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/vh2225/agentguard/issues"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "ai-agent",
+    "ai-safety",
+    "guardrails",
+    "llm",
+    "agent-security",
+    "human-in-the-loop",
+    "openclaw",
+    "cost-control"
+  ],
   "type": "module",
   "engines": {
     "node": ">=20"
@@ -11,11 +33,18 @@
     "habena": "./dist/cli/index.js",
     "agentguard": "./dist/cli/index.js"
   },
+  "files": [
+    "dist",
+    "rule-packs",
+    "LICENSE",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
     "test": "tsc && vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
