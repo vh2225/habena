@@ -56,7 +56,7 @@ export function promptText(p: SerializedPendingApproval): string {
   }
 
   return (
-    `🛡️ *AgentGuard approval*\n\n` +
+    `🛡️ *Habena approval*\n\n` +
     `*Tool:* \`${p.tool}\`\n` +
     `*Agent:* ${p.agentType}${inst}\n` +
     `*Why:* ${p.reason}\n` +

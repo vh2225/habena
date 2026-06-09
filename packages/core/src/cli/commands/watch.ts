@@ -131,7 +131,10 @@ function renderRequest(p: SerializedPendingApproval): void {
   console.log(`  Tool:     ${chalk.magenta(p.tool)}`);
   console.log(`  Args:     ${chalk.gray(JSON.stringify(p.args))}`);
   console.log(`  Reason:   ${chalk.yellow(p.reason)}`);
-  console.log(`  Cost:     ${chalk.gray(`$${p.estimatedCost.toFixed(4)}`)}`);
+  // Cost attribution is not wired yet — hide the line rather than show $0.0000.
+  if (p.estimatedCost > 0) {
+    console.log(`  Cost:     ${chalk.gray(`$${p.estimatedCost.toFixed(4)}`)}`);
+  }
   console.log(`  Expires:  ${chalk.gray(`${minutes}m ${seconds}s`)}`);
   console.log();
 }
