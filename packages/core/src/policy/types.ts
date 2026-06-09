@@ -42,6 +42,19 @@ export interface ApprovalConfig {
     tools?: string[];
     tool_tags?: string[];
   };
+  /**
+   * Out-of-band approval delivery channels. Each entry is constructed and
+   * lifecycle-managed by the proxy (see ApprovalChannel). No implementation is
+   * wired yet beyond Telegram's config shape; tasks downstream plug the actual
+   * channel in.
+   */
+  channels?: {
+    telegram?: {
+      token?: string;
+      token_env?: string;
+      owner_id: string | number;
+    };
+  };
 }
 
 export interface AgentGuardConfig {

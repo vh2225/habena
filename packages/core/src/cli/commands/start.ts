@@ -12,6 +12,7 @@ import { InstanceTracker } from "../../identity/instances.js";
 import { AgentRegistry } from "../../identity/registry.js";
 import { ProxyDispatcher } from "../../proxy/server.js";
 import { ApprovalQueue } from "../../approval/queue.js";
+import { startChannels, stopChannels, type ApprovalChannel } from "../../approval/channel.js";
 import { IpcServer } from "../../ipc/server.js";
 import { DownstreamManager } from "../../downstream/manager.js";
 import { createMcpServer } from "../../proxy/server.js";
@@ -67,6 +68,14 @@ export async function startCommand(): Promise<void> {
     console.error(chalk.yellow(`! Failed to start IPC server: ${(err as Error).message}`));
     console.error(chalk.yellow("  Approval requests will auto-deny."));
   }
+
+  // Out-of-band approval channels. Constructed here, started after the proxy
+  // is otherwise up, stopped in the shutdown path. A channel that fails to
+  // start must never crash the proxy (startChannels logs + continues).
+  const channels: ApprovalChannel[] = [];
+  // SEAM (Phase D3): when `config.approval?.channels?.telegram` is present,
+  // push a `new TelegramApprovalChannel(approval, config.approval.channels.telegram)`
+  // here. Not instantiated in D1 — TelegramApprovalChannel does not exist yet.
 
   const dispatcher = new ProxyDispatcher({
     policy,
@@ -135,8 +144,12 @@ export async function startCommand(): Promise<void> {
     })
     .catch(() => { /* boot checks are advisory; never block startup */ });
 
+  // Start approval channels best-effort (after the proxy is otherwise up).
+  await startChannels(channels, { warn: (msg) => console.error(chalk.yellow(msg)) });
+
   const shutdown = async () => {
     console.error(chalk.yellow("\nShutting down Habena..."));
+    await stopChannels(channels);
     await downstream.stop().catch(() => {});
     await ipcServer.stop().catch(() => {});
     approval.shutdown();
