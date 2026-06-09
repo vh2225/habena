@@ -18,4 +18,9 @@ describe("Nav", () => {
     expect(screen.queryByRole("link", { name: /spend/i })).toBeNull();
     expect(screen.getByText(/spend/i)).toBeInTheDocument();
   });
+
+  it("renders Agents as a live link (no longer 'soon')", () => {
+    render(<Nav />);
+    expect(screen.getByRole("link", { name: /agents/i })).toHaveAttribute("href", "/agents");
+  });
 });
