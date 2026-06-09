@@ -14,7 +14,7 @@ describe("Overview", () => {
         ok: true,
         json: () => Promise.resolve({
           ok: true,
-          summary: { totalDecisions: 5, allowed: 3, denied: 1, approvalPending: 1, byAgent: [], byTool: [] },
+          summary: { totalDecisions: 5, allowed: 3, denied: 1, approvalPending: 1, threats: 2, byAgent: [], byTool: [] },
         }),
       });
     }));
@@ -23,7 +23,11 @@ describe("Overview", () => {
     await waitFor(() => expect(screen.getByText("Allowed")).toBeInTheDocument());
     expect(screen.getByText("3")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /overview/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /decisions/i })).toHaveAttribute("href", "/decisions");
+    // Stat cards deep-link into pre-filtered Decisions views.
+    expect(screen.getByRole("link", { name: /total decisions/i })).toHaveAttribute("href", "/decisions");
+    expect(screen.getByRole("link", { name: /denied/i })).toHaveAttribute("href", "/decisions?decision=deny");
+    expect(screen.getByRole("link", { name: /threat flags/i })).toHaveAttribute("href", "/decisions?threats=1");
+    expect(screen.getByText("2")).toBeInTheDocument();
   });
 
   it("shows a Finish setup CTA when not configured", async () => {

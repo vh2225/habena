@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef } from "react";
 import { Badge } from "./ui/badge";
-import { fmtTime, fmtLatency, decisionKind, type DecisionRow } from "@/lib/dashboard";
+import { fmtTime, fmtLatency, decisionKind, isThreat, type DecisionRow } from "@/lib/dashboard";
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -41,7 +41,10 @@ export function DecisionDrawer({ row, onClose }: { row: DecisionRow | null; onCl
           <h2 className="text-sm font-semibold">Why this decision?</h2>
           <button onClick={onClose} className="text-[var(--color-muted-foreground)] hover:text-[var(--color-fg)]" aria-label="Close">✕</button>
         </div>
-        <div className="mb-3"><Badge kind={decisionKind(row.decision)}>{row.decision}</Badge></div>
+        <div className="mb-3 flex items-center gap-2">
+          <Badge kind={decisionKind(row.decision)}>{row.decision}</Badge>
+          {isThreat(row) && <Badge kind="threat" />}
+        </div>
         <Field label="Agent" value={`${row.agentType} · ${(row.instanceId ?? "").slice(0, 8)}`} />
         <Field label="Tool" value={row.tool} />
         <Field label="Server" value={row.mcpServer} />

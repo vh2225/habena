@@ -8,16 +8,27 @@ export interface DecisionFilters {
   agentType: string;
   decision: string;
   mcpServer: string;
+  threatsOnly: boolean;
 }
 
-export function fmtTime(iso: string): string {
+export function fmtTime(iso: string, now: Date = new Date()): string {
   try {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return iso;
-    return d.toLocaleTimeString();
+    const sameDay =
+      d.getFullYear() === now.getFullYear() &&
+      d.getMonth() === now.getMonth() &&
+      d.getDate() === now.getDate();
+    if (sameDay) return d.toLocaleTimeString();
+    return `${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })} ${d.toLocaleTimeString()}`;
   } catch {
     return iso;
   }
+}
+
+/** Threat-engine decisions carry a `threat:<detector>: …` reason (see core threat/engine.ts). */
+export function isThreat(row: Pick<DecisionRow, "reason">): boolean {
+  return (row.reason ?? "").startsWith("threat:");
 }
 
 export function fmtLatency(ms: number | null): string {
@@ -37,6 +48,7 @@ export function matchesFilters(row: DecisionRow, f: DecisionFilters): boolean {
   if (f.agentType && row.agentType !== f.agentType) return false;
   if (f.decision && row.decision !== f.decision) return false;
   if (f.mcpServer && row.mcpServer !== f.mcpServer) return false;
+  if (f.threatsOnly && !isThreat(row)) return false;
   return true;
 }
 

@@ -7,7 +7,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { DecisionDrawer } from "@/components/decision-drawer";
 import {
-  fmtTime, fmtLatency, uniqueValues, matchesFilters, decisionKind,
+  fmtTime, fmtLatency, uniqueValues, matchesFilters, decisionKind, isThreat,
   type DecisionRow, type DecisionFilters,
 } from "@/lib/dashboard";
 
@@ -22,11 +22,19 @@ export default function DecisionsPage() {
   const [dense, setDense] = useState(true);
   const [selected, setSelected] = useState<DecisionRow | null>(null);
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [filters, setFilters] = useState<DecisionFilters>({ agentType: "", decision: "", mcpServer: "" });
+  const [filters, setFilters] = useState<DecisionFilters>({ agentType: "", decision: "", mcpServer: "", threatsOnly: false });
 
   useEffect(() => {
-    const agent = new URLSearchParams(window.location.search).get("agent");
-    if (agent) setFilters((f) => ({ ...f, agentType: agent }));
+    const params = new URLSearchParams(window.location.search);
+    const agent = params.get("agent");
+    const decision = params.get("decision");
+    const threats = params.get("threats");
+    setFilters((f) => ({
+      ...f,
+      ...(agent ? { agentType: agent } : {}),
+      ...(decision && DECISIONS.includes(decision) ? { decision } : {}),
+      ...(threats === "1" ? { threatsOnly: true } : {}),
+    }));
   }, []);
 
   useEffect(() => {
@@ -55,7 +63,12 @@ export default function DecisionsPage() {
     { header: "Agent", accessorKey: "agentType", cell: (c) => <span className="font-mono">{c.getValue<string>()}</span> },
     { header: "Tool", accessorKey: "tool", cell: (c) => <span className="font-mono">{c.getValue<string>()}</span> },
     { header: "Server", accessorKey: "mcpServer", cell: (c) => <span className="font-mono text-[var(--color-muted-foreground)]">{c.getValue<string>()}</span> },
-    { header: "Decision", accessorKey: "decision", cell: (c) => <Badge kind={decisionKind(c.getValue<string>())}>{c.getValue<string>()}</Badge> },
+    { header: "Decision", accessorKey: "decision", cell: (c) => (
+      <span className="inline-flex items-center gap-1">
+        <Badge kind={decisionKind(c.getValue<string>())}>{c.getValue<string>()}</Badge>
+        {isThreat(c.row.original) && <Badge kind="threat" />}
+      </span>
+    ) },
     { header: "Rule", accessorKey: "ruleMatched", cell: (c) => <span className="text-[var(--color-muted-foreground)]">{c.getValue<string>() ?? "—"}</span> },
     { header: "Latency", accessorKey: "latencyMs", cell: (c) => fmtLatency(c.getValue<number | null>()) },
   ], []);
@@ -100,6 +113,10 @@ export default function DecisionsPage() {
             <option value="">all</option>{servers.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </label>
+        <label className="flex items-center gap-1">
+          <input type="checkbox" checked={filters.threatsOnly} onChange={(e) => setFilters((f) => ({ ...f, threatsOnly: e.target.checked }))} />
+          threats only
+        </label>
       </div>
 
       {hint && <div className="mb-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-sm text-[var(--color-muted-foreground)]">{hint}</div>}
@@ -121,7 +138,9 @@ export default function DecisionsPage() {
           </thead>
           <tbody>
             {table.getRowModel().rows.length === 0 && (
-              <tr><td colSpan={columns.length} className="px-3 py-8 text-center text-[var(--color-muted-foreground)]">No decisions yet — start your agent and tool calls stream here.</td></tr>
+              <tr><td colSpan={columns.length} className="px-3 py-8 text-center text-[var(--color-muted-foreground)]">
+                {rows.length > 0 ? "No decisions match the current filters." : "No decisions yet — start your agent and tool calls stream here."}
+              </td></tr>
             )}
             {table.getRowModel().rows.map((r) => (
               <tr

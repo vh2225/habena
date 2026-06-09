@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Card } from "@/components/ui/card";
 
 type Summary = {
@@ -7,19 +8,22 @@ type Summary = {
   allowed: number;
   denied: number;
   approvalPending: number;
+  threats?: number;
 };
 type SummaryResp = { ok: boolean; reason?: string; hint?: string; summary: Summary | null };
 
 const POLL_MS = 5000;
 
-function Stat({ label, value, accent }: { label: string; value: number; accent?: string }) {
+function Stat({ label, value, accent, href }: { label: string; value: number; accent?: string; href: string }) {
   return (
-    <Card className="p-4">
-      <div className="text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">{label}</div>
-      <div className="mt-1 text-2xl font-semibold" style={accent ? { color: accent } : undefined}>
-        {value.toLocaleString()}
-      </div>
-    </Card>
+    <Link href={href} className="block rounded-lg focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]">
+      <Card className="p-4 transition hover:border-[var(--color-accent)]/50 hover:bg-[var(--color-surface-2)]">
+        <div className="text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">{label}</div>
+        <div className="mt-1 text-2xl font-semibold" style={accent ? { color: accent } : undefined}>
+          {value.toLocaleString()}
+        </div>
+      </Card>
+    </Link>
   );
 }
 
@@ -70,11 +74,12 @@ export default function Overview() {
         </a>
       )}
 
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label="Total decisions" value={sum?.totalDecisions ?? 0} />
-        <Stat label="Allowed" value={sum?.allowed ?? 0} accent="var(--color-allow)" />
-        <Stat label="Denied" value={sum?.denied ?? 0} accent="var(--color-deny)" />
-        <Stat label="Require approval" value={sum?.approvalPending ?? 0} accent="var(--color-warn)" />
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <Stat label="Total decisions" value={sum?.totalDecisions ?? 0} href="/decisions" />
+        <Stat label="Allowed" value={sum?.allowed ?? 0} accent="var(--color-allow)" href="/decisions?decision=allow" />
+        <Stat label="Denied" value={sum?.denied ?? 0} accent="var(--color-deny)" href="/decisions?decision=deny" />
+        <Stat label="Require approval" value={sum?.approvalPending ?? 0} accent="var(--color-warn)" href="/decisions?decision=require_approval" />
+        <Stat label="Threat flags" value={sum?.threats ?? 0} accent="var(--color-deny)" href="/decisions?threats=1" />
       </section>
 
       <p className="mt-6 text-sm text-[var(--color-muted-foreground)]">

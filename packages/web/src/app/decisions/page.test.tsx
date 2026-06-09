@@ -7,6 +7,7 @@ beforeEach(() => vi.restoreAllMocks());
 const rows = [
   { id: 1, timestamp: "2026-06-09T12:00:00.000Z", agentType: "openclaw", instanceId: "i1", tool: "fs.read", mcpServer: "filesystem", decision: "allow", tier: "default", ruleMatched: null, reason: null, latencyMs: 3, resultStatus: "ok" },
   { id: 2, timestamp: "2026-06-09T12:01:00.000Z", agentType: "hermes", instanceId: "i2", tool: "fs.write", mcpServer: "filesystem", decision: "deny", tier: "user_rule", ruleMatched: "no-writes", reason: "blocked", latencyMs: 5, resultStatus: "blocked" },
+  { id: 3, timestamp: "2026-06-09T12:02:00.000Z", agentType: "hermes", instanceId: "i2", tool: "http.post", mcpServer: "web", decision: "require_approval", tier: "built_in", ruleMatched: null, reason: "threat:credential-egress: AWS key in args", latencyMs: 2, resultStatus: "pending" },
 ];
 
 function stub() {
@@ -49,6 +50,17 @@ describe("Decisions page", () => {
     render(<Page />);
     await waitFor(() => expect(screen.getByText("fs.write")).toBeInTheDocument()); // hermes row
     expect(screen.queryByText("fs.read")).toBeNull(); // openclaw row filtered out
+    window.history.replaceState({}, "", "/"); // reset for other tests
+  });
+
+  it("badges threat-engine rows and filters via ?threats=1", async () => {
+    stub();
+    window.history.replaceState({}, "", "/decisions?threats=1");
+    const Page = (await import("./page")).default;
+    render(<Page />);
+    await waitFor(() => expect(screen.getByText("http.post")).toBeInTheDocument());
+    expect(screen.queryByText("fs.read")).toBeNull(); // non-threat rows filtered out
+    expect(screen.getByText("threat")).toBeInTheDocument(); // threat badge on the row
     window.history.replaceState({}, "", "/"); // reset for other tests
   });
 

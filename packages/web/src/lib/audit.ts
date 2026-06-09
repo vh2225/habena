@@ -24,6 +24,8 @@ export interface AuditSummary {
   allowed: number;
   denied: number;
   approvalPending: number;
+  /** Decisions flagged by the threat engine (reason starts with "threat:"). */
+  threats: number;
   byAgent: Array<{ agentType: string; count: number }>;
   byTool: Array<{ tool: string; count: number }>;
 }
@@ -75,13 +77,14 @@ export function recentDecisions(limit: number = 100): DecisionRow[] {
 export function summary(): AuditSummary {
   const db = openReadOnly();
   if (!db) {
-    return { totalDecisions: 0, allowed: 0, denied: 0, approvalPending: 0, byAgent: [], byTool: [] };
+    return { totalDecisions: 0, allowed: 0, denied: 0, approvalPending: 0, threats: 0, byAgent: [], byTool: [] };
   }
   try {
     const total = (db.prepare(`SELECT COUNT(*) c FROM audit_entries`).get() as { c: number }).c;
     const allowed = (db.prepare(`SELECT COUNT(*) c FROM audit_entries WHERE decision = 'allow'`).get() as { c: number }).c;
     const denied = (db.prepare(`SELECT COUNT(*) c FROM audit_entries WHERE decision = 'deny'`).get() as { c: number }).c;
     const approvalPending = (db.prepare(`SELECT COUNT(*) c FROM audit_entries WHERE decision = 'require_approval'`).get() as { c: number }).c;
+    const threats = (db.prepare(`SELECT COUNT(*) c FROM audit_entries WHERE reason LIKE 'threat:%'`).get() as { c: number }).c;
     const byAgent = db
       .prepare(
         `SELECT agent_type, COUNT(*) c FROM audit_entries GROUP BY agent_type ORDER BY c DESC LIMIT 10`
@@ -97,6 +100,7 @@ export function summary(): AuditSummary {
       allowed,
       denied,
       approvalPending,
+      threats,
       byAgent: byAgent.map((r) => ({ agentType: r.agent_type, count: r.c })),
       byTool: byTool.map((r) => ({ tool: r.tool, count: r.c })),
     };
