@@ -17,5 +17,7 @@ describe("Overview", () => {
     render(<Overview />);
     await waitFor(() => expect(screen.getByText("Allowed")).toBeInTheDocument());
     expect(screen.getByText("3")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /overview/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /decisions/i })).toHaveAttribute("href", "/decisions");
   });
 });
