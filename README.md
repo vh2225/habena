@@ -112,7 +112,7 @@ Roadmap:
 - **MCP threat firewall** — detection for rug-pulls and tool-poisoning (tool-description drift, known-bad servers).
 - **Mac guarded-sandbox recipe** — a documented, locked-down setup for running an assistant under Habena on macOS.
 
-Full design: [`docs/plans/2026-06-08-habena-design.md`](docs/plans/2026-06-08-habena-design.md).
+Full design: [`docs/plans/2026-06-08-habena-design.md`](https://github.com/vh2225/agentguard/blob/main/docs/plans/2026-06-08-habena-design.md).
 
 ## License
 

@@ -15,7 +15,7 @@ git clone https://github.com/vh2225/agentguard.git
 cd agentguard
 pnpm install
 pnpm -F habena build
-pnpm -F habena exec vitest run   # should be 156/156 passing
+pnpm -F habena exec vitest run   # should be all green
 ```
 
 Requires Node 20+. pnpm v10+. Uses `pnpm.onlyBuiltDependencies` to make `better-sqlite3` install-and-build reliably across machines.

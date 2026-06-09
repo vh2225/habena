@@ -64,11 +64,10 @@ pnpm dev                     # Dev mode (watch)
 # CLI (after build)
 habena init              # Create ~/.habena/config.yaml
 habena start             # Start proxy (stdio)
-habena start --http      # Start proxy (HTTP, localhost:7600)
 habena watch             # Approval terminal
 habena logs              # Query audit logs
 habena learn --agent X   # Learning mode
-habena dashboard         # Open localhost:7700
+# Dashboard: the web app in packages/web serves localhost:7700
 
 # Agent identity management
 habena agent add --name "openclaw" --budget-daily 30   # Register agent
