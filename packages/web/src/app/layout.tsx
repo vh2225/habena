@@ -7,6 +7,10 @@ export const metadata = {
   description: "Habena local dashboard",
 };
 
+export const viewport = {
+  themeColor: "#0b0b0d",
+};
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">

@@ -7,6 +7,9 @@ const PAGES = [
   { label: "Overview", href: "/" },
   { label: "Decisions", href: "/decisions" },
   { label: "Approvals", href: "/approvals" },
+  { label: "Agents", href: "/agents" },
+  { label: "Policy", href: "/policy" },
+  { label: "Setup wizard", href: "/welcome" },
 ];
 
 export function CommandPalette() {
