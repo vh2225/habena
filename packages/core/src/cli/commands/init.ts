@@ -29,7 +29,7 @@ function buildDefaultConfig(): string {
     "# Preview first:                    habena policy preset <name> --dry-run",
     "",
   ].join("\n");
-  return header + stringifyYaml(config) + TELEGRAM_TEMPLATE;
+  return header + stringifyYaml(config) + TELEGRAM_TEMPLATE + THREAT_TEMPLATE;
 }
 
 // Commented-out template that makes the phone-tap approval channel discoverable
@@ -48,6 +48,19 @@ const TELEGRAM_TEMPLATE = [
   "#     telegram:",
   "#       token_env: HABENA_TELEGRAM_TOKEN   # keeps the bot token out of this file",
   "#       owner_id: 123456789                # your numeric Telegram user id",
+  "",
+].join("\n");
+
+// Commented-out template for the local heuristic threat detectors. Detection is
+// on by default at the engine level (each detector defaults to require_approval);
+// this block just makes the knobs discoverable so an operator can dial them.
+const THREAT_TEMPLATE = [
+  "",
+  "# Threat detection (local heuristics; default require_approval). Per detector: off | warn | require_approval | block.",
+  "# threat:",
+  "#   tool_poisoning: require_approval",
+  "#   credential_egress: require_approval",
+  "#   rug_pull: require_approval",
   "",
 ].join("\n");
 

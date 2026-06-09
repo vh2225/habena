@@ -111,10 +111,18 @@ Every allow, deny, and held call is written to the SQLite audit log, queryable w
 
 Today: stdio MCP transport only; approvals via CLI/IPC or one-tap Telegram; a v0 read-only web decision stream.
 
+> **Local heuristic threat detection works today.** Habena scans downstream MCP
+> tools for tool-poisoning (suspicious tool-description patterns), rug-pulls
+> (tool-definition drift between runs), and credential-egress (secrets in call
+> args). Detection is heuristic/best-effort and runs entirely on your machine —
+> no cloud feed. Each detector defaults to `require_approval` and is configurable
+> via the `threat:` block in `config.yaml` (`off` | `warn` | `require_approval` |
+> `block`).
+
 Roadmap:
 
 - **Onboarding wizard + dashboard** — guided setup and a real approval/config UI.
-- **MCP threat firewall** — detection for rug-pulls and tool-poisoning (tool-description drift, known-bad servers).
+- **Cloud-backed threat intel** — shared signatures for known-bad servers, layered on the local heuristic detection that already ships.
 - **Mac guarded-sandbox recipe** — a documented, locked-down setup for running an assistant under Habena on macOS.
 
 Full design: [`docs/plans/2026-06-08-habena-design.md`](https://github.com/vh2225/agentguard/blob/main/docs/plans/2026-06-08-habena-design.md).
