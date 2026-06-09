@@ -19,6 +19,9 @@ import { IpcServer } from "../../ipc/server.js";
 import { DownstreamManager } from "../../downstream/manager.js";
 import { createMcpServer } from "../../proxy/server.js";
 import { runDoctor } from "../../doctor/runner.js";
+import { ThreatEngine } from "../../threat/engine.js";
+import { ToolSnapshotStore } from "../../threat/snapshots.js";
+import { resolveThreatConfig } from "../../threat/types.js";
 
 export async function startCommand(): Promise<void> {
   const { config, missingPacks } = loadConfigWithPacks(getConfigPath());
@@ -53,6 +56,11 @@ export async function startCommand(): Promise<void> {
   const budget = new BudgetEnforcer(tracker, budgetConfig);
   const audit = new AuditLogger(getAuditDbPath());
   const instances = new InstanceTracker();
+
+  const threat = new ThreatEngine(
+    resolveThreatConfig(config.threat),
+    new ToolSnapshotStore(join(getConfigDir(), "tool-snapshots.json"))
+  );
 
   const agentRegistry = new AgentRegistry(getAgentsPath());
   const agents = agentRegistry.list();
@@ -103,6 +111,7 @@ export async function startCommand(): Promise<void> {
     audit,
     instances,
     approval,
+    threat,
     approvalTimeoutMs: parseDurationToMs(config.approval?.timeout ?? "5m"),
   });
 
@@ -130,6 +139,14 @@ export async function startCommand(): Promise<void> {
       } else {
         console.error(chalk.gray(`  ✓ ${s.name} (${s.toolCount} tools, auth unchecked)`));
       }
+    }
+    const scan = threat.scanTools(downstream.listTools());
+    if (scan.flagged > 0) {
+      console.error(chalk.yellow(`! Threat scan: ${scan.flagged}/${scan.scanned} tool(s) flagged`));
+      for (const f of scan.findings) {
+        console.error(chalk.yellow(`  ⚠ ${f.detector} (${f.severity}): ${f.message}`));
+      }
+      console.error(chalk.gray("  Flagged tools require approval on use (configurable via `threat:` in config.yaml)."));
     }
   } catch (err) {
     console.error(chalk.yellow(`! Downstream startup failed: ${(err as Error).message}`));
