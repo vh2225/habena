@@ -39,9 +39,11 @@ export function StatusBar() {
           {up === false ? "Proxy not reachable" : up ? "Proxy connected" : "Checking proxy…"}
         </span>
       </div>
-      <Link href="/approvals" className="text-[var(--color-muted-foreground)] hover:text-[var(--color-fg)]">
-        {pending} pending
-      </Link>
+      {up === true && (
+        <Link href="/approvals" className="text-[var(--color-muted-foreground)] hover:text-[var(--color-fg)]">
+          {pending} pending
+        </Link>
+      )}
     </div>
   );
 }
