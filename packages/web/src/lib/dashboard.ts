@@ -1,17 +1,8 @@
-export interface DecisionRow {
-  id: number;
-  timestamp: string;
-  agentType: string;
-  instanceId: string;
-  tool: string;
-  mcpServer: string;
-  decision: string;
-  tier: string;
-  ruleMatched: string | null;
-  reason: string | null;
-  latencyMs: number | null;
-  resultStatus: string;
-}
+// Single source of truth: re-export the canonical DecisionRow from the audit
+// reader. `import type` is erased at compile (isolatedModules), so this does NOT
+// pull better-sqlite3 (audit.ts's runtime dep) into the client bundle.
+import type { DecisionRow } from "./audit";
+export type { DecisionRow };
 
 export interface DecisionFilters {
   agentType: string;
