@@ -1,4 +1,6 @@
 import type { PolicyEngine } from "../policy/engine.js";
+import { stricter } from "../policy/engine.js";
+import type { ThreatEngine } from "../threat/engine.js";
 import type { CostTracker } from "../cost/tracker.js";
 import type { BudgetEnforcer } from "../cost/budget.js";
 import type { AuditLogger } from "../audit/logger.js";
@@ -18,6 +20,7 @@ export interface DispatcherDeps {
   instances: InstanceTracker;
   approval?: ApprovalQueue;           // NEW
   approvalTimeoutMs?: number;         // NEW, default 5 minutes
+  threat?: ThreatEngine;
 }
 
 export interface ToolCallRequest {
@@ -70,6 +73,12 @@ export class ProxyDispatcher {
         tool: req.tool,
         args: req.args,
       });
+    }
+
+    // 2a. Threat check — may escalate the decision (deny / require_approval).
+    const threatDecision = this.deps.threat?.checkCall(req.mcpServer ?? "unknown", req.tool, req.args);
+    if (threatDecision) {
+      decision = stricter(decision, threatDecision);
     }
 
     // 2b. If decision is require_approval AND approval queue is available, ask the human.
