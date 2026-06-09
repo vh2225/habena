@@ -3,6 +3,7 @@ import { stricter } from "../policy/engine.js";
 import type { ThreatEngine } from "../threat/engine.js";
 import type { CostTracker } from "../cost/tracker.js";
 import { resolveToolPrice, estimateResultTokens } from "../cost/tool-pricing.js";
+import { VERSION } from "../version.js";
 import type { BudgetEnforcer } from "../cost/budget.js";
 import type { AuditLogger } from "../audit/logger.js";
 import type { InstanceTracker } from "../identity/instances.js";
@@ -170,7 +171,7 @@ export interface McpServerDeps {
  */
 export function createMcpServer(deps: McpServerDeps): McpServer {
   const server = new McpServer(
-    { name: "habena", version: "0.2.0" },
+    { name: "habena", version: VERSION },
     // listChanged: the start command re-fetches downstream tool lists on the
     // threat re-scan interval and notifies the agent when the catalog moves.
     { capabilities: { tools: { listChanged: true } } }

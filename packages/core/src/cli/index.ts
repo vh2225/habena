@@ -27,13 +27,14 @@ import {
 import { learnCommand } from "./commands/learn.js";
 import { packsListCommand, packsShowCommand } from "./commands/packs.js";
 import { securityAuditCommand } from "./commands/security.js";
+import { VERSION } from "../version.js";
 
 const program = new Command();
 
 program
   .name("habena")
   .description("MCP middleware proxy for AI agent safety")
-  .version("0.2.0");
+  .version(VERSION);
 
 program
   .command("init")

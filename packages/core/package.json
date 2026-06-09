@@ -1,6 +1,6 @@
 {
   "name": "habena",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "license": "MIT",
   "description": "Habena — keep your AI agent on a short rein. MCP middleware proxy: policy guardrails, spend caps, and human approval for AI agents.",
   "author": "Vinh Hoang",
@@ -49,18 +49,15 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
     "better-sqlite3": "^11.0.0",
-    "casbin": "^5.30.0",
     "chalk": "^5.3.0",
     "commander": "^12.1.0",
     "inquirer": "^10.2.0",
-    "uuid": "^10.0.0",
     "yaml": "^2.5.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.0",
     "@types/inquirer": "^9.0.0",
     "@types/node": "^22.0.0",
-    "@types/uuid": "^10.0.0",
     "typescript": "^5.6.0",
     "vitest": "^2.1.9"
   }
