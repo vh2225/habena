@@ -23,4 +23,9 @@ describe("Nav", () => {
     render(<Nav />);
     expect(screen.getByRole("link", { name: /agents/i })).toHaveAttribute("href", "/agents");
   });
+
+  it("renders Policy as a live link (no longer 'soon')", () => {
+    render(<Nav />);
+    expect(screen.getByRole("link", { name: /policy/i })).toHaveAttribute("href", "/policy");
+  });
 });

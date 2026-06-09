@@ -9,7 +9,7 @@ const ITEMS: Item[] = [
   { label: "Approvals", href: "/approvals" },
   { label: "Agents", href: "/agents" },
   { label: "Spend", href: "/spend", soon: true },
-  { label: "Policy", href: "/policy", soon: true },
+  { label: "Policy", href: "/policy" },
 ];
 
 export function Nav() {
