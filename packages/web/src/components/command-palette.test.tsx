@@ -24,6 +24,7 @@ describe("CommandPalette", () => {
     expect(screen.queryByPlaceholderText(/jump to/i)).toBeNull();
     fireEvent.keyDown(window, { key: "k", metaKey: true });
     expect(screen.getByPlaceholderText(/jump to/i)).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: /command palette/i })).toBeInTheDocument();
     fireEvent.click(screen.getByText("Decisions"));
     expect(push).toHaveBeenCalledWith("/decisions");
   });
