@@ -76,7 +76,7 @@ Exit criteria: phase 7 five-test flow passes twice in a row from a clean `agentl
 Rationale: the lab exposes it — `agentguard logs` tailing works but there's no single glance at "what is the agent doing right now, what's it been denied for today, how much budget is left." Before asking teams to run this against real agents, we need the dashboard.
 
 Scope sketch:
-- ✅ `packages/web` live decision feed — `pnpm --filter @agentguard/web dev` at localhost:7700 (polls `audit.db` every 2s, shows last 100 decisions + allow/deny/approval totals).
+- ✅ `packages/web` live decision feed — `pnpm --filter habena-web dev` at localhost:7700 (polls `audit.db` every 2s, shows last 100 decisions + allow/deny/approval totals).
 - Per-agent budget gauge + daily spend breakdown.
 - Approval UI in the web dashboard as an alternative to the tmux `watch` pane (headless-host story).
 

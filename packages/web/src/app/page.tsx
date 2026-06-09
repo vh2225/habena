@@ -77,7 +77,7 @@ export default function Dashboard() {
     <main style={styles.main}>
       <header style={styles.header}>
         <div>
-          <h1 style={styles.h1}>AgentGuard</h1>
+          <h1 style={styles.h1}>Habena</h1>
           <div style={styles.subtitle}>local decision stream · {rows.length} rows</div>
         </div>
         <div style={styles.controls}>

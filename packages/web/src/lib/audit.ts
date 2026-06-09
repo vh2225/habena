@@ -27,8 +27,25 @@ export interface AuditSummary {
   byTool: Array<{ tool: string; count: number }>;
 }
 
+// Mirror packages/core's config-dir resolution: prefer ~/.habena, fall back
+// to a legacy ~/.agentguard so the dashboard reads the same audit.db the
+// proxy writes. (The web package can't import core, so this is duplicated.)
+function configDir(): string {
+  const override = process.env.HABENA_CONFIG_DIR ?? process.env.AGENTGUARD_CONFIG_DIR;
+  if (override && override.trim() !== "") return override.trim();
+  const habena = join(homedir(), ".habena");
+  if (existsSync(habena)) return habena;
+  const legacy = join(homedir(), ".agentguard");
+  if (existsSync(legacy)) return legacy;
+  return habena;
+}
+
 function dbPath(): string {
-  return process.env.AGENTGUARD_AUDIT_DB ?? join(homedir(), ".agentguard", "audit.db");
+  return (
+    process.env.HABENA_AUDIT_DB ??
+    process.env.AGENTGUARD_AUDIT_DB ??
+    join(configDir(), "audit.db")
+  );
 }
 
 function openReadOnly(): Database.Database | null {

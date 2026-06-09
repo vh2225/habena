@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
 export const metadata = {
-  title: "AgentGuard",
-  description: "AgentGuard local dashboard",
+  title: "Habena",
+  description: "Habena local dashboard",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
