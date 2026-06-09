@@ -63,5 +63,11 @@ export function getAgentsPath(): string {
 }
 
 export function getAuditDbPath(): string {
+  // Core is the source of truth: the proxy writes here and the dashboard
+  // reads here, so both must honor the same override env vars.
+  const override = process.env.HABENA_AUDIT_DB ?? process.env.AGENTGUARD_AUDIT_DB;
+  if (override && override.trim() !== "") {
+    return expandHome(override.trim());
+  }
   return join(getConfigDir(), "audit.db");
 }

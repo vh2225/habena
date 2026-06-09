@@ -29,10 +29,17 @@ export interface AuditSummary {
 
 // Mirror packages/core's config-dir resolution: prefer ~/.habena, fall back
 // to a legacy ~/.agentguard so the dashboard reads the same audit.db the
-// proxy writes. (The web package can't import core, so this is duplicated.)
+// proxy writes. (The web package can't import core, so this is duplicated —
+// keep the `~` expansion identical to core's expandHome().)
+function expandHome(p: string): string {
+  if (p.startsWith("~/")) return join(homedir(), p.slice(2));
+  if (p === "~") return homedir();
+  return p;
+}
+
 function configDir(): string {
   const override = process.env.HABENA_CONFIG_DIR ?? process.env.AGENTGUARD_CONFIG_DIR;
-  if (override && override.trim() !== "") return override.trim();
+  if (override && override.trim() !== "") return expandHome(override.trim());
   const habena = join(homedir(), ".habena");
   if (existsSync(habena)) return habena;
   const legacy = join(homedir(), ".agentguard");
@@ -41,11 +48,9 @@ function configDir(): string {
 }
 
 function dbPath(): string {
-  return (
-    process.env.HABENA_AUDIT_DB ??
-    process.env.AGENTGUARD_AUDIT_DB ??
-    join(configDir(), "audit.db")
-  );
+  const override = process.env.HABENA_AUDIT_DB ?? process.env.AGENTGUARD_AUDIT_DB;
+  if (override && override.trim() !== "") return expandHome(override.trim());
+  return join(configDir(), "audit.db");
 }
 
 function openReadOnly(): Database.Database | null {

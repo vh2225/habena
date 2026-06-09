@@ -30,10 +30,16 @@ describe("paths", () => {
     const savedEnv = { ...process.env };
 
     beforeEach(() => {
+      // Reset the module registry so each test imports a fresh paths.js with
+      // its module-level `warnedLegacy` flag back to false. This makes the
+      // "warns exactly once" contract independent of test ordering.
+      vi.resetModules();
       home = mkdtempSync(join(tmpdir(), "habena-home-"));
       mockHome = home;
       delete process.env.HABENA_CONFIG_DIR;
       delete process.env.AGENTGUARD_CONFIG_DIR;
+      delete process.env.HABENA_AUDIT_DB;
+      delete process.env.AGENTGUARD_AUDIT_DB;
     });
 
     afterEach(() => {
@@ -53,6 +59,17 @@ describe("paths", () => {
       expect(getConfigDir()).toBe(join(home, ".agentguard"));
       expect(warn).toHaveBeenCalledTimes(1);
       expect(String(warn.mock.calls[0][0])).toMatch(/legacy.*\.agentguard/i);
+      warn.mockRestore();
+    });
+
+    it("warns exactly once even across repeated getConfigDir() calls", async () => {
+      mkdirSync(join(home, ".agentguard"));
+      const warn = vi.spyOn(console, "error").mockImplementation(() => {});
+      const { getConfigDir } = await import("../../src/config/paths.js");
+      getConfigDir();
+      getConfigDir();
+      getConfigDir();
+      expect(warn).toHaveBeenCalledTimes(1);
       warn.mockRestore();
     });
 
@@ -89,6 +106,32 @@ describe("paths", () => {
       expect(getAgentsPath()).toBe(join(home, ".habena", "agents.yaml"));
       expect(getAuditDbPath()).toBe(join(home, ".habena", "audit.db"));
       expect(getHostPolicyPath()).toBe(join(home, ".habena", "host-policy.yaml"));
+    });
+
+    it("getAuditDbPath defaults to audit.db under the resolved config dir", async () => {
+      mkdirSync(join(home, ".habena"));
+      const { getAuditDbPath } = await import("../../src/config/paths.js");
+      expect(getAuditDbPath()).toBe(join(home, ".habena", "audit.db"));
+    });
+
+    it("getAuditDbPath honors HABENA_AUDIT_DB (with ~ expansion)", async () => {
+      process.env.HABENA_AUDIT_DB = "~/audit/decisions.db";
+      const { getAuditDbPath } = await import("../../src/config/paths.js");
+      expect(getAuditDbPath()).toBe(join(home, "audit", "decisions.db"));
+    });
+
+    it("getAuditDbPath honors AGENTGUARD_AUDIT_DB as a legacy fallback", async () => {
+      const override = join(home, "legacy-audit.db");
+      process.env.AGENTGUARD_AUDIT_DB = override;
+      const { getAuditDbPath } = await import("../../src/config/paths.js");
+      expect(getAuditDbPath()).toBe(override);
+    });
+
+    it("getAuditDbPath prefers HABENA_AUDIT_DB over AGENTGUARD_AUDIT_DB", async () => {
+      process.env.HABENA_AUDIT_DB = join(home, "new.db");
+      process.env.AGENTGUARD_AUDIT_DB = join(home, "old.db");
+      const { getAuditDbPath } = await import("../../src/config/paths.js");
+      expect(getAuditDbPath()).toBe(join(home, "new.db"));
     });
   });
 });
