@@ -14,8 +14,8 @@ See [`docs/roadmap.md`](docs/roadmap.md) for what's in flight and [`docs/specs/`
 git clone https://github.com/vh2225/agentguard.git
 cd agentguard
 pnpm install
-pnpm -F @agentguard/core build
-pnpm -F @agentguard/core exec vitest run   # should be 156/156 passing
+pnpm -F habena build
+pnpm -F habena exec vitest run   # should be 156/156 passing
 ```
 
 Requires Node 20+. pnpm v10+. Uses `pnpm.onlyBuiltDependencies` to make `better-sqlite3` install-and-build reliably across machines.
@@ -30,8 +30,8 @@ Requires Node 20+. pnpm v10+. Uses `pnpm.onlyBuiltDependencies` to make `better-
 ## Pull request checklist
 
 - [ ] New behavior has a unit test (or a clear note in the PR why not).
-- [ ] `pnpm -F @agentguard/core build` succeeds.
-- [ ] `pnpm -F @agentguard/core exec vitest run` passes all tests.
+- [ ] `pnpm -F habena build` succeeds.
+- [ ] `pnpm -F habena exec vitest run` passes all tests.
 - [ ] No lint regressions.
 - [ ] Commit message explains the *why*, not just the *what*.
 - [ ] If you touch a documented design (specs or README), update the doc in the same PR.

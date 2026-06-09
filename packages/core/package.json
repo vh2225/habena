@@ -1,13 +1,14 @@
 {
-  "name": "@agentguard/core",
+  "name": "habena",
   "version": "0.1.0",
   "license": "UNLICENSED",
-  "description": "AgentGuard MCP proxy — policy engine, cost tracking, and guardrails",
+  "description": "Habena MCP proxy — policy engine, cost tracking, and guardrails",
   "type": "module",
   "engines": {
     "node": ">=20"
   },
   "bin": {
+    "habena": "./dist/cli/index.js",
     "agentguard": "./dist/cli/index.js"
   },
   "scripts": {

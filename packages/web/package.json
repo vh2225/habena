@@ -1,8 +1,8 @@
 {
-  "name": "@agentguard/web",
+  "name": "habena-web",
   "version": "0.1.0",
   "private": true,
-  "description": "AgentGuard local web dashboard (localhost:7700)",
+  "description": "Habena local web dashboard (localhost:7700)",
   "scripts": {
     "dev": "next dev -p 7700",
     "build": "next build",
