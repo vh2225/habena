@@ -1,6 +1,8 @@
-# AgentGuard
+# Habena
 
-Open-source (MIT) MCP middleware proxy for AI agent safety — cost limits, guardrails, and human approval.
+**Habena — keep your AI agent on a short rein.** Open-source (MIT) MCP middleware proxy for AI agent safety — cost limits, guardrails, and human approval.
+
+> Renamed from AgentGuard. The `agentguard` binary and `~/.agentguard/` config dir keep working as deprecated aliases; new installs use `habena` / `~/.habena/`.
 
 ## Project Structure
 
@@ -19,7 +21,7 @@ agentguard/
 │   │   │   ├── registry/        # Official, Smithery, Glama registry clients
 │   │   │   ├── learning/        # Observe mode + policy profiler
 │   │   │   └── cli/             # CLI entrypoint + commands
-│   │   └── agentguard.default.yaml  # Default config
+│   │   └── habena.default.yaml  # Default config
 │   │
 │   └── web/                     # Local dashboard (localhost:7700)
 │       └── src/app/             # Next.js app
@@ -40,7 +42,7 @@ agentguard/
 
 ## Key Design Decisions
 
-- **MCP middleware approach**: Agents connect to AgentGuard as their MCP server. AgentGuard proxies to real MCP servers with policy enforcement.
+- **MCP middleware approach**: Agents connect to Habena as their MCP server. Habena proxies to real MCP servers with policy enforcement.
 - **Agent identity**: Two-level model — agent type (shared permissions) + instance (tracked separately for budget/audit). Process fingerprinting for verification.
 - **Policy engine**: 3-tier evaluation (hard boundaries → session overrides → user rules → defaults → implicit deny). First-match-wins **within** a tier; hard boundaries always win across tiers. Session overrides can bypass user denies but not hard boundaries. Structured decisions (not just boolean). See `packages/core/src/policy/engine.ts` header.
 - **Enforcement levels**: advisory (log only), soft_mandatory (ask human), hard_mandatory (block, no override).
@@ -60,17 +62,17 @@ pnpm build                   # Build all packages
 pnpm dev                     # Dev mode (watch)
 
 # CLI (after build)
-agentguard init              # Create ~/.agentguard/config.yaml
-agentguard start             # Start proxy (stdio)
-agentguard start --http      # Start proxy (HTTP, localhost:7600)
-agentguard watch             # Approval terminal
-agentguard logs              # Query audit logs
-agentguard learn --agent X   # Learning mode
-agentguard dashboard         # Open localhost:7700
+habena init              # Create ~/.habena/config.yaml
+habena start             # Start proxy (stdio)
+habena start --http      # Start proxy (HTTP, localhost:7600)
+habena watch             # Approval terminal
+habena logs              # Query audit logs
+habena learn --agent X   # Learning mode
+habena dashboard         # Open localhost:7700
 
 # Agent identity management
-agentguard agent add --name "openclaw" --budget-daily 30   # Register agent
-agentguard agent list                                       # List agents + instances
-agentguard agent watch openclaw                             # Live activity view
-agentguard agent profile research-bot                       # Generate policy from learning
+habena agent add --name "openclaw" --budget-daily 30   # Register agent
+habena agent list                                       # List agents + instances
+habena agent watch openclaw                             # Live activity view
+habena agent profile research-bot                       # Generate policy from learning
 ```
