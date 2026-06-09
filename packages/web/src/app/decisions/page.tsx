@@ -25,6 +25,11 @@ export default function DecisionsPage() {
   const [filters, setFilters] = useState<DecisionFilters>({ agentType: "", decision: "", mcpServer: "" });
 
   useEffect(() => {
+    const agent = new URLSearchParams(window.location.search).get("agent");
+    if (agent) setFilters((f) => ({ ...f, agentType: agent }));
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     async function tick() {
       try {

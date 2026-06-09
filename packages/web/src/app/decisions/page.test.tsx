@@ -42,6 +42,16 @@ describe("Decisions page", () => {
     expect(within(dialog).getByText(/no-writes/)).toBeInTheDocument();
   });
 
+  it("seeds the agent filter from ?agent= in the URL", async () => {
+    stub();
+    window.history.replaceState({}, "", "/decisions?agent=hermes");
+    const Page = (await import("./page")).default;
+    render(<Page />);
+    await waitFor(() => expect(screen.getByText("fs.write")).toBeInTheDocument()); // hermes row
+    expect(screen.queryByText("fs.read")).toBeNull(); // openclaw row filtered out
+    window.history.replaceState({}, "", "/"); // reset for other tests
+  });
+
   it("opens the drawer via keyboard (Enter on a focused row)", async () => {
     stub();
     const Page = (await import("./page")).default;
