@@ -33,12 +33,14 @@ function AgentCard({ a }: { a: AgentSummary }) {
         </a>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-        <Badge kind="allow">{a.decisions.allow} allowed</Badge>
-        <Badge kind="deny">{a.decisions.deny} denied</Badge>
-        <Badge kind="warn">{a.decisions.approval} approval</Badge>
-        <span className="text-[var(--color-muted-foreground)]">· {a.instancesSeen} instance{a.instancesSeen === 1 ? "" : "s"} seen</span>
-      </div>
+      {a.decisions.total > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+          <Badge kind="allow">{a.decisions.allow} allowed</Badge>
+          <Badge kind="deny">{a.decisions.deny} denied</Badge>
+          <Badge kind="warn">{a.decisions.approval} approvals</Badge>
+          <span className="text-[var(--color-muted-foreground)]">· {a.instancesSeen} instance{a.instancesSeen === 1 ? "" : "s"} seen</span>
+        </div>
+      )}
 
       {a.topTools.length > 0 && (
         <div className="mt-2 text-xs text-[var(--color-muted-foreground)]">
