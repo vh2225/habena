@@ -1,11 +1,18 @@
 # Habena default configuration
 # Copy to ~/.habena/config.yaml and customize
 
+# Call-count limits enforce today (every allowed call counts as one, per
+# agent type) — they are the runaway-loop guard. Dollar limits
+# (daily/monthly/per_session/per_request) are accepted but do NOT enforce
+# yet: per-call cost attribution hasn't shipped, so every call is $0.
 budget:
-  daily: 50       # USD
-  monthly: 500
-  per_session: 20
-  per_request: 5
+  calls:
+    per_minute: 120   # rolling 60s window
+    per_day: 5000     # calendar day
+  # daily: 50         # USD — once cost attribution ships
+  # monthly: 500
+  # per_session: 20
+  # per_request: 5
   alert_at: [50, 80]  # percent thresholds
   on_exceed: deny
 

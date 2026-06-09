@@ -41,4 +41,11 @@ export class CostTracker {
       .filter((r) => r.agentType === agentType && r.timestamp >= cutoff)
       .reduce((sum, r) => sum + r.cost, 0);
   }
+
+  /** Allowed-call count for an agent type since `since` (each record = one call). */
+  countCallsSince(agentType: string, since: Date): number {
+    return this.records.filter(
+      (r) => r.agentType === agentType && r.timestamp >= since
+    ).length;
+  }
 }

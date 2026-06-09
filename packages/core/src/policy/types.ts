@@ -28,6 +28,16 @@ export interface BudgetConfig {
   monthly?: number;
   per_session?: number;
   per_request?: number;
+  /**
+   * Call-count limits (runaway-loop guard). Unlike the dollar limits above —
+   * which only bite once cost attribution exists — these enforce TODAY:
+   * every allowed call counts as one, regardless of cost.
+   */
+  calls?: {
+    per_minute?: number; // rolling 60s window
+    per_hour?: number;   // rolling 60min window
+    per_day?: number;    // calendar day, matching the dollar `daily` limit
+  };
   alert_at?: number[];
   on_exceed?: "deny" | "warn" | "require_approval";
 }

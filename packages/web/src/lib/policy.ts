@@ -12,6 +12,10 @@ export interface BudgetView {
   monthly: number | null;
   perSession: number | null;
   perRequest: number | null;
+  /** Call-count limits (runaway-loop guard) — the budget that enforces today. */
+  callsPerMinute: number | null;
+  callsPerHour: number | null;
+  callsPerDay: number | null;
   onExceed: string | null;
   alertAt: number[] | null;
 }

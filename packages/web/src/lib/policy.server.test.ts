@@ -12,6 +12,8 @@ describe("parsePolicy", () => {
       "budget:",
       "  daily: 50",
       "  on_exceed: deny",
+      "  calls:",
+      "    per_minute: 120",
       "rules:",
       "  - match: { tool: read_file }",
       "    action: allow",
@@ -33,7 +35,7 @@ describe("parsePolicy", () => {
     ].join("\n");
     const p = parsePolicy(text);
     expect(p.configured).toBe(true);
-    expect(p.budget).toMatchObject({ daily: 50, onExceed: "deny" });
+    expect(p.budget).toMatchObject({ daily: 50, onExceed: "deny", callsPerMinute: 120, callsPerDay: null });
     expect(p.rules.map((r) => r.action)).toEqual(["allow", "require_approval"]);
     expect(p.rules[0].index).toBe(0);
     expect(p.rules[1].enforcement).toBe("hard_mandatory");

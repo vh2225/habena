@@ -48,6 +48,32 @@ export class BudgetEnforcer {
       }
     }
 
+    // Call-count limits: the runaway-loop guard. These enforce regardless of
+    // cost attribution — every allowed call counts as one.
+    const calls = this.budget.calls;
+    if (calls) {
+      if (calls.per_minute !== undefined) {
+        const n = this.tracker.countCallsSince(agentType, new Date(Date.now() - 60_000));
+        if (n >= calls.per_minute) {
+          return this.denial(`Exceeds rate limit: ${n} calls in the last minute (limit ${calls.per_minute}/min)`);
+        }
+      }
+      if (calls.per_hour !== undefined) {
+        const n = this.tracker.countCallsSince(agentType, new Date(Date.now() - 3_600_000));
+        if (n >= calls.per_hour) {
+          return this.denial(`Exceeds rate limit: ${n} calls in the last hour (limit ${calls.per_hour}/hr)`);
+        }
+      }
+      if (calls.per_day !== undefined) {
+        const midnight = new Date();
+        midnight.setHours(0, 0, 0, 0);
+        const n = this.tracker.countCallsSince(agentType, midnight);
+        if (n >= calls.per_day) {
+          return this.denial(`Exceeds call budget: ${n} calls today (limit ${calls.per_day}/day)`);
+        }
+      }
+    }
+
     return null;
   }
 

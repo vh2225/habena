@@ -70,6 +70,42 @@ describe("BudgetEnforcer", () => {
     expect(decision?.reason).toContain("daily");
   });
 
+  it("denies when the per-day call count is exhausted", () => {
+    // Call-count limits are the runaway-loop guard that works without cost
+    // attribution: every allowed call is one record, regardless of cost.
+    const enforcer = new BudgetEnforcer(tracker, { calls: { per_day: 2 } });
+    const call = { agentType: "openclaw", instanceId: "i1", proposedCost: 0 };
+    const rec = () => tracker.record({ agentType: "openclaw", instanceId: "i1", tool: "x", cost: 0, timestamp: new Date() });
+
+    expect(enforcer.check(call)).toBeNull();
+    rec();
+    expect(enforcer.check(call)).toBeNull();
+    rec();
+    const decision = enforcer.check(call);
+    expect(decision?.action).toBe("deny");
+    expect(decision?.enforcement).toBe("hard_mandatory");
+    expect(decision?.reason).toMatch(/2 calls.*day/);
+  });
+
+  it("per-minute call limit uses a rolling window", () => {
+    const enforcer = new BudgetEnforcer(tracker, { calls: { per_minute: 1 } });
+    const call = { agentType: "openclaw", instanceId: "i1", proposedCost: 0 };
+
+    // An old call outside the window doesn't count.
+    tracker.record({ agentType: "openclaw", instanceId: "i1", tool: "x", cost: 0, timestamp: new Date(Date.now() - 90_000) });
+    expect(enforcer.check(call)).toBeNull();
+
+    tracker.record({ agentType: "openclaw", instanceId: "i1", tool: "x", cost: 0, timestamp: new Date() });
+    expect(enforcer.check(call)?.action).toBe("deny");
+  });
+
+  it("call limits are per agent type", () => {
+    const enforcer = new BudgetEnforcer(tracker, { calls: { per_hour: 1 } });
+    tracker.record({ agentType: "openclaw", instanceId: "i1", tool: "x", cost: 0, timestamp: new Date() });
+    expect(enforcer.check({ agentType: "openclaw", instanceId: "i1", proposedCost: 0 })?.action).toBe("deny");
+    expect(enforcer.check({ agentType: "research-bot", instanceId: "i2", proposedCost: 0 })).toBeNull();
+  });
+
   it("returns null when no budget configured", () => {
     const enforcer = new BudgetEnforcer(tracker, {});
     const decision = enforcer.check({

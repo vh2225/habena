@@ -8,13 +8,15 @@ import type { AgentGuardConfig } from "../../policy/types.js";
 function buildDefaultConfig(): string {
   const cautious = getPreset("cautious")!;
   const config: AgentGuardConfig = {
+    // Call-count limits are the runaway-loop guard and enforce today.
+    // Dollar limits (daily/monthly/per_session/per_request) are supported in
+    // the schema but only take effect once cost attribution ships — so the
+    // generated config doesn't set them (see the comment block in the yaml).
     budget: {
-      daily: 50,
-      monthly: 500,
-      per_session: 20,
-      per_request: 5,
-      alert_at: [50, 80],
-      on_exceed: "deny",
+      calls: {
+        per_minute: 120,
+        per_day: 5000,
+      },
     },
     rules: cautious.rules,
   };
@@ -27,6 +29,12 @@ function buildDefaultConfig(): string {
     "#",
     "# Change postures any time with:   habena policy preset <name>",
     "# Preview first:                    habena policy preset <name> --dry-run",
+    "",
+    "# Budgets: the call-count limits below are a runaway-loop guard and",
+    "# enforce today (every allowed call counts as one, per agent type).",
+    "# Dollar limits (daily/monthly/per_session/per_request) are accepted",
+    "# in this block but do NOT enforce yet — per-call cost attribution",
+    "# hasn't shipped, so every call is currently $0.",
     "",
   ].join("\n");
   return header + stringifyYaml(config) + TELEGRAM_TEMPLATE + THREAT_TEMPLATE;

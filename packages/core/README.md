@@ -109,7 +109,7 @@ Every allow, deny, and held call is written to the SQLite audit log, queryable w
 
 **Early, working, single-operator tested.** Habena is public because it's more useful to others than sitting on a laptop, not because it's production-grade. It's MIT licensed with no paid tier, no gated features, and no open-core split. The npm package is not published yet — install from source for now.
 
-Today: stdio MCP transport only; approvals via CLI/IPC or one-tap Telegram; a v0 read-only web decision stream.
+Today: stdio MCP transport only; approvals via CLI/IPC, one-tap Telegram, or the local web dashboard (live decision stream, approvals queue, agents, policy viewer, and a setup wizard at `localhost:7700`).
 
 > **Local heuristic threat detection works today.** Habena scans downstream MCP
 > tools for tool-poisoning (suspicious tool-description patterns), rug-pulls
@@ -120,9 +120,16 @@ Today: stdio MCP transport only; approvals via CLI/IPC or one-tap Telegram; a v0
 > block in `config.yaml` (`off` | `warn` | `require_approval` | `block`; the
 > re-scan cadence via `rescan_interval`, default `10m`).
 
+> **Runaway-loop guard works today; dollar budgets don't yet.** The
+> `budget.calls` limits (`per_minute` / `per_hour` / `per_day`) count every
+> allowed tool call per agent type and hard-deny past the limit — that's the
+> cap that stops a looping agent. Dollar limits (`daily`, `monthly`,
+> `per_session`, `per_request`) are accepted in config but don't enforce yet:
+> per-call cost attribution hasn't shipped, so every call is currently $0.
+
 Roadmap:
 
-- **Onboarding wizard + dashboard** — guided setup and a real approval/config UI.
+- **Cost attribution** — real per-call dollar costs, so the `budget` dollar limits enforce (call-count limits already do).
 - **Cloud-backed threat intel** — shared signatures for known-bad servers, layered on the local heuristic detection that already ships.
 - **Mac guarded-sandbox recipe** — a documented, locked-down setup for running an assistant under Habena on macOS.
 
