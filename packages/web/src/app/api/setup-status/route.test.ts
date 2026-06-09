@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("@/lib/setup-status", () => ({ readSetupStatus: vi.fn() }));
+vi.mock("@/lib/setup-status.server", () => ({ readSetupStatus: vi.fn() }));
 
 import { GET } from "./route";
-import { readSetupStatus } from "@/lib/setup-status";
+import { readSetupStatus } from "@/lib/setup-status.server";
 
 const mockRead = readSetupStatus as unknown as ReturnType<typeof vi.fn>;
 beforeEach(() => vi.clearAllMocks());

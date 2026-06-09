@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { readSetupStatus, type SetupStatus } from "@/lib/setup-status";
+import { readSetupStatus } from "@/lib/setup-status.server";
+import type { SetupStatus } from "@/lib/setup-status";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
