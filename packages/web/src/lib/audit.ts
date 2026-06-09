@@ -1,7 +1,7 @@
 import Database from "better-sqlite3";
 import { existsSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
+import { configDir, expandHome } from "./config-dir";
 
 export interface DecisionRow {
   id: number;
@@ -25,26 +25,6 @@ export interface AuditSummary {
   approvalPending: number;
   byAgent: Array<{ agentType: string; count: number }>;
   byTool: Array<{ tool: string; count: number }>;
-}
-
-// Mirror packages/core's config-dir resolution: prefer ~/.habena, fall back
-// to a legacy ~/.agentguard so the dashboard reads the same audit.db the
-// proxy writes. (The web package can't import core, so this is duplicated —
-// keep the `~` expansion identical to core's expandHome().)
-function expandHome(p: string): string {
-  if (p.startsWith("~/")) return join(homedir(), p.slice(2));
-  if (p === "~") return homedir();
-  return p;
-}
-
-function configDir(): string {
-  const override = process.env.HABENA_CONFIG_DIR ?? process.env.AGENTGUARD_CONFIG_DIR;
-  if (override && override.trim() !== "") return expandHome(override.trim());
-  const habena = join(homedir(), ".habena");
-  if (existsSync(habena)) return habena;
-  const legacy = join(homedir(), ".agentguard");
-  if (existsSync(legacy)) return legacy;
-  return habena;
 }
 
 function dbPath(): string {

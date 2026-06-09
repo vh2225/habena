@@ -2,7 +2,6 @@ import { createConnection } from "node:net";
 import type { Duplex } from "node:stream";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { homedir } from "node:os";
 import {
   encode,
   decodeLines,
@@ -11,23 +10,10 @@ import {
   type ApprovalChoice,
   type SerializedPendingApproval,
 } from "./approval-protocol";
+import { configDir } from "./config-dir";
 
 const SOCKET_FILE = "agentguard.sock";
 
-function expandHome(p: string): string {
-  if (p.startsWith("~/")) return join(homedir(), p.slice(2));
-  if (p === "~") return homedir();
-  return p;
-}
-function configDir(): string {
-  const override = process.env.HABENA_CONFIG_DIR ?? process.env.AGENTGUARD_CONFIG_DIR;
-  if (override && override.trim() !== "") return expandHome(override.trim());
-  const habena = join(homedir(), ".habena");
-  if (existsSync(habena)) return habena;
-  const legacy = join(homedir(), ".agentguard");
-  if (existsSync(legacy)) return legacy;
-  return habena;
-}
 export function socketPath(): string {
   return join(configDir(), SOCKET_FILE);
 }
@@ -58,7 +44,7 @@ function roundTrip<T>(
       clearTimeout(timer);
       conn.removeAllListeners("data");
       conn.removeAllListeners("error");
-      try { (conn as any).end?.(); } catch { /* noop */ }
+      try { conn.end(); } catch { /* noop */ }
     };
     const timer = setTimeout(() => {
       cleanup();
