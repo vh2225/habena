@@ -8,6 +8,7 @@ const PAGES = [
   { label: "Decisions", href: "/decisions" },
   { label: "Approvals", href: "/approvals" },
   { label: "Agents", href: "/agents" },
+  { label: "Spend", href: "/spend" },
   { label: "Policy", href: "/policy" },
   { label: "Setup wizard", href: "/welcome" },
 ];

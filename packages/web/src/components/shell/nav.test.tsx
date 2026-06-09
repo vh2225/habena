@@ -13,10 +13,9 @@ describe("Nav", () => {
     expect(active).toHaveAttribute("aria-current", "page");
   });
 
-  it("renders not-yet-built items as disabled (not links)", () => {
+  it("renders Spend as a live link (no longer 'soon')", () => {
     render(<Nav />);
-    expect(screen.queryByRole("link", { name: /spend/i })).toBeNull();
-    expect(screen.getByText(/spend/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /spend/i })).toHaveAttribute("href", "/spend");
   });
 
   it("renders Agents as a live link (no longer 'soon')", () => {

@@ -8,7 +8,7 @@ const ITEMS: Item[] = [
   { label: "Decisions", href: "/decisions" },
   { label: "Approvals", href: "/approvals" },
   { label: "Agents", href: "/agents" },
-  { label: "Spend", href: "/spend", soon: true },
+  { label: "Spend", href: "/spend" },
   { label: "Policy", href: "/policy" },
 ];
 

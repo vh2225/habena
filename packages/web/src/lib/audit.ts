@@ -162,6 +162,91 @@ export function agentActivity(): AgentActivity[] {
   }
 }
 
+export interface SpendSummary {
+  /** Allowed calls since local midnight. */
+  callsToday: number;
+  /** Sum of declared-pricing cost (USD) since local midnight — NOT measured LLM spend. */
+  costToday: number;
+  callsLastHour: number;
+  byAgent: Array<{ agentType: string; calls: number; cost: number }>;
+  byTool: Array<{ tool: string; calls: number; cost: number }>;
+  /** 24 buckets, oldest first; hourIso is the UTC hour prefix (YYYY-MM-DDTHH). */
+  hourly: Array<{ hourIso: string; calls: number; cost: number }>;
+}
+
+function emptySpend(): SpendSummary {
+  return { callsToday: 0, costToday: 0, callsLastHour: 0, byAgent: [], byTool: [], hourly: emptyHourly() };
+}
+
+function emptyHourly(): SpendSummary["hourly"] {
+  const out: SpendSummary["hourly"] = [];
+  const now = Date.now();
+  for (let i = 23; i >= 0; i--) {
+    const hourIso = new Date(now - i * 3_600_000).toISOString().slice(0, 13);
+    out.push({ hourIso, calls: 0, cost: 0 });
+  }
+  return out;
+}
+
+/** Activity + declared-pricing spend, from allowed audit entries only. */
+export function spendSummary(): SpendSummary {
+  const db = openReadOnly();
+  if (!db) return emptySpend();
+  try {
+    const midnight = new Date();
+    midnight.setHours(0, 0, 0, 0);
+    const midnightIso = midnight.toISOString();
+    const hourAgoIso = new Date(Date.now() - 3_600_000).toISOString();
+    const dayAgoIso = new Date(Date.now() - 24 * 3_600_000).toISOString();
+
+    const today = db
+      .prepare(`SELECT COUNT(*) c, COALESCE(SUM(cost), 0) s FROM audit_entries WHERE decision = 'allow' AND timestamp >= ?`)
+      .get(midnightIso) as { c: number; s: number };
+    const lastHour = db
+      .prepare(`SELECT COUNT(*) c FROM audit_entries WHERE decision = 'allow' AND timestamp >= ?`)
+      .get(hourAgoIso) as { c: number };
+    const byAgent = db
+      .prepare(
+        `SELECT agent_type, COUNT(*) c, COALESCE(SUM(cost), 0) s FROM audit_entries
+         WHERE decision = 'allow' AND timestamp >= ? GROUP BY agent_type ORDER BY c DESC LIMIT 10`
+      )
+      .all(midnightIso) as Array<{ agent_type: string; c: number; s: number }>;
+    const byTool = db
+      .prepare(
+        `SELECT tool, COUNT(*) c, COALESCE(SUM(cost), 0) s FROM audit_entries
+         WHERE decision = 'allow' AND timestamp >= ? GROUP BY tool ORDER BY c DESC LIMIT 10`
+      )
+      .all(midnightIso) as Array<{ tool: string; c: number; s: number }>;
+    const hourRows = db
+      .prepare(
+        `SELECT substr(timestamp, 1, 13) h, COUNT(*) c, COALESCE(SUM(cost), 0) s FROM audit_entries
+         WHERE decision = 'allow' AND timestamp >= ? GROUP BY h`
+      )
+      .all(dayAgoIso) as Array<{ h: string; c: number; s: number }>;
+
+    const hourly = emptyHourly();
+    const byHour = new Map(hourRows.map((r) => [r.h, r]));
+    for (const bucket of hourly) {
+      const row = byHour.get(bucket.hourIso);
+      if (row) {
+        bucket.calls = row.c;
+        bucket.cost = row.s;
+      }
+    }
+
+    return {
+      callsToday: today.c,
+      costToday: today.s,
+      callsLastHour: lastHour.c,
+      byAgent: byAgent.map((r) => ({ agentType: r.agent_type, calls: r.c, cost: r.s })),
+      byTool: byTool.map((r) => ({ tool: r.tool, calls: r.c, cost: r.s })),
+      hourly,
+    };
+  } finally {
+    db.close();
+  }
+}
+
 export function dbExists(): boolean {
   return existsSync(dbPath());
 }
