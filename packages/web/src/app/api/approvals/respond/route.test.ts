@@ -29,6 +29,18 @@ describe("POST /api/approvals/respond", () => {
     expect(res.status).toBe(400);
   });
 
+  it("rejects a null JSON body with 400 (no crash)", async () => {
+    const res = await POST(req(null));
+    expect(res.status).toBe(400);
+    expect(mockRespond).not.toHaveBeenCalled();
+  });
+
+  it("rejects a non-object (array) body with 400", async () => {
+    const res = await POST(req([]));
+    expect(res.status).toBe(400);
+    expect(mockRespond).not.toHaveBeenCalled();
+  });
+
   it("forwards a valid deny and returns ok", async () => {
     mockRespond.mockResolvedValue({ ok: true });
     const res = await POST(req({ id: "abc", choice: "deny" }));
