@@ -16,7 +16,7 @@
  *     host). A user config cannot weaken a host-policy deny.
  */
 
-import { matches, type ToolCallContext } from "./matcher.js";
+import { matches, fieldsMatch, type ToolCallContext } from "./matcher.js";
 import { HARD_BOUNDARIES, DEFAULTS } from "./built-in-rules.js";
 import type { Rule } from "./types.js";
 import type {
@@ -103,7 +103,7 @@ export class PolicyEngine {
   }
 
   private toDecision(rule: Rule, tier: RuleTier, call: ToolCallContext): PolicyDecision {
-    const action: ActionType = normalizeAction(rule.action);
+    const action: ActionType = resolveAction(rule, call);
     const enforcement: EnforcementLevel = rule.enforcement ?? "soft_mandatory";
     const risk_level: RiskLevel = enforcement === "hard_mandatory" ? "critical" : "medium";
 
@@ -118,12 +118,32 @@ export class PolicyEngine {
   }
 }
 
-function normalizeAction(action: Rule["action"]): ActionType {
-  // deny_unless / deny_if are treated as plain deny in Phase 1 (condition
-  // evaluation is deferred to Phase 2 — the engine does not yet interpret
-  // the `condition` field on rules).
-  if (action === "deny_unless" || action === "deny_if") return "deny";
-  return action;
+/** Condition fields the matcher can actually evaluate at call time. The
+ * reserved Phase-2 fields (glama_grade, url_not_in, body_contains_file_content)
+ * are NOT here: a condition using them cannot be evaluated yet. */
+const EVALUABLE_CONDITION_FIELDS = new Set([
+  "tool", "tool_tag", "args_contain", "command_matches", "path_starts_with", "registry",
+]);
+
+/**
+ * Resolves conditional actions against the call. The `condition` block uses
+ * the same field vocabulary as `match`:
+ *   - deny_unless: allow when the condition holds, deny otherwise.
+ *   - deny_if:     deny when the condition holds, allow otherwise.
+ * A matched conditional rule always produces a decision (first-match-wins
+ * still applies) — it never falls through to later rules.
+ * Fail closed (deny) when the condition is missing, empty, or contains any
+ * field the matcher cannot evaluate — partially evaluating a condition would
+ * make deny_unless fail open.
+ */
+function resolveAction(rule: Rule, call: ToolCallContext): ActionType {
+  if (rule.action !== "deny_unless" && rule.action !== "deny_if") return rule.action;
+  const cond = rule.condition;
+  if (!cond || Object.keys(cond).length === 0) return "deny";
+  if (Object.keys(cond).some((k) => !EVALUABLE_CONDITION_FIELDS.has(k))) return "deny";
+  const holds = fieldsMatch(cond, call);
+  if (rule.action === "deny_unless") return holds ? "allow" : "deny";
+  return holds ? "deny" : "allow";
 }
 
 const ACTION_STRICTNESS: Record<ActionType, number> = {

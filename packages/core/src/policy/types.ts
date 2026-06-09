@@ -17,7 +17,8 @@ export interface Rule {
   match: MatchCondition;
   action: "allow" | "deny" | "require_approval" | "deny_unless" | "deny_if";
   enforcement?: "advisory" | "soft_mandatory" | "hard_mandatory";
-  condition?: Record<string, unknown>;
+  /** For deny_unless / deny_if: same field vocabulary as `match`. */
+  condition?: MatchCondition;
   reason?: string;
   timeout?: string;  // e.g., "5m"
 }

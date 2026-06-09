@@ -1,4 +1,5 @@
-import type { Rule } from "./types.js";
+import { homedir } from "node:os";
+import type { Rule, MatchCondition } from "./types.js";
 
 export interface ToolCallContext {
   tool: string;
@@ -17,13 +18,20 @@ export interface ToolCallContext {
  *   NOTE: Substring matching on serialized JSON can cause false positives for very short needles
  *   that overlap with key names. Rule authors should use specific needles like "rm -rf", not "rm".
  * - `command_matches`: ANY needle must be a substring of args.command (OR within the field).
- * - `path_starts_with`: ANY prefix must match args.path (OR within the field).
+ * - `path_starts_with`: ANY prefix must match args.path (OR within the field). `~` prefixes
+ *   are expanded against the home directory, since args.path arrives absolute.
  * - Fields not used in Phase 1 (body_contains_file_content, url_not_in, glama_grade) are ignored;
  *   they are reserved for Phase 2.
  */
 export function matches(rule: Rule, call: ToolCallContext): boolean {
-  const m = rule.match;
+  return fieldsMatch(rule.match, call);
+}
 
+/**
+ * Field-level predicate shared by `match` blocks and conditional-rule
+ * `condition` blocks (deny_unless / deny_if) — both use the same vocabulary.
+ */
+export function fieldsMatch(m: MatchCondition, call: ToolCallContext): boolean {
   if (m.tool !== undefined && !matchToolName(m.tool, call.tool)) return false;
   if (m.tool_tag !== undefined && m.tool_tag !== call.tool_tag) return false;
   if (m.registry !== undefined && m.registry !== call.registry) return false;
@@ -40,10 +48,15 @@ export function matches(rule: Rule, call: ToolCallContext): boolean {
 
   if (m.path_starts_with) {
     const path = String(call.args.path ?? "");
-    if (!m.path_starts_with.some((prefix) => path.startsWith(prefix))) return false;
+    if (!m.path_starts_with.some((prefix) => path.startsWith(expandTilde(prefix)))) return false;
   }
 
   return true;
+}
+
+function expandTilde(prefix: string): string {
+  if (prefix === "~" || prefix.startsWith("~/")) return homedir() + prefix.slice(1);
+  return prefix;
 }
 
 function matchToolName(pattern: string, tool: string): boolean {

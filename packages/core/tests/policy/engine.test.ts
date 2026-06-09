@@ -126,10 +126,10 @@ describe("PolicyEngine", () => {
     expect(denyFirst.evaluate(call).action).toBe("deny");
   });
 
-  it("normalizes deny_unless and deny_if rules to plain deny", () => {
+  it("conditional rules without a condition fail closed (deny)", () => {
     const engine = new PolicyEngine([
       { match: { tool: "filesystem_write" }, action: "deny_unless" },
-      { match: { tool: "http_post" }, action: "deny_if" },
+      { match: { tool: "http_post" }, action: "deny_if", condition: {} },
     ]);
     expect(
       engine.evaluate({ tool: "filesystem_write", args: { path: "/etc" } }).action
@@ -137,5 +137,58 @@ describe("PolicyEngine", () => {
     expect(
       engine.evaluate({ tool: "http_post", args: { url: "https://evil.example" } }).action
     ).toBe("deny");
+  });
+
+  it("deny_unless allows when the condition holds and denies when it fails", () => {
+    const engine = new PolicyEngine([
+      {
+        match: { tool: "filesystem_write" },
+        action: "deny_unless",
+        condition: { path_starts_with: ["/tmp", "~/workspace"] },
+        reason: "writes restricted to workspace and tmp",
+      },
+    ]);
+    expect(
+      engine.evaluate({ tool: "filesystem_write", args: { path: "/tmp/scratch.txt" } }).action
+    ).toBe("allow");
+    expect(
+      engine.evaluate({ tool: "filesystem_write", args: { path: "/etc/passwd" } }).action
+    ).toBe("deny");
+  });
+
+  it("conditional rules with unevaluable (reserved) condition fields fail closed", () => {
+    // url_not_in / body_contains_file_content are Phase-2 fields the matcher
+    // ignores. Silently dropping them would make deny_unless fail OPEN.
+    const engine = new PolicyEngine([
+      {
+        match: { tool: "http_post" },
+        action: "deny_unless",
+        condition: { url_not_in: "~/.habena/trusted_domains.txt" } as any,
+      },
+      {
+        match: { tool: "http_get" },
+        action: "deny_if",
+        condition: { path_starts_with: ["/tmp"], body_contains_file_content: true } as any,
+      },
+    ]);
+    expect(engine.evaluate({ tool: "http_post", args: { url: "https://x.example" } }).action).toBe("deny");
+    expect(engine.evaluate({ tool: "http_get", args: { path: "/etc" } }).action).toBe("deny");
+  });
+
+  it("deny_if denies when the condition holds and allows otherwise", () => {
+    const engine = new PolicyEngine([
+      {
+        match: { tool: "http_post" },
+        action: "deny_if",
+        condition: { args_contain: ["api_key"] },
+        reason: "no credentials in outbound posts",
+      },
+    ]);
+    expect(
+      engine.evaluate({ tool: "http_post", args: { body: "api_key=secret" } }).action
+    ).toBe("deny");
+    expect(
+      engine.evaluate({ tool: "http_post", args: { body: "hello" } }).action
+    ).toBe("allow");
   });
 });

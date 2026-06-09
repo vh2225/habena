@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { matches } from "../../src/policy/matcher.js";
 import type { Rule } from "../../src/policy/types.js";
 
@@ -96,5 +98,16 @@ describe("matcher", () => {
     expect(
       matches(rule, { tool: "filesystem_write", args: { path: "/etc/passwd" } })
     ).toBe(false);
+  });
+
+  it("expands ~ prefixes in path_starts_with against the home directory", () => {
+    const rule: Rule = {
+      match: { tool: "filesystem_write", path_starts_with: ["~/workspace"] },
+      action: "allow",
+    };
+    const inside = join(homedir(), "workspace", "notes.md");
+    const outside = join(homedir(), "downloads", "notes.md");
+    expect(matches(rule, { tool: "filesystem_write", args: { path: inside } })).toBe(true);
+    expect(matches(rule, { tool: "filesystem_write", args: { path: outside } })).toBe(false);
   });
 });
