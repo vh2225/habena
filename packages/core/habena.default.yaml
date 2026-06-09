@@ -62,3 +62,13 @@ approval:
   timeout: "5m"
   timeout_action: deny
   batch_similar: true
+
+  # --- Phone-tap approvals (Telegram) — optional, disabled by default ---
+  # Get one-tap Allow/Deny on your phone when a tool call hits a
+  # `require_approval` rule. No extra process — just config.
+  # Setup (60s): https://github.com/vh2225/agentguard/blob/main/docs/approval-channels.md
+  #
+  # channels:
+  #   telegram:
+  #     token_env: HABENA_TELEGRAM_TOKEN   # keeps the bot token out of this file
+  #     owner_id: 123456789                # your numeric Telegram user id

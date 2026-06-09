@@ -29,8 +29,27 @@ function buildDefaultConfig(): string {
     "# Preview first:                    habena policy preset <name> --dry-run",
     "",
   ].join("\n");
-  return header + stringifyYaml(config);
+  return header + stringifyYaml(config) + TELEGRAM_TEMPLATE;
 }
+
+// Commented-out template that makes the phone-tap approval channel discoverable
+// without enabling it. Uncomment + fill in to get one-tap Allow/Deny on your
+// phone when an agent hits a `require_approval` rule. Setup guide:
+//   https://github.com/vh2225/agentguard/blob/main/docs/approval-channels.md
+const TELEGRAM_TEMPLATE = [
+  "",
+  "# --- Phone-tap approvals (Telegram) — optional, disabled by default ---",
+  "# Get one-tap Allow/Deny on your phone when a tool call hits a",
+  "# `require_approval` rule. No extra process — just config.",
+  "# Setup (60s): https://github.com/vh2225/agentguard/blob/main/docs/approval-channels.md",
+  "#",
+  "# approval:",
+  "#   channels:",
+  "#     telegram:",
+  "#       token_env: HABENA_TELEGRAM_TOKEN   # keeps the bot token out of this file",
+  "#       owner_id: 123456789                # your numeric Telegram user id",
+  "",
+].join("\n");
 
 const DEFAULT_AGENTS = `# Registered agents
 # Add agents with: habena agent add --name <name> --budget-daily <amount>
@@ -63,4 +82,9 @@ export async function initCommand(options: { force?: boolean } = {}): Promise<vo
   console.log(chalk.cyan("\nNext steps:"));
   console.log("  habena agent add --name openclaw --budget-daily 30");
   console.log("  habena start");
+  console.log(
+    chalk.gray(
+      "\nPhone-tap approvals: uncomment the telegram block in config.yaml — see docs/approval-channels.md"
+    )
+  );
 }

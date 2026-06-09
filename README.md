@@ -97,17 +97,22 @@ habena logs --decision require_approval
 
 Every allow, deny, and held call is written to the SQLite audit log, queryable with `habena logs` (filter with `--agent`, `--last 24h`, `--decision`, `--limit`).
 
-> **Phone-tap approvals (Telegram one-tap Allow/Deny) are coming next.** Today, approvals come through the `habena watch` CLI (or raw IPC) — not yet a chat channel.
+> **Phone-tap approvals work today.** Point Habena at a Telegram bot and a held
+> call buzzes your phone: an agent hits a `require_approval` rule → your phone
+> buzzes → tap **⛔ Deny** → the call is blocked and audited. Only your own
+> chat id can approve, and the choices are Allow-once / Deny. Setup is a few
+> lines of config — see
+> [docs/approval-channels.md](https://github.com/vh2225/agentguard/blob/main/docs/approval-channels.md).
+> The `habena watch` CLI (and raw IPC) still work alongside it.
 
 ## Status & roadmap
 
 **Early, working, single-operator tested.** Habena is public because it's more useful to others than sitting on a laptop, not because it's production-grade. It's MIT licensed with no paid tier, no gated features, and no open-core split. The npm package is not published yet — install from source for now.
 
-Today: stdio MCP transport only; approvals via CLI/IPC; a v0 read-only web decision stream.
+Today: stdio MCP transport only; approvals via CLI/IPC or one-tap Telegram; a v0 read-only web decision stream.
 
 Roadmap:
 
-- **Phone-tap approvals** — one-tap Allow/Deny from Telegram.
 - **Onboarding wizard + dashboard** — guided setup and a real approval/config UI.
 - **MCP threat firewall** — detection for rug-pulls and tool-poisoning (tool-description drift, known-bad servers).
 - **Mac guarded-sandbox recipe** — a documented, locked-down setup for running an assistant under Habena on macOS.
