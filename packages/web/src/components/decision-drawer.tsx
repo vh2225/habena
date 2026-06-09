@@ -14,8 +14,14 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 
 export function DecisionDrawer({ row, onClose }: { row: DecisionRow | null; onClose: () => void }) {
   const panelRef = useRef<HTMLDivElement>(null);
+  // Focus the panel on open and return focus to the triggering element on close.
+  // Deliberately NOT implementing a focus trap or body-scroll-lock: acceptable for a
+  // localhost single-user dashboard (and avoids pulling in Radix for one drawer).
   useEffect(() => {
-    if (row) panelRef.current?.focus();
+    if (!row) return;
+    const prev = document.activeElement as HTMLElement | null;
+    panelRef.current?.focus();
+    return () => { prev?.focus?.(); };
   }, [row]);
   if (!row) return null;
   return (
@@ -36,7 +42,7 @@ export function DecisionDrawer({ row, onClose }: { row: DecisionRow | null; onCl
           <button onClick={onClose} className="text-[var(--color-muted-foreground)] hover:text-[var(--color-fg)]" aria-label="Close">✕</button>
         </div>
         <div className="mb-3"><Badge kind={decisionKind(row.decision)}>{row.decision}</Badge></div>
-        <Field label="Agent" value={`${row.agentType} · ${row.instanceId.slice(0, 8)}`} />
+        <Field label="Agent" value={`${row.agentType} · ${(row.instanceId ?? "").slice(0, 8)}`} />
         <Field label="Tool" value={row.tool} />
         <Field label="Server" value={row.mcpServer} />
         <Field label="Tier" value={row.tier} />

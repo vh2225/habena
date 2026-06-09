@@ -27,7 +27,7 @@ describe("Decisions page", () => {
     const Page = (await import("./page")).default;
     render(<Page />);
     await waitFor(() => expect(screen.getByText("fs.read")).toBeInTheDocument());
-    fireEvent.change(screen.getByLabelText(/decision/i), { target: { value: "deny" } });
+    fireEvent.change(screen.getByLabelText("decision"), { target: { value: "deny" } });
     expect(screen.queryByText("fs.read")).toBeNull();
     expect(screen.getByText("fs.write")).toBeInTheDocument();
   });
@@ -38,6 +38,17 @@ describe("Decisions page", () => {
     render(<Page />);
     await waitFor(() => expect(screen.getByText("fs.write")).toBeInTheDocument());
     fireEvent.click(screen.getByText("fs.write"));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText(/no-writes/)).toBeInTheDocument();
+  });
+
+  it("opens the drawer via keyboard (Enter on a focused row)", async () => {
+    stub();
+    const Page = (await import("./page")).default;
+    render(<Page />);
+    await waitFor(() => expect(screen.getByText("fs.write")).toBeInTheDocument());
+    const row = screen.getByRole("button", { name: /view decision detail for fs\.write/i });
+    fireEvent.keyDown(row, { key: "Enter" });
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText(/no-writes/)).toBeInTheDocument();
   });

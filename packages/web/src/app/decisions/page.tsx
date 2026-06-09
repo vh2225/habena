@@ -119,8 +119,19 @@ export default function DecisionsPage() {
               <tr><td colSpan={columns.length} className="px-3 py-8 text-center text-[var(--color-muted-foreground)]">No decisions yet — start your agent and tool calls stream here.</td></tr>
             )}
             {table.getRowModel().rows.map((r) => (
-              <tr key={r.id} onClick={() => setSelected(r.original)}
-                  className="cursor-pointer border-b border-[var(--color-surface-2)] hover:bg-[var(--color-surface-2)]">
+              <tr
+                key={r.id}
+                onClick={() => setSelected(r.original)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setSelected(r.original);
+                  }
+                }}
+                tabIndex={0}
+                role="button"
+                aria-label={`View decision detail for ${r.original.tool}`}
+                className="cursor-pointer border-b border-[var(--color-surface-2)] hover:bg-[var(--color-surface-2)] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-accent)]">
                 {r.getVisibleCells().map((c) => (
                   <td key={c.id} className={`align-top ${pad}`}>{flexRender(c.column.columnDef.cell, c.getContext())}</td>
                 ))}
