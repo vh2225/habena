@@ -8,7 +8,6 @@ import { CostTracker } from "../../src/cost/tracker.js";
 import { BudgetEnforcer } from "../../src/cost/budget.js";
 import { AuditLogger } from "../../src/audit/logger.js";
 import { InstanceTracker } from "../../src/identity/instances.js";
-import { Forwarder } from "../../src/proxy/forwarder.js";
 import { ApprovalQueue } from "../../src/approval/queue.js";
 
 describe("ProxyDispatcher", () => {
@@ -26,8 +25,6 @@ describe("ProxyDispatcher", () => {
     const budget = new BudgetEnforcer(tracker, { per_request: 5 });
     audit = new AuditLogger(join(dir, "audit.db"));
     const instances = new InstanceTracker();
-    const forwarder = new Forwarder();
-    forwarder.addServer({ name: "github", command: "x", toolPrefixes: ["github_"] });
 
     dispatcher = new ProxyDispatcher({
       policy,
@@ -35,7 +32,6 @@ describe("ProxyDispatcher", () => {
       budget,
       audit,
       instances,
-      forwarder,
     });
   });
 
@@ -117,7 +113,6 @@ describe("ProxyDispatcher with ApprovalQueue", () => {
     const budget = new BudgetEnforcer(tracker, {});
     audit = new AuditLogger(join(dir, "audit.db"));
     const instances = new InstanceTracker();
-    const forwarder = new Forwarder();
     queue = new ApprovalQueue();
 
     dispatcher = new ProxyDispatcher({
@@ -126,7 +121,6 @@ describe("ProxyDispatcher with ApprovalQueue", () => {
       budget,
       audit,
       instances,
-      forwarder,
       approval: queue,
       approvalTimeoutMs: 1000,
     });

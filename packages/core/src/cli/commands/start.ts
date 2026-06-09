@@ -10,7 +10,6 @@ import { BudgetEnforcer } from "../../cost/budget.js";
 import { AuditLogger } from "../../audit/logger.js";
 import { InstanceTracker } from "../../identity/instances.js";
 import { AgentRegistry } from "../../identity/registry.js";
-import { Forwarder } from "../../proxy/forwarder.js";
 import { ProxyDispatcher } from "../../proxy/server.js";
 import { ApprovalQueue } from "../../approval/queue.js";
 import { IpcServer } from "../../ipc/server.js";
@@ -51,7 +50,6 @@ export async function startCommand(): Promise<void> {
   const budget = new BudgetEnforcer(tracker, budgetConfig);
   const audit = new AuditLogger(getAuditDbPath());
   const instances = new InstanceTracker();
-  const forwarder = new Forwarder();
 
   const agentRegistry = new AgentRegistry(getAgentsPath());
   const agents = agentRegistry.list();
@@ -76,7 +74,6 @@ export async function startCommand(): Promise<void> {
     budget,
     audit,
     instances,
-    forwarder,
     approval,
     approvalTimeoutMs: parseDurationToMs(config.approval?.timeout ?? "5m"),
   });

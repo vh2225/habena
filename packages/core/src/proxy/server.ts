@@ -3,7 +3,6 @@ import type { CostTracker } from "../cost/tracker.js";
 import type { BudgetEnforcer } from "../cost/budget.js";
 import type { AuditLogger } from "../audit/logger.js";
 import type { InstanceTracker } from "../identity/instances.js";
-import type { Forwarder } from "./forwarder.js";
 import type { PolicyDecision } from "../policy/decisions.js";
 import type { ApprovalQueue } from "../approval/queue.js";
 import type { Rule } from "../policy/types.js";
@@ -17,7 +16,6 @@ export interface DispatcherDeps {
   budget: BudgetEnforcer;
   audit: AuditLogger;
   instances: InstanceTracker;
-  forwarder: Forwarder;
   approval?: ApprovalQueue;           // NEW
   approvalTimeoutMs?: number;         // NEW, default 5 minutes
 }
@@ -33,15 +31,22 @@ export interface ToolCallRequest {
 
 export interface ToolCallResult {
   decision: PolicyDecision;
+  /**
+   * Whether the call cleared policy/budget/approval and is authorized to be
+   * forwarded downstream. The dispatcher does NOT forward — the MCP server
+   * layer (createMcpServer) performs the actual downstream.forward() call.
+   */
   forwarded: boolean;
-  result?: unknown;
   error?: string;
 }
 
 /**
- * ProxyDispatcher is the pure-logic core of the proxy.
- * The MCP server transport (stdio/HTTP) wraps this class and
- * translates MCP protocol messages into handleToolCall() invocations.
+ * ProxyDispatcher is the pure-logic core of the proxy. Given a tool call it
+ * runs budget → policy → approval and returns the resulting decision plus
+ * whether the call is authorized to forward. It does not perform forwarding
+ * itself; the MCP server transport (stdio/HTTP) wraps this class, translates
+ * MCP protocol messages into handleToolCall() invocations, and forwards
+ * authorized calls to the downstream server.
  */
 export class ProxyDispatcher {
   constructor(private deps: DispatcherDeps) {}
@@ -98,7 +103,7 @@ export class ProxyDispatcher {
       instanceId: req.instanceId,
       tool: req.tool,
       args: req.args,
-      mcpServer: req.mcpServer ?? this.deps.forwarder.routeFor(req.tool)?.name ?? "unknown",
+      mcpServer: req.mcpServer ?? "unknown",
       decision: decision.action,
       tier: decision.tier,
       ruleMatched: decision.rule_matched,
@@ -119,9 +124,8 @@ export class ProxyDispatcher {
       });
       this.deps.instances.recordSpend(req.instanceId, req.estimatedCost);
 
-      // Phase 1: mark as forwarded but don't actually invoke forwarder.forward()
-      // (real MCP client connections are Phase 2).
-      return { decision, forwarded: true, result: null };
+      // Authorized: the MCP server layer will forward this call downstream.
+      return { decision, forwarded: true };
     }
 
     return { decision, forwarded: false };

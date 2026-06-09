@@ -11,7 +11,6 @@ import { CostTracker } from "../../src/cost/tracker.js";
 import { BudgetEnforcer } from "../../src/cost/budget.js";
 import { AuditLogger } from "../../src/audit/logger.js";
 import { InstanceTracker } from "../../src/identity/instances.js";
-import { Forwarder } from "../../src/proxy/forwarder.js";
 
 // A real downstream MCP server (same harness style as
 // tests/downstream/manager.test.ts) exposing a single `echo` tool that
@@ -67,7 +66,6 @@ describe("proxy end-to-end downstream forwarding", () => {
     const budget = new BudgetEnforcer(tracker, {});
     audit = new AuditLogger(join(dir, "audit.db"));
     const instances = new InstanceTracker();
-    const forwarder = new Forwarder();
 
     const dispatcher = new ProxyDispatcher({
       policy,
@@ -75,7 +73,6 @@ describe("proxy end-to-end downstream forwarding", () => {
       budget,
       audit,
       instances,
-      forwarder,
     });
 
     const server = createMcpServer({ dispatcher, downstream: manager, instances });
@@ -115,8 +112,7 @@ describe("proxy end-to-end downstream forwarding", () => {
     const budget = new BudgetEnforcer(tracker, {});
     audit = new AuditLogger(join(dir, "audit.db"));
     const instances = new InstanceTracker();
-    const forwarder = new Forwarder();
-    const dispatcher = new ProxyDispatcher({ policy, tracker, budget, audit, instances, forwarder });
+    const dispatcher = new ProxyDispatcher({ policy, tracker, budget, audit, instances });
 
     const owner = manager.findTool("echo");
     expect(owner).toBeDefined();
