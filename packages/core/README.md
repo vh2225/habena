@@ -1,173 +1,121 @@
 # Habena
 
-> **Habena — keep your AI agent on a short rein.**
+> **Keep your AI agent on a short rein.**
 
 [![CI](https://github.com/vh2225/agentguard/actions/workflows/ci.yml/badge.svg)](https://github.com/vh2225/agentguard/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-MCP middleware proxy that makes AI agents safer **and** more automated — not either alone.
-
-An agent connects to Habena as its MCP server; Habena forwards tool calls to the real MCP servers downstream, enforcing a policy engine, cost budget, and human-approval queue on every call. Every decision is audited to SQLite. The thesis: once you've written the check-and-balance rules once, you should be able to run the agent hands-off.
+Habena is the open-source safety layer that sits between your AI assistant (OpenClaw, Hermes, any Claude-based agent) and the real MCP servers and tools it calls. It enforces a policy engine, spend caps, and one-tap human approval on every tool call, and audits every decision to SQLite — so a runaway loop can't drain your wallet, a poisoned tool can't quietly exfiltrate your secrets, and nothing dangerous happens without your say-so. Install an assistant and guard it end-to-end. Mac-first.
 
 > **Renamed from AgentGuard.** The `agentguard` command and the `~/.agentguard/` config directory still work as deprecated aliases — nothing breaks. New installs use `habena` and `~/.habena/`; an existing `~/.agentguard/` is detected automatically.
 
-**Status: early, working, single-operator tested.** Not yet recommended for production fleets.
-
-**License: MIT.** Fully open source. No paid tier, no gated features, no "open-core" split. Goal is adoption.
-
-An open-source project by [3app.studio](https://3app.studio).
+**Status: early, working, single-operator tested.** MIT, no paid tier. Not yet recommended for production fleets.
 
 ---
 
-## What it does
-
-```
-Agent (Claude, OpenClaw, etc)
-      │
-      ▼ one MCP connection
-┌─────────────────────┐
-│      Habena         │   ← policy · budget · approvals · audit
-└──────────┬──────────┘
-           │ fans out
-  ┌────────┼────────┐
-  ▼        ▼        ▼
-gmail    filesystem   sqlite   ...any MCP server
-```
-
-The agent sees a single MCP endpoint with every downstream tool available. Habena gets to inspect every call, apply policy, log it, and optionally ask a human before forwarding.
-
 ## Why
 
-LLM agents are getting powerful faster than they're getting safe. Most projects pick one axis: MCP clients add more tools to the agent (automation), security wrappers add more gates (safety). Habena sits between them — the thesis is that observability + learning let you expand what an agent can do *without* expanding blast radius, because the rules are learned from observation rather than hand-written.
+LLM agents are getting powerful faster than they're getting safe. Three things that have already happened to real people:
 
-## Features
+- **Tool poisoning.** A poisoned MCP tool description was used to exfiltrate a Cursor user's `~/.ssh/id_rsa` — the malicious instructions lived in the tool metadata, invisible in the normal UI. ([Invariant Labs](https://invariantlabs.ai/blog/mcp-security-notification-tool-poisoning-attacks))
+- **Rug-pull / backdoored server.** Even a "trusted" server can turn on you: a tool can present a benign description at approval time, then silently change its behavior afterward (a "rug pull"), or ship an outright backdoor — like an official MCP server that BCC's every outbound email to its maintainer. ([Invariant Labs](https://invariantlabs.ai/blog/mcp-security-notification-tool-poisoning-attacks))
+- **Cost runaway.** Always-on agents loop. There are reports of $1,000+ surprise bills from runaway agent loops — no cap, no off switch, no one watching.
 
-- **Three-tier policy engine.** Hard boundaries → session overrides → user rules → defaults → implicit deny. First-match within a tier, hard boundaries win across tiers.
-- **Named policy presets.** `habena policy preset observe|cautious|deny-all` — one command for a safe baseline. No rule YAML required.
-- **Transparent MCP forwarding.** Any downstream stdio MCP server can be wrapped. Tool-name collisions auto-namespace.
-- **Auth probes at boot.** Each downstream can declare an `auth_probe` tool; Habena calls it at startup and reports `authenticated`, `auth_failed`, or `unchecked`. No more "`N/N alive`" lies when a server is actually broken.
-- **Human-in-the-loop approvals.** `require_approval` rules pause the tool call and wait for a human via `habena watch` (CLI) or an IPC client.
-- **Cost tracking + budgets** per agent instance.
-- **Structured audit log** in SQLite.
-- **`habena doctor`.** Operational health check with 7 checks — detects misconfigured OpenClaw paths, ABI-mismatched native deps, unreachable downstreams, stale approval queues, non-writable audit DB, clock drift, and more.
-- **`habena learn`.** Reads the audit log, buckets tool calls by shape, proposes a least-privilege rule set. Safer AND more automated by observation, not guesswork.
-- **`habena approvals forward --url <webhook>`.** Stream approvals to any webhook — Zapier, Discord, ntfy, your own endpoint. HMAC-signed.
-- **`habena install openclaw`.** One command to wire Habena as OpenClaw's MCP proxy; backs up existing config, validates paths before writing.
+Habena is the layer that catches these — policy + approval + spend cap + audit, in front of every tool call.
 
-## Install
+## How it works
+
+```
+Agent (OpenClaw/…) → Habena (policy · budget · approval · audit) → real MCP servers (filesystem, gmail, …)
+```
+
+Your agent connects to Habena as its single MCP server. Habena inspects every tool call, applies your policy, logs the decision, and either forwards the call to the real downstream server, holds it for human approval, or blocks it. Allowed calls pass through transparently; everything else stops at the gate.
+
+## Quickstart (60 seconds)
 
 Requires Node 20+ and pnpm.
+
+**Install.** `npm i -g habena` is the goal, but **the npm package is not published yet.** Until it is, install from source:
 
 ```bash
 git clone https://github.com/vh2225/agentguard.git
 cd agentguard
 pnpm install
 pnpm -F habena build
-cd packages/core && pnpm link --global && cd ../..
+cd packages/core && npm link
 ```
 
-Then:
+**Initialize.** Creates `~/.habena/config.yaml` seeded with the safe `cautious` preset (allow read/list, require approval for writes and destructive ops, deny the rest):
 
 ```bash
-habena init                                    # creates ~/.habena/config.yaml (cautious preset)
-habena downstream add filesystem ~/workspace   # wire the filesystem MCP
-habena downstream add gmail                    # wire Gmail via guided OAuth (optional)
-habena start                                   # run proxy (stdio)
-habena doctor                                  # verify everything's healthy
+habena init
 ```
 
-To wire into OpenClaw:
+**Add a downstream you can reproduce — the filesystem server**, rooted at a directory of your choosing:
 
 ```bash
-habena install openclaw            # replaces OpenClaw's MCP servers with a habena proxy
-openclaw gateway restart
+habena downstream add filesystem ~/workspace
 ```
 
-## Quick tour
-
-**See what policy presets look like:**
+**Register an agent + daily budget:**
 
 ```bash
-habena policy preset               # list all three
-habena policy preset show cautious # preview the rule set
+habena agent add --name openclaw --budget-daily 30
 ```
 
-**Verify your setup:**
+**Start the proxy** (stdio transport):
 
 ```bash
-habena doctor
+habena start
 ```
 
-Sample output on a healthy install:
-
-```
-Habena health report
-────────────────────────
-  ✓ proxy-reachable          hello in 2ms
-  ✓ audit-db-writable        1.2 MB, 4,822 rows
-  ✓ downstream-reachable     2/2 alive, 2 authenticated
-  ✓ openclaw-pointed-at-us   openclaw.json → node /usr/lib/.../cli/index.js start
-  ✓ node-version             Node v20.12.2, better-sqlite3 loads cleanly
-```
-
-**Watch approvals flow:**
+**Approve from the terminal.** In a second terminal, run the interactive approval queue. When a rule returns `require_approval`, the tool call pauses and waits here until you allow or deny it:
 
 ```bash
-habena watch   # in a separate terminal; interactive prompt on each require_approval
+habena watch
 ```
 
-**Pin a policy floor the config can't weaken** (shared laptops, multi-user hosts):
-
-```yaml
-# ~/.habena/host-policy.yaml — loaded as a strict floor
-extends:
-  - rule-packs/filesystem-readonly
-
-rules:
-  - match: { tool: "fs_delete" }
-    action: deny
-    enforcement: hard_mandatory
-```
-
-When both a host rule and a `config.yaml` rule match the same tool call, the engine keeps the stricter one (`deny` > `require_approval` > `allow`). A user editing `config.yaml` can tighten the host policy but cannot weaken it.
-
-## Architecture
-
-- [`docs/architecture.md`](docs/architecture.md) — high-level design
-- [`docs/specs/`](docs/specs) — per-phase design specs (phases 1–4 shipped, 7–9 in progress)
-- [`docs/roadmap.md`](docs/roadmap.md) — what's done, what's next
-- [`packages/core/src/policy/engine.ts`](packages/core/src/policy/engine.ts) — policy evaluation (authoritative semantics, first-match-wins per tier)
-
-## Development
+**Point your assistant at Habena.** For OpenClaw, the installer wires Habena in as the MCP proxy (it backs up your existing config and validates paths first):
 
 ```bash
-pnpm install                              # installs + builds better-sqlite3 binding for your Node
-pnpm -F habena build            # typecheck + compile
-pnpm -F habena exec vitest run  # 156 tests, ~8s
+habena install openclaw
 ```
 
-CI runs on Node 20 and 22 on every push/PR.
+## The demo (what makes it click)
 
-## Contributing
+This runs end to end with only the commands above and the default `cautious` policy — no custom YAML needed. The `cautious` preset already requires approval for writes and destructive operations.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Short version: open an issue before starting substantial work so we don't duplicate effort.
+1. **Set up.** `habena init`, then `habena downstream add filesystem ~/workspace`, then `habena start`.
+2. **Watch.** In a second terminal: `habena watch`.
+3. **Trigger.** Your agent (or a test MCP client) asks the filesystem server to write or delete a file under `~/workspace`. Because the `cautious` preset marks writes/deletes as `require_approval`, Habena does **not** forward the call — it holds it.
+4. **Decide.** The held call appears in `habena watch`. Deny it.
+5. **Confirm it was blocked and recorded:**
 
-## Security
+```bash
+habena logs --decision require_approval
+```
 
-See [SECURITY.md](SECURITY.md) for reporting vulnerabilities. Habena sits in the authority chain between your agent and the outside world — treat it as security-sensitive infrastructure.
+Every allow, deny, and held call is written to the SQLite audit log, queryable with `habena logs` (filter with `--agent`, `--last 24h`, `--decision`, `--limit`).
 
-## What's missing (be realistic before you depend on this)
+> **Phone-tap approvals (Telegram one-tap Allow/Deny) are coming next.** Today, approvals come through the `habena watch` CLI (or raw IPC) — not yet a chat channel.
 
-Habena is early. Public because it's more useful to others than sitting on my laptop, not because it's production-grade.
+## Status & roadmap
 
-- **Single-operator tested.** I use it daily against my own agent. Multi-user scenarios, high-volume deployments, and adversarial threat models aren't yet exercised.
-- **stdio MCP transport only.** HTTP / SSE / streamable-http downstream support isn't wired (the installer preserves HTTP-mode servers untouched rather than proxying them).
-- **Web dashboard is v0.** `pnpm --filter habena-web dev` serves a live read-only decision stream at localhost:7700 (Phase 6 first slice). No configuration UI, no approval UI, no per-agent drill-down yet.
-- **Chat-channel approvals are spec'd, not built.** Right now approvals come through the `habena watch` CLI or raw IPC. See [Phase 7 spec](docs/specs/2026-04-15-phase7-chat-channels.md).
-- **Learning mode** ships as `habena learn` (proposes least-privilege rules from the audit log). Clustering beyond `(agent_type, tool)` buckets — by arg shape, time-of-day, calling chain — is future work.
+**Early, working, single-operator tested.** Habena is public because it's more useful to others than sitting on a laptop, not because it's production-grade. It's MIT licensed with no paid tier, no gated features, and no open-core split. The npm package is not published yet — install from source for now.
 
-If any of these matter to you, open an issue — prioritization is driven by real use cases.
+Today: stdio MCP transport only; approvals via CLI/IPC; a v0 read-only web decision stream.
+
+Roadmap:
+
+- **Phone-tap approvals** — one-tap Allow/Deny from Telegram.
+- **Onboarding wizard + dashboard** — guided setup and a real approval/config UI.
+- **MCP threat firewall** — detection for rug-pulls and tool-poisoning (tool-description drift, known-bad servers).
+- **Mac guarded-sandbox recipe** — a documented, locked-down setup for running an assistant under Habena on macOS.
+
+Full design: [`docs/plans/2026-06-08-habena-design.md`](docs/plans/2026-06-08-habena-design.md).
 
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+An open-source project by [3app.studio](https://3app.studio).
