@@ -14,6 +14,11 @@ export interface ThreatConfig {
   tool_poisoning: EnforcementMode;
   credential_egress: EnforcementMode;
   rug_pull: EnforcementMode;
+  /** How often to re-fetch downstream tool lists and re-run the scan
+   * mid-session (duration string like "10m"; "off" disables). Catches
+   * rug-pulls that happen while the proxy is running, not just across
+   * restarts. */
+  rescan_interval: string;
   /** Optional local signature file (no cloud sync). Unused in v1's detectors. */
   feed_file?: string;
 }
@@ -22,6 +27,7 @@ export const DEFAULT_THREAT_CONFIG: ThreatConfig = {
   tool_poisoning: "require_approval",
   credential_egress: "require_approval",
   rug_pull: "require_approval",
+  rescan_interval: "10m",
 };
 
 const VALID: ReadonlySet<EnforcementMode> = new Set(["off", "warn", "require_approval", "block"]);
@@ -37,6 +43,10 @@ export function resolveThreatConfig(partial: Partial<ThreatConfig> | undefined):
     tool_poisoning: mode(p.tool_poisoning, DEFAULT_THREAT_CONFIG.tool_poisoning),
     credential_egress: mode(p.credential_egress, DEFAULT_THREAT_CONFIG.credential_egress),
     rug_pull: mode(p.rug_pull, DEFAULT_THREAT_CONFIG.rug_pull),
+    rescan_interval:
+      typeof p.rescan_interval === "string" && p.rescan_interval.trim() !== ""
+        ? p.rescan_interval.trim()
+        : DEFAULT_THREAT_CONFIG.rescan_interval,
     ...(typeof p.feed_file === "string" ? { feed_file: p.feed_file } : {}),
   };
 }

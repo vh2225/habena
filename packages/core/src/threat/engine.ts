@@ -7,17 +7,24 @@ import type { ThreatConfig, Finding, EnforcementMode, DetectorId, Severity } fro
 
 const SEVERITY_RANK: Record<Severity, number> = { low: 1, medium: 2, high: 3, critical: 4 };
 
-export interface ScanSummary { scanned: number; flagged: number; findings: Finding[] }
+/** A scan-time finding attributed to the public tool name it was found on. */
+export interface ScanFinding extends Finding { tool: string }
+
+export interface ScanSummary { scanned: number; flagged: number; findings: ScanFinding[] }
 
 export class ThreatEngine {
-  /** Per-tool flags discovered at scan time, applied at call time. key = `${server}/${tool}`. */
+  /** Per-tool flags discovered at scan time, applied at call time. key = `${server}/${tool}`.
+   * Flags are STICKY for the session: a re-scan only ever adds flags. After a
+   * drift is detected the new definition becomes the snapshot baseline, so a
+   * later clean scan would otherwise silently unflag a rug-pulled tool. */
   private toolFlags = new Map<string, Finding[]>();
 
   constructor(private config: ThreatConfig, private snapshots: ToolSnapshotStore) {}
 
-  /** Startup scan: poison (description) + drift (snapshot) per tool. Remembers flags; returns a summary. */
+  /** Scan: poison (description) + drift (snapshot) per tool. Remembers flags;
+   * returns a summary. Safe to re-run mid-session after a downstream refresh. */
   scanTools(tools: AggregatedTool[]): ScanSummary {
-    const findings: Finding[] = [];
+    const findings: ScanFinding[] = [];
     let flagged = 0;
     for (const t of tools) {
       const fs: Finding[] = [];
@@ -28,7 +35,7 @@ export class ThreatEngine {
       }
       if (fs.length > 0) {
         this.toolFlags.set(`${t.server}/${t.originalName}`, fs);
-        findings.push(...fs);
+        findings.push(...fs.map((f) => ({ ...f, tool: t.name })));
         flagged++;
       }
     }

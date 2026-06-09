@@ -46,6 +46,28 @@ export class DownstreamManager {
     return this.tools.slice();
   }
 
+  /**
+   * Re-fetch tool lists from all live downstreams and rebuild the index.
+   * Per-server isolation: a server whose refresh fails keeps its previously
+   * cached tools (a stale-but-known catalog beats an empty one).
+   */
+  async refresh(): Promise<{ refreshed: string[]; failed: string[] }> {
+    const refreshed: string[] = [];
+    const failed: string[] = [];
+    await Promise.all(
+      Array.from(this.clients.entries()).map(async ([name, client]) => {
+        try {
+          await client.refreshTools();
+          refreshed.push(name);
+        } catch {
+          failed.push(name);
+        }
+      })
+    );
+    this.rebuildToolIndex();
+    return { refreshed, failed };
+  }
+
   findTool(name: string): ToolOwner | undefined {
     return this.ownerIndex.get(name);
   }

@@ -113,11 +113,12 @@ Today: stdio MCP transport only; approvals via CLI/IPC or one-tap Telegram; a v0
 
 > **Local heuristic threat detection works today.** Habena scans downstream MCP
 > tools for tool-poisoning (suspicious tool-description patterns), rug-pulls
-> (tool-definition drift between runs), and credential-egress (secrets in call
-> args). Detection is heuristic/best-effort and runs entirely on your machine —
-> no cloud feed. Each detector defaults to `require_approval` and is configurable
-> via the `threat:` block in `config.yaml` (`off` | `warn` | `require_approval` |
-> `block`).
+> (tool-definition drift — checked between runs *and* mid-session on a periodic
+> re-scan), and credential-egress (secrets in call args). Detection is
+> heuristic/best-effort and runs entirely on your machine — no cloud feed. Each
+> detector defaults to `require_approval` and is configurable via the `threat:`
+> block in `config.yaml` (`off` | `warn` | `require_approval` | `block`; the
+> re-scan cadence via `rescan_interval`, default `10m`).
 
 Roadmap:
 

@@ -161,7 +161,9 @@ export interface McpServerDeps {
 export function createMcpServer(deps: McpServerDeps): McpServer {
   const server = new McpServer(
     { name: "habena", version: "0.2.0" },
-    { capabilities: { tools: {} } }
+    // listChanged: the start command re-fetches downstream tool lists on the
+    // threat re-scan interval and notifies the agent when the catalog moves.
+    { capabilities: { tools: { listChanged: true } } }
   );
 
   let currentInstanceId: string | null = null;

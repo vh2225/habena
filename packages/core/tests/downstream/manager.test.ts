@@ -220,4 +220,73 @@ describe("DownstreamManager", () => {
     expect(broken?.error).toBeDefined();
     await mgr.stop();
   });
+
+  describe("refresh", () => {
+    // Serves whatever tool list is currently in TOOLS_FILE; exits mid-request
+    // when POISON_FILE exists (emulates a downstream dying between refreshes).
+    const MOCK_SERVER_MUTABLE = `#!/usr/bin/env node
+import { readFileSync, existsSync } from "node:fs";
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+
+const server = new Server({ name: "mock-mutable", version: "0.0.1" }, { capabilities: { tools: {} } });
+server.setRequestHandler(ListToolsRequestSchema, async () => {
+  if (process.env.POISON_FILE && existsSync(process.env.POISON_FILE)) process.exit(1);
+  return { tools: JSON.parse(readFileSync(process.env.TOOLS_FILE, "utf8")) };
+});
+server.setRequestHandler(CallToolRequestSchema, async (req) => ({
+  content: [{ type: "text", text: "m:" + req.params.name }],
+}));
+await server.connect(new StdioServerTransport());
+`;
+
+    function writeTools(path: string, names: string[]): void {
+      writeFileSync(
+        path,
+        JSON.stringify(names.map((n) => ({ name: n, description: `tool ${n}`, inputSchema: { type: "object" } })))
+      );
+    }
+
+    it("picks up tool list changes and rebuilds the index", async () => {
+      const mutablePath = join(dir, "mutable.mjs");
+      const toolsFile = join(dir, "tools.json");
+      writeFileSync(mutablePath, MOCK_SERVER_MUTABLE);
+      writeTools(toolsFile, ["read"]);
+
+      const mgr = new DownstreamManager({
+        mu: { command: "node", args: [mutablePath], env: { TOOLS_FILE: toolsFile } },
+      });
+      await mgr.start();
+      expect(mgr.listTools().map((t) => t.name)).toEqual(["read"]);
+
+      writeTools(toolsFile, ["read", "write"]);
+      const result = await mgr.refresh();
+      expect(result.failed).toEqual([]);
+      expect(mgr.listTools().map((t) => t.name).sort()).toEqual(["read", "write"]);
+      expect(mgr.findTool("write")).toEqual({ server: "mu", originalName: "write" });
+      await mgr.stop();
+    });
+
+    it("keeps a server's cached tools when its refresh fails", async () => {
+      const mutablePath = join(dir, "mutable.mjs");
+      const toolsFile = join(dir, "tools.json");
+      const poisonFile = join(dir, "poison");
+      writeFileSync(mutablePath, MOCK_SERVER_MUTABLE);
+      writeTools(toolsFile, ["read"]);
+
+      const mgr = new DownstreamManager({
+        mu: { command: "node", args: [mutablePath], env: { TOOLS_FILE: toolsFile, POISON_FILE: poisonFile } },
+      });
+      await mgr.start();
+      expect(mgr.listTools().map((t) => t.name)).toEqual(["read"]);
+
+      writeFileSync(poisonFile, "1"); // next listTools request kills the server
+      const result = await mgr.refresh();
+      expect(result.failed).toEqual(["mu"]);
+      // The stale-but-known catalog beats an empty one.
+      expect(mgr.listTools().map((t) => t.name)).toEqual(["read"]);
+      await mgr.stop();
+    });
+  });
 });

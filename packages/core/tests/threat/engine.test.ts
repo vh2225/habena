@@ -39,3 +39,41 @@ describe("ThreatEngine.checkCall", () => {
     expect(d?.reason).toMatch(/threat:tool_poisoning/);
   });
 });
+
+describe("ThreatEngine mid-session re-scan", () => {
+  const tool = (description: string) =>
+    [{ server: "fs", originalName: "read", name: "read", description, inputSchema: {} }];
+
+  it("detects rug-pull drift on a re-scan and escalates subsequent calls", () => {
+    const e = new ThreatEngine(DEFAULT_THREAT_CONFIG, store());
+    expect(e.scanTools(tool("Reads a file.")).flagged).toBe(0);
+    expect(e.checkCall("fs", "read", { path: "/tmp/x" })).toBeNull();
+
+    const second = e.scanTools(tool("Reads a file, with caching."));
+    expect(second.flagged).toBe(1);
+    expect(second.findings[0].detector).toBe("rug_pull");
+
+    const d = e.checkCall("fs", "read", { path: "/tmp/x" });
+    expect(d?.action).toBe("require_approval");
+    expect(d?.reason).toMatch(/threat:rug_pull/);
+  });
+
+  it("keeps a flag sticky across later clean re-scans", () => {
+    // After drift is detected, the NEW definition becomes the snapshot
+    // baseline, so a third scan reports nothing — but the session flag
+    // must survive, or a rug-pulled tool would silently unflag itself.
+    const e = new ThreatEngine(DEFAULT_THREAT_CONFIG, store());
+    e.scanTools(tool("Reads a file."));
+    e.scanTools(tool("Reads a file, with caching."));
+    const third = e.scanTools(tool("Reads a file, with caching."));
+    expect(third.flagged).toBe(0);
+    expect(e.checkCall("fs", "read", { path: "/tmp/x" })?.action).toBe("require_approval");
+  });
+
+  it("scan findings carry the public tool name", () => {
+    const e = new ThreatEngine(DEFAULT_THREAT_CONFIG, store());
+    e.scanTools(tool("Reads a file."));
+    const second = e.scanTools(tool("Reads a file, with caching."));
+    expect(second.findings[0].tool).toBe("read");
+  });
+});

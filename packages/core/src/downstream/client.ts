@@ -106,14 +106,7 @@ export class DownstreamClient {
     await this.client.connect(this.transport);
     this.alive = true;
 
-    const result = await this.client.listTools();
-    this.tools = result.tools.map((t) => ({
-      name: t.name,                    // will be re-namespaced by manager
-      originalName: t.name,
-      description: t.description,
-      inputSchema: t.inputSchema,
-      server: this.name,
-    }));
+    await this.fetchTools();
 
     // Auth probe: listTools() succeeds even for servers that can't
     // authenticate. If the user configured a probe, call it now and record
@@ -168,6 +161,29 @@ export class DownstreamClient {
 
   listTools(): AggregatedTool[] {
     return this.tools.slice();
+  }
+
+  /**
+   * Re-fetch the tool list from the live server (mid-session refresh).
+   * Throws on failure and leaves the cached list untouched, so a transient
+   * error never empties a server's catalog.
+   */
+  async refreshTools(): Promise<void> {
+    if (!this.client || !this.alive) {
+      throw new Error(`Downstream ${this.name} is not alive`);
+    }
+    await this.fetchTools();
+  }
+
+  private async fetchTools(): Promise<void> {
+    const result = await this.client!.listTools();
+    this.tools = result.tools.map((t) => ({
+      name: t.name,                    // will be re-namespaced by manager
+      originalName: t.name,
+      description: t.description,
+      inputSchema: t.inputSchema,
+      server: this.name,
+    }));
   }
 
   async callTool(originalName: string, args: Record<string, unknown>): Promise<unknown> {

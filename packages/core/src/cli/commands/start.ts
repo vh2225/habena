@@ -57,8 +57,9 @@ export async function startCommand(): Promise<void> {
   const audit = new AuditLogger(getAuditDbPath());
   const instances = new InstanceTracker();
 
+  const threatConfig = resolveThreatConfig(config.threat);
   const threat = new ThreatEngine(
-    resolveThreatConfig(config.threat),
+    threatConfig,
     new ToolSnapshotStore(join(getConfigDir(), "tool-snapshots.json"))
   );
 
@@ -117,6 +118,10 @@ export async function startCommand(): Promise<void> {
 
   // Spawn downstream MCP servers
   const downstream = new DownstreamManager(config.mcp_servers ?? {});
+  // Scan findings already reported, so periodic re-scans only log what's new.
+  const seenFindings = new Set<string>();
+  const findingKey = (f: { tool: string; detector: string; message: string }) =>
+    `${f.tool}|${f.detector}|${f.message}`;
   try {
     await downstream.start();
     const status = downstream.status();
@@ -141,10 +146,11 @@ export async function startCommand(): Promise<void> {
       }
     }
     const scan = threat.scanTools(downstream.listTools());
+    for (const f of scan.findings) seenFindings.add(findingKey(f));
     if (scan.flagged > 0) {
       console.error(chalk.yellow(`! Threat scan: ${scan.flagged}/${scan.scanned} tool(s) flagged`));
       for (const f of scan.findings) {
-        console.error(chalk.yellow(`  ⚠ ${f.detector} (${f.severity}): ${f.message}`));
+        console.error(chalk.yellow(`  ⚠ ${f.tool}: ${f.detector} (${f.severity}): ${f.message}`));
       }
       console.error(chalk.gray("  Flagged tools require approval on use (configurable via `threat:` in config.yaml)."));
     }
@@ -157,6 +163,39 @@ export async function startCommand(): Promise<void> {
     downstream,
     instances,
   });
+
+  // Mid-session threat re-scan: a rug-pull can happen while the proxy is
+  // running, not just across restarts. Periodically re-fetch downstream tool
+  // lists, re-run the scan, and report only new findings. Flags are sticky
+  // for the session (see ThreatEngine). `threat.rescan_interval: off` disables.
+  if (threatConfig.rescan_interval !== "off") {
+    const rescanMs = parseDurationToMs(threatConfig.rescan_interval);
+    const rescanTimer = setInterval(async () => {
+      try {
+        const before = downstream.listTools().map((t) => t.name).sort().join("\n");
+        const { failed } = await downstream.refresh();
+        const scan = threat.scanTools(downstream.listTools());
+        const fresh = scan.findings.filter((f) => !seenFindings.has(findingKey(f)));
+        for (const f of fresh) seenFindings.add(findingKey(f));
+        if (fresh.length > 0) {
+          console.error(chalk.yellow(`! Threat re-scan: ${fresh.length} new finding(s)`));
+          for (const f of fresh) {
+            console.error(chalk.yellow(`  ⚠ ${f.tool}: ${f.detector} (${f.severity}): ${f.message}`));
+          }
+        }
+        if (failed.length > 0) {
+          console.error(chalk.gray(`  (tool refresh failed for: ${failed.join(", ")} — keeping cached catalogs)`));
+        }
+        const after = downstream.listTools().map((t) => t.name).sort().join("\n");
+        if (before !== after) {
+          await mcpServer.sendToolListChanged();
+        }
+      } catch {
+        // A failed re-scan must never crash the proxy; next tick retries.
+      }
+    }, rescanMs);
+    rescanTimer.unref();
+  }
 
   console.error(chalk.green("Habena proxy started (stdio transport)"));
   console.error(chalk.gray(`Config: ${getConfigPath()}`));
