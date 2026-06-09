@@ -19,8 +19,8 @@ export async function policyPresetListCommand(): Promise<void> {
     console.log(`  ${chalk.cyan(p.name.padEnd(12))} ${chalk.gray(p.description)}`);
   }
   console.log();
-  console.log(chalk.gray("Apply with:  agentguard policy preset <name>"));
-  console.log(chalk.gray("Preview:     agentguard policy preset <name> --dry-run"));
+  console.log(chalk.gray("Apply with:  habena policy preset <name>"));
+  console.log(chalk.gray("Preview:     habena policy preset <name> --dry-run"));
   console.log();
 }
 
@@ -99,7 +99,7 @@ function printUnknownPreset(name: string): void {
 }
 
 /**
- * `agentguard policy explain` — given a tool-call shape (as JSON or via
+ * `habena policy explain` — given a tool-call shape (as JSON or via
  * `--tool`/`--args`), run the real loaded policy engine against it and
  * print the decision with the rule that matched. Zero side effects, no
  * proxy connection needed — reads the same config.yaml + host-policy.yaml
@@ -119,8 +119,8 @@ export async function policyExplainCommand(
     console.error(chalk.red(`✗ ${(err as Error).message}`));
     console.error(
       chalk.gray(
-        `Usage: agentguard policy explain '{"tool":"gmail_send","args":{"to":"x@y"}}'\n` +
-          `       agentguard policy explain --tool gmail_send --args '{"to":"x@y"}'`
+        `Usage: habena policy explain '{"tool":"gmail_send","args":{"to":"x@y"}}'\n` +
+          `       habena policy explain --tool gmail_send --args '{"to":"x@y"}'`
       )
     );
     process.exit(1);

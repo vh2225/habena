@@ -18,9 +18,9 @@ export function loadYaml<T = unknown>(path: string): T | null {
 }
 
 /**
- * Load the AgentGuard config AND expand any `extends:` rule packs into
+ * Load the Habena config AND expand any `extends:` rule packs into
  * the `rules` array. Returns the expanded config + diagnostics about
- * missing packs. Loader callers at runtime (agentguard start,
+ * missing packs. Loader callers at runtime (habena start,
  * downstream-reachable check, etc.) should use this; raw `loadYaml`
  * stays for commands that need to round-trip the file without
  * side-effects (e.g. `policy preset` writing it back).
@@ -43,7 +43,7 @@ export function loadConfigWithPacks(path: string): {
 }
 
 /**
- * Load the host-policy floor from `~/.agentguard/host-policy.yaml`.
+ * Load the host-policy floor from `~/.habena/host-policy.yaml`.
  * Returns an empty rule list if the file doesn't exist — most installs
  * won't have one. Host-policy supports `extends:` same as config.yaml
  * so operators can pin a preset floor (e.g. `filesystem-readonly`)

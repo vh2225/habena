@@ -54,7 +54,7 @@ export const nodeVersionCheck: Check = {
         name: "node-version",
         status: "fail",
         detail: `Auto-fix failed: ${(err as Error).message}`,
-        fixHint: "Run `npm rebuild better-sqlite3 --build-from-source` manually in the agentguard core package dir.",
+        fixHint: "Run `npm rebuild better-sqlite3 --build-from-source` manually in the habena core package dir.",
       };
     }
   },

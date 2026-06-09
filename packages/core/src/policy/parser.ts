@@ -1,5 +1,5 @@
 /**
- * YAML config parser for agentguard.yaml.
+ * YAML config parser for habena.yaml.
  */
 
 export interface MatchCondition {

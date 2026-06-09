@@ -34,7 +34,7 @@ function countStatuses(results: CheckResult[]): Record<string, number> {
 function printHuman(results: CheckResult[]): void {
   const when = new Date().toLocaleString("en-US", { timeZoneName: "short" });
   console.log();
-  console.log(chalk.bold(`AgentGuard health report (${when})`));
+  console.log(chalk.bold(`Habena health report (${when})`));
   console.log("─".repeat(50));
   const maxName = Math.max(...results.map((r) => r.name.length));
   for (const r of results) {

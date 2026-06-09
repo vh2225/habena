@@ -6,7 +6,7 @@ import type { Check, CheckResult } from "../types.js";
 
 /**
  * Detect approvals that have been sitting in the queue longer than the
- * default timeout. A stale queue usually means `agentguard watch` crashed,
+ * default timeout. A stale queue usually means `habena watch` crashed,
  * the Tauri UI disconnected without resolving anything, or the user walked
  * away mid-approval. Auto-deny kicks in eventually, but surfacing this at
  * doctor time helps the user notice BEFORE the agent gets a surprising deny.
@@ -67,14 +67,14 @@ export const approvalQueueDrainingCheck: Check = {
             name: "approval-queue-draining",
             status: "fail",
             detail: `${pending.length} pending, oldest ${oldestMin}m old`,
-            fixHint: "`agentguard watch` likely crashed. Restart it, or enable forwarding (Phase 7).",
+            fixHint: "`habena watch` likely crashed. Restart it, or enable forwarding (Phase 7).",
           });
         } else if (oldest.ageMs >= WARN_AGE_MS) {
           finish({
             name: "approval-queue-draining",
             status: "warn",
             detail: `${pending.length} pending, oldest ${oldestMin}m old`,
-            fixHint: "No approver attached? Check `agentguard watch` is running.",
+            fixHint: "No approver attached? Check `habena watch` is running.",
           });
         } else {
           finish({

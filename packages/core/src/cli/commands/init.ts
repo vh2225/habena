@@ -20,20 +20,20 @@ function buildDefaultConfig(): string {
   };
   // Inline header that explains the posture choice.
   const header = [
-    "# AgentGuard configuration — initialized with the `cautious` preset.",
+    "# Habena configuration — initialized with the `cautious` preset.",
     "#",
     "# Read/list tools are allowed. Writes require approval. Destructive tools",
     "# are hard-denied. Unknown tools fall through to require_approval.",
     "#",
-    "# Change postures any time with:   agentguard policy preset <name>",
-    "# Preview first:                    agentguard policy preset <name> --dry-run",
+    "# Change postures any time with:   habena policy preset <name>",
+    "# Preview first:                    habena policy preset <name> --dry-run",
     "",
   ].join("\n");
   return header + stringifyYaml(config);
 }
 
 const DEFAULT_AGENTS = `# Registered agents
-# Add agents with: agentguard agent add --name <name> --budget-daily <amount>
+# Add agents with: habena agent add --name <name> --budget-daily <amount>
 agents: {}
 `;
 
@@ -61,6 +61,6 @@ export async function initCommand(options: { force?: boolean } = {}): Promise<vo
   }
 
   console.log(chalk.cyan("\nNext steps:"));
-  console.log("  agentguard agent add --name openclaw --budget-daily 30");
-  console.log("  agentguard start");
+  console.log("  habena agent add --name openclaw --budget-daily 30");
+  console.log("  habena start");
 }

@@ -13,7 +13,7 @@ export async function watchCommand(): Promise<void> {
   const socketPath = join(getConfigDir(), SOCKET_FILE);
   if (!existsSync(socketPath)) {
     console.error(chalk.red(`Socket not found: ${socketPath}`));
-    console.error(chalk.gray("Is AgentGuard running? Try: agentguard start"));
+    console.error(chalk.gray("Is Habena running? Try: habena start"));
     process.exit(1);
   }
 
@@ -22,7 +22,7 @@ export async function watchCommand(): Promise<void> {
   let processing = false;
 
   socket.on("connect", () => {
-    console.log(chalk.green(`Connected to AgentGuard (${socketPath})`));
+    console.log(chalk.green(`Connected to Habena (${socketPath})`));
     console.log(chalk.gray("Watching for approval requests…\n"));
   });
 
@@ -32,7 +32,7 @@ export async function watchCommand(): Promise<void> {
   });
 
   socket.on("close", () => {
-    console.log(chalk.yellow("\nDisconnected from AgentGuard."));
+    console.log(chalk.yellow("\nDisconnected from Habena."));
     process.exit(0);
   });
 

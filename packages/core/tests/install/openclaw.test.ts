@@ -65,12 +65,12 @@ describe("openclaw install module", () => {
           },
         },
       };
-      const result = migrateServersToAgentGuard(config, "/usr/local/bin/agentguard");
+      const result = migrateServersToAgentGuard(config, "/usr/local/bin/habena");
       expect(Object.keys(result.migratedServers).sort()).toEqual(["filesystem", "github"]);
-      expect(result.newOpenclawConfig.mcp?.servers?.agentguard).toBeDefined();
-      const ag = result.newOpenclawConfig.mcp?.servers?.agentguard as any;
+      expect(result.newOpenclawConfig.mcp?.servers?.habena).toBeDefined();
+      const ag = result.newOpenclawConfig.mcp?.servers?.habena as any;
       expect(ag.command).toBe("node");
-      expect(ag.args).toContain("/usr/local/bin/agentguard");
+      expect(ag.args).toContain("/usr/local/bin/habena");
       // original stdio servers removed
       expect(result.newOpenclawConfig.mcp?.servers?.filesystem).toBeUndefined();
       expect(result.newOpenclawConfig.mcp?.servers?.github).toBeUndefined();
@@ -85,17 +85,35 @@ describe("openclaw install module", () => {
           },
         },
       };
-      const result = migrateServersToAgentGuard(config, "/bin/agentguard");
+      const result = migrateServersToAgentGuard(config, "/bin/habena");
       expect(Object.keys(result.migratedServers)).toEqual(["filesystem"]);
       expect(result.newOpenclawConfig.mcp?.servers?.["remote-api"]).toBeDefined();
-      expect(result.newOpenclawConfig.mcp?.servers?.agentguard).toBeDefined();
+      expect(result.newOpenclawConfig.mcp?.servers?.habena).toBeDefined();
     });
 
     it("handles empty mcp.servers gracefully", () => {
       const config: OpenclawConfig = { mcp: { servers: {} } };
-      const result = migrateServersToAgentGuard(config, "/bin/agentguard");
+      const result = migrateServersToAgentGuard(config, "/bin/habena");
       expect(Object.keys(result.migratedServers)).toEqual([]);
-      expect(result.newOpenclawConfig.mcp?.servers?.agentguard).toBeDefined();
+      expect(result.newOpenclawConfig.mcp?.servers?.habena).toBeDefined();
+    });
+
+    it("replaces a legacy `agentguard` entry with `habena` (not migrated as a downstream)", () => {
+      const config: OpenclawConfig = {
+        mcp: {
+          servers: {
+            agentguard: { command: "node", args: ["/old/agentguard", "start"] },
+            filesystem: { command: "npx", args: ["-y", "fs"] },
+          },
+        },
+      };
+      const result = migrateServersToAgentGuard(config, "/new/habena");
+      // legacy entry is not pulled into downstreams
+      expect(Object.keys(result.migratedServers)).toEqual(["filesystem"]);
+      // legacy key dropped, canonical key written
+      expect(result.newOpenclawConfig.mcp?.servers?.agentguard).toBeUndefined();
+      const ag = result.newOpenclawConfig.mcp?.servers?.habena as any;
+      expect(ag.args).toContain("/new/habena");
     });
 
     it("preserves unknown top-level fields", () => {
@@ -143,7 +161,7 @@ describe("openclaw install module", () => {
       expect(existsSync(result.backupPath!)).toBe(true);
 
       const updated = JSON.parse(readFileSync(openclawPath, "utf8"));
-      expect(updated.mcp.servers.agentguard).toBeDefined();
+      expect(updated.mcp.servers.habena).toBeDefined();
       expect(updated.mcp.servers.filesystem).toBeUndefined();
 
       const agConfig = parseYaml(readFileSync(agentguardPath, "utf8"));
@@ -151,7 +169,21 @@ describe("openclaw install module", () => {
       expect(agConfig.mcp_servers.filesystem.command).toBe("npx");
     });
 
-    it("refuses to overwrite existing agentguard entry without --force", async () => {
+    it("refuses to overwrite an existing habena entry without --force", async () => {
+      writeFileSync(
+        openclawPath,
+        JSON.stringify({ mcp: { servers: { habena: { command: "existing" } } } })
+      );
+      await expect(
+        installOpenclaw({
+          openclawConfigPath: openclawPath,
+          agentguardBinaryPath: "/bin/ag",
+          agentguardConfigPath: agentguardPath,
+        })
+      ).rejects.toThrow(/already installed|force/i);
+    });
+
+    it("refuses to overwrite a legacy agentguard entry without --force", async () => {
       writeFileSync(
         openclawPath,
         JSON.stringify({ mcp: { servers: { agentguard: { command: "existing" } } } })
@@ -165,7 +197,7 @@ describe("openclaw install module", () => {
       ).rejects.toThrow(/already installed|force/i);
     });
 
-    it("--force overwrites existing agentguard entry", async () => {
+    it("--force migrates a legacy agentguard entry to habena", async () => {
       writeFileSync(
         openclawPath,
         JSON.stringify({
@@ -179,13 +211,14 @@ describe("openclaw install module", () => {
       );
       const result = await installOpenclaw({
         openclawConfigPath: openclawPath,
-        agentguardBinaryPath: "/new/agentguard",
+        agentguardBinaryPath: "/new/habena",
         agentguardConfigPath: agentguardPath,
         force: true,
       });
       expect(result.migratedServers).toEqual(["filesystem"]);
       const updated = JSON.parse(readFileSync(openclawPath, "utf8"));
-      expect(updated.mcp.servers.agentguard.args[0]).toBe("/new/agentguard");
+      expect(updated.mcp.servers.agentguard).toBeUndefined();
+      expect(updated.mcp.servers.habena.args[0]).toBe("/new/habena");
     });
 
     it("dry run does not write any files", async () => {
@@ -203,7 +236,7 @@ describe("openclaw install module", () => {
       // verify unchanged
       const unchanged = JSON.parse(readFileSync(openclawPath, "utf8"));
       expect(unchanged.mcp.servers.filesystem).toBeDefined();
-      expect(unchanged.mcp.servers.agentguard).toBeUndefined();
+      expect(unchanged.mcp.servers.habena).toBeUndefined();
       expect(existsSync(agentguardPath)).toBe(false);
     });
 
@@ -248,14 +281,14 @@ mcp_servers:
       });
       // verify it was replaced
       let current = JSON.parse(readFileSync(openclawPath, "utf8"));
-      expect(current.mcp.servers.agentguard).toBeDefined();
+      expect(current.mcp.servers.habena).toBeDefined();
       expect(current.mcp.servers.fs).toBeUndefined();
       // now uninstall
       const result = await uninstallOpenclaw({ openclawConfigPath: openclawPath });
       expect(result.restored).toBe(true);
       current = JSON.parse(readFileSync(openclawPath, "utf8"));
       expect(current.mcp.servers.fs).toBeDefined();
-      expect(current.mcp.servers.agentguard).toBeUndefined();
+      expect(current.mcp.servers.habena).toBeUndefined();
     });
 
     it("throws when no backup exists", async () => {

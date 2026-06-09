@@ -19,7 +19,7 @@ export const auditDbWritableCheck: Check = {
         name: "audit-db-writable",
         status: "warn",
         detail: `No audit DB at ${dbPath}`,
-        fixHint: "Run `agentguard start` once to create it.",
+        fixHint: "Run `habena start` once to create it.",
       };
     }
 
@@ -34,7 +34,7 @@ export const auditDbWritableCheck: Check = {
           name: "audit-db-writable",
           status: "warn",
           detail: `Audit DB exists but has no audit_entries table (nothing has been logged yet)`,
-          fixHint: "Run a tool call through the proxy to initialize the schema, or delete the file and let `agentguard start` recreate it.",
+          fixHint: "Run a tool call through the proxy to initialize the schema, or delete the file and let `habena start` recreate it.",
         };
       }
       const { rowCount } = db.prepare("SELECT COUNT(*) as rowCount FROM audit_entries").get() as { rowCount: number };
@@ -67,7 +67,7 @@ export const auditDbWritableCheck: Check = {
       };
     } catch (err) {
       const msg = (err as Error).message;
-      let hint = "Check disk space and file permissions on ~/.agentguard/.";
+      let hint = "Check disk space and file permissions on ~/.habena/.";
       if (/NODE_MODULE_VERSION/.test(msg)) {
         hint = "`better-sqlite3` ABI mismatch — run `npm rebuild better-sqlite3 --build-from-source`.";
       } else if (/readonly|permission/i.test(msg)) {

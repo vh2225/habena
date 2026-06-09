@@ -17,7 +17,7 @@ export async function installOpenclawCommand(options: {
   force?: boolean;
 }): Promise<void> {
   const binary = resolveAgentguardBinary();
-  console.log(chalk.gray(`AgentGuard binary: ${binary}`));
+  console.log(chalk.gray(`Habena binary: ${binary}`));
 
   // Sanity check: the absolute path we're about to write into OpenClaw's
   // config must actually exist. Prevents the class of bug where we
@@ -40,11 +40,11 @@ export async function installOpenclawCommand(options: {
     if (options.dryRun) {
       console.log(chalk.cyan("\n[dry run] Would perform the following:"));
     } else {
-      console.log(chalk.green("\n✓ Installed AgentGuard into OpenClaw"));
+      console.log(chalk.green("\n✓ Installed Habena into OpenClaw"));
     }
 
     console.log(chalk.gray(`  OpenClaw config: ${result.openclawConfigPath}`));
-    console.log(chalk.gray(`  AgentGuard config: ${result.agentguardConfigPath}`));
+    console.log(chalk.gray(`  Habena config: ${result.agentguardConfigPath}`));
     if (result.backupPath) {
       console.log(chalk.gray(`  Backup saved: ${result.backupPath}`));
     }
@@ -56,11 +56,11 @@ export async function installOpenclawCommand(options: {
     if (!options.dryRun) {
       console.log(chalk.cyan("\nNext steps:"));
       console.log("  1. Start the approval watcher in another terminal:");
-      console.log(chalk.bold("     agentguard watch"));
+      console.log(chalk.bold("     habena watch"));
       console.log("  2. Restart OpenClaw's gateway to pick up the new config:");
       console.log(chalk.bold("     openclaw gateway restart"));
       console.log("  3. Send OpenClaw a task and watch approvals flow.");
-      console.log(chalk.gray("\n  To undo: agentguard uninstall openclaw"));
+      console.log(chalk.gray("\n  To undo: habena uninstall openclaw"));
     }
   } catch (err) {
     console.error(chalk.red(`\n✗ Install failed: ${(err as Error).message}`));

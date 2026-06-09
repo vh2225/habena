@@ -145,7 +145,7 @@ export interface McpServerDeps {
  */
 export function createMcpServer(deps: McpServerDeps): McpServer {
   const server = new McpServer(
-    { name: "agentguard", version: "0.2.0" },
+    { name: "habena", version: "0.2.0" },
     { capabilities: { tools: {} } }
   );
 
@@ -224,9 +224,11 @@ export function createMcpServer(deps: McpServerDeps): McpServer {
     }
   });
 
-  // Set the agent type based on AGENTGUARD_AGENT env var if set
-  if (process.env.AGENTGUARD_AGENT) {
-    currentAgentType = process.env.AGENTGUARD_AGENT;
+  // Set the agent type from HABENA_AGENT (preferred) or the legacy
+  // AGENTGUARD_AGENT env var, keeping old launchers working.
+  const agentEnv = process.env.HABENA_AGENT ?? process.env.AGENTGUARD_AGENT;
+  if (agentEnv) {
+    currentAgentType = agentEnv;
   }
 
   return server;

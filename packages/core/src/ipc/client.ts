@@ -18,7 +18,7 @@ export function socketPath(): string {
 }
 
 /**
- * Thin wrapper around a unix-socket connection to `agentguard start`'s
+ * Thin wrapper around a unix-socket connection to `habena start`'s
  * IPC server. Emits parsed ServerMessage objects via the handler, lets
  * callers send ClientMessages, and cleanly surfaces connect errors as
  * the caller's problem (instead of letting node crash on ECONNREFUSED).
@@ -34,7 +34,7 @@ export class IpcClient {
   async connect(): Promise<void> {
     if (!existsSync(this.path)) {
       throw new Error(
-        `Socket not found: ${this.path}\n  Is AgentGuard running? Try: agentguard start`
+        `Socket not found: ${this.path}\n  Is Habena running? Try: habena start`
       );
     }
     this.socket = createConnection(this.path);

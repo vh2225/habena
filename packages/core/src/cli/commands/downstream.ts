@@ -11,7 +11,7 @@ export async function downstreamListCommand(): Promise<void> {
   const names = Object.keys(servers);
   if (names.length === 0) {
     console.log(chalk.gray("No downstream MCP servers configured yet."));
-    console.log(chalk.gray("Add one: agentguard downstream add <type>"));
+    console.log(chalk.gray("Add one: habena downstream add <type>"));
     return;
   }
   console.log();
@@ -72,7 +72,7 @@ const cliPrompter: Prompter = {
     return { client_id: String(answers.client_id), client_secret: String(answers.client_secret) };
   },
   async getAuthCode(authUrl: string) {
-    console.log(chalk.cyan("\nAuthorize AgentGuard in your browser."));
+    console.log(chalk.cyan("\nAuthorize Habena in your browser."));
     console.log(chalk.gray("\n  1. Open this URL in any browser:\n"));
     console.log(`     ${authUrl}`);
     console.log(chalk.gray("\n  2. Grant the Gmail + profile scopes."));

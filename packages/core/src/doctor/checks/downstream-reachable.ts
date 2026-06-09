@@ -22,7 +22,7 @@ export const downstreamReachableCheck: Check = {
         name: "downstream-reachable",
         status: "warn",
         detail: "No mcp_servers configured in config.yaml",
-        fixHint: "Add downstream MCP servers or run `agentguard install openclaw`.",
+        fixHint: "Add downstream MCP servers or run `habena install openclaw`.",
       };
     }
 

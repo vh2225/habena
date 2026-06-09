@@ -1,5 +1,5 @@
 /**
- * Built-in rules shipped with AgentGuard.
+ * Built-in rules shipped with Habena.
  * Hard boundaries cannot be overridden by user rules.
  * Defaults can be overridden.
  */

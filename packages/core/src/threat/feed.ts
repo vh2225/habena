@@ -1,10 +1,12 @@
 /**
  * Threat feed sync — periodically downloads threat intelligence
- * from AgentGuard cloud and caches locally.
+ * from Habena cloud and caches locally.
  * Similar to antivirus signature updates.
  */
 
 import { readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { getConfigDir } from "../config/paths.js";
 
 export interface ThreatEntry {
   type: "blocklisted_server" | "advisory" | "pattern" | "anomaly";
@@ -27,7 +29,11 @@ export interface ThreatFeed {
   version: string;
 }
 
-const FEED_CACHE_PATH = "~/.agentguard/threat-feed.json";
+// Resolved lazily so importing this module doesn't trigger the config-dir
+// resolution (and its legacy-dir deprecation notice) as a side effect.
+function feedCachePath(): string {
+  return join(getConfigDir(), "threat-feed.json");
+}
 
 export class ThreatFeedManager {
   private feed: ThreatFeed | null = null;
@@ -47,7 +53,7 @@ export class ThreatFeedManager {
   }
 
   async sync(): Promise<void> {
-    // TODO: Fetch latest feed from AgentGuard cloud API
+    // TODO: Fetch latest feed from Habena cloud API
     // TODO: Merge with local cache
     // TODO: Write updated feed to disk
   }

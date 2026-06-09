@@ -8,8 +8,8 @@ interface AuditOptions {
 }
 
 /**
- * `agentguard security audit` — static analysis over the resolved
- * policy. Partner to `agentguard doctor` — doctor covers runtime
+ * `habena security audit` — static analysis over the resolved
+ * policy. Partner to `habena doctor` — doctor covers runtime
  * health, this covers policy shape. Exit code equals the number of
  * error-severity findings so CI can gate on it (warnings don't fail).
  */
@@ -37,7 +37,7 @@ export async function securityAuditCommand(options: AuditOptions): Promise<void>
   }
 
   console.log();
-  console.log(chalk.bold("AgentGuard policy audit"));
+  console.log(chalk.bold("Habena policy audit"));
   console.log(chalk.gray(`  config:       ${getConfigPath()}`));
   console.log(chalk.gray(`  host-policy:  ${host.exists ? host.path : "(not present)"}`));
   if (missingPacks.length > 0) {

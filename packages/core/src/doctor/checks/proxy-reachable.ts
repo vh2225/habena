@@ -24,7 +24,7 @@ export const proxyReachableCheck: Check = {
         name: "proxy-reachable",
         status: "fail",
         detail: `No socket at ${socketPath}`,
-        fixHint: "Run `agentguard start` (or check the systemd user service is active).",
+        fixHint: "Run `habena start` (or check the systemd user service is active).",
       };
     }
 
@@ -43,7 +43,7 @@ export const proxyReachableCheck: Check = {
         name: "proxy-reachable",
         status: "fail",
         detail: `stat failed: ${(err as Error).message}`,
-        fixHint: "Check permissions on ~/.agentguard/",
+        fixHint: "Check permissions on ~/.habena/",
       };
     }
 
@@ -95,7 +95,7 @@ export const proxyReachableCheck: Check = {
           name: "proxy-reachable",
           status: "fail",
           detail: `Connect failed: ${err.message}`,
-          fixHint: "Is `agentguard start` running? Check the systemd user service.",
+          fixHint: "Is `habena start` running? Check the systemd user service.",
         });
       });
     });

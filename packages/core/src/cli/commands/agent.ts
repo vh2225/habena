@@ -54,7 +54,7 @@ export async function agentListCommand(): Promise<void> {
 
   if (agents.length === 0) {
     console.log(chalk.yellow("No agents registered."));
-    console.log("Add one with: agentguard agent add --name <name> --budget-daily <amount>");
+    console.log("Add one with: habena agent add --name <name> --budget-daily <amount>");
     return;
   }
 

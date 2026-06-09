@@ -21,7 +21,7 @@ export async function learnCommand(options: LearnOptions): Promise<void> {
   const dbPath = getAuditDbPath();
   if (!existsSync(dbPath)) {
     console.log(chalk.gray(`No audit DB at ${dbPath} yet.`));
-    console.log(chalk.gray("Run `agentguard start` and send some tool calls first, then come back."));
+    console.log(chalk.gray("Run `habena start` and send some tool calls first, then come back."));
     return;
   }
 
@@ -47,9 +47,9 @@ export async function learnCommand(options: LearnOptions): Promise<void> {
 
   if (options.write) {
     // Emit YAML for the user to redirect into a file:
-    //   agentguard learn --write > proposed.yaml
+    //   habena learn --write > proposed.yaml
     process.stdout.write(
-      "# Proposed rules (from agentguard learn)\n" +
+      "# Proposed rules (from habena learn)\n" +
         `# Window: last ${days} days, ${observations.length} distinct tool shapes.\n` +
         "# Review before merging into your config.yaml.\n\n"
     );
@@ -95,6 +95,6 @@ export async function learnCommand(options: LearnOptions): Promise<void> {
     console.log(chalk.gray(`  ... and ${suggestions.length - 15} more`));
   }
   console.log();
-  console.log(chalk.gray("  Write the suggested rules as YAML:  agentguard learn --write > proposed.yaml"));
-  console.log(chalk.gray("  Review and merge into:             ~/.agentguard/config.yaml"));
+  console.log(chalk.gray("  Write the suggested rules as YAML:  habena learn --write > proposed.yaml"));
+  console.log(chalk.gray("  Review and merge into:             ~/.habena/config.yaml"));
 }

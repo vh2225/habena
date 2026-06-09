@@ -32,7 +32,7 @@ export async function packsShowCommand(name: string): Promise<void> {
   const pack = getPack(name);
   if (!pack) {
     console.error(chalk.red(`✗ Unknown pack: ${name}`));
-    console.error(chalk.gray(`Run \`agentguard packs list\` to see available packs.`));
+    console.error(chalk.gray(`Run \`habena packs list\` to see available packs.`));
     process.exit(1);
   }
   console.log();

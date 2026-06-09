@@ -39,7 +39,7 @@ export function sanitizeEnv(
 }
 
 /**
- * A single downstream MCP server under AgentGuard's management.
+ * A single downstream MCP server under Habena's management.
  * Spawns the configured child process, maintains an MCP Client,
  * caches the tool list, and forwards callTool requests.
  */

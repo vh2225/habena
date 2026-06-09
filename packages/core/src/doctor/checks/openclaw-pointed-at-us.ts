@@ -5,12 +5,14 @@ import type { Check, CheckResult } from "../types.js";
 
 /**
  * If OpenClaw is installed (i.e. ~/.openclaw/openclaw.json exists),
- * verify that its MCP config has an entry named "agentguard" and that
- * the entry's command/args plausibly point at our binary.
+ * verify that its MCP config has an entry named "habena" (or the legacy
+ * "agentguard") and that the entry's command/args plausibly point at our
+ * binary.
  *
  * If OpenClaw isn't installed at all, this check is a no-op pass —
- * AgentGuard is usable without OpenClaw.
+ * Habena is usable without OpenClaw.
  */
+const OUR_SERVER_KEYS = ["habena", "agentguard"] as const;
 export const openclawPointedAtUsCheck: Check = {
   name: "openclaw-pointed-at-us",
   async run(): Promise<CheckResult> {
@@ -36,25 +38,26 @@ export const openclawPointedAtUsCheck: Check = {
 
     const mcp = (parsed.mcp ?? {}) as Record<string, unknown>;
     const servers = (mcp.servers ?? {}) as Record<string, { command?: string; args?: string[] }>;
-    const entry = servers["agentguard"];
+    const key = OUR_SERVER_KEYS.find((k) => k in servers);
+    const entry = key ? servers[key] : undefined;
     if (!entry) {
       return {
         name: "openclaw-pointed-at-us",
         status: "fail",
-        detail: "No `agentguard` entry in OpenClaw's mcp.servers",
-        fixHint: "Run `agentguard install openclaw --force`.",
+        detail: "No `habena` (or legacy `agentguard`) entry in OpenClaw's mcp.servers",
+        fixHint: "Run `habena install openclaw --force`.",
       };
     }
 
-    // Soft check: does the command/args mention agentguard?
+    // Soft check: does the command/args mention habena or agentguard?
     const argList = [entry.command ?? "", ...(entry.args ?? [])];
     const argStr = argList.join(" ").toLowerCase();
-    if (!argStr.includes("agentguard")) {
+    if (!OUR_SERVER_KEYS.some((k) => argStr.includes(k))) {
       return {
         name: "openclaw-pointed-at-us",
         status: "warn",
-        detail: `openclaw.json has an \`agentguard\` server but its command doesn't mention us: ${argStr}`,
-        fixHint: "Run `agentguard install openclaw --force` to re-link.",
+        detail: `openclaw.json has a \`${key}\` server but its command doesn't mention us: ${argStr}`,
+        fixHint: "Run `habena install openclaw --force` to re-link.",
       };
     }
 
@@ -68,7 +71,7 @@ export const openclawPointedAtUsCheck: Check = {
             name: "openclaw-pointed-at-us",
             status: "fail",
             detail: `openclaw.json references ${a} but that file no longer exists`,
-            fixHint: "Run `agentguard install openclaw --force` to re-link with the current install path.",
+            fixHint: "Run `habena install openclaw --force` to re-link with the current install path.",
           };
         }
       }

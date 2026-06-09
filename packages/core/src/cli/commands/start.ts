@@ -113,7 +113,7 @@ export async function startCommand(): Promise<void> {
     instances,
   });
 
-  console.error(chalk.green("AgentGuard proxy started (stdio transport)"));
+  console.error(chalk.green("Habena proxy started (stdio transport)"));
   console.error(chalk.gray(`Config: ${getConfigPath()}`));
   console.error(chalk.gray(`Audit: ${getAuditDbPath()}`));
   console.error(chalk.gray(`Registered agents: ${agents.length}`));
@@ -131,12 +131,12 @@ export async function startCommand(): Promise<void> {
         console.error(`${icon} ${chalk.bold(p.name)}: ${p.detail}`);
         if (p.fixHint) console.error(chalk.gray(`  └─ ${p.fixHint}`));
       }
-      console.error(chalk.gray("  (run `agentguard doctor` for the full report)"));
+      console.error(chalk.gray("  (run `habena doctor` for the full report)"));
     })
     .catch(() => { /* boot checks are advisory; never block startup */ });
 
   const shutdown = async () => {
-    console.error(chalk.yellow("\nShutting down AgentGuard..."));
+    console.error(chalk.yellow("\nShutting down Habena..."));
     await downstream.stop().catch(() => {});
     await ipcServer.stop().catch(() => {});
     approval.shutdown();

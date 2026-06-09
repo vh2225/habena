@@ -1,7 +1,7 @@
 /**
  * Static analysis over a resolved policy. Flags common authoring bugs
  * that the engine would happily execute but the user probably didn't
- * intend. Partner to `agentguard doctor` — doctor covers runtime
+ * intend. Partner to `habena doctor` — doctor covers runtime
  * health, this covers policy shape.
  *
  * V1 checks: the ones from the Phase 9 spec that are pure local pattern

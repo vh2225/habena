@@ -6,8 +6,16 @@ import {
   mkdirSync,
 } from "node:fs";
 import { join, dirname } from "node:path";
-import { homedir } from "node:os";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
+import { homedir } from "node:os";
+import { getConfigPath } from "../config/paths.js";
+
+// The server key we write into openclaw.json going forward.
+const HABENA_SERVER_KEY = "habena";
+// Legacy key still recognized so an existing install is migrated cleanly,
+// not treated as a downstream to wrap.
+const LEGACY_SERVER_KEY = "agentguard";
+const OUR_SERVER_KEYS = [HABENA_SERVER_KEY, LEGACY_SERVER_KEY];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -71,7 +79,8 @@ export function getOpenclawConfigPath(): string {
 }
 
 function getAgentGuardConfigPath(): string {
-  return join(homedir(), ".agentguard", "config.yaml");
+  // Resolves to ~/.habena (or legacy ~/.agentguard via the compat shim).
+  return getConfigPath();
 }
 
 // ─── Read / write ─────────────────────────────────────────────────────────────
@@ -130,8 +139,8 @@ export function migrateServersToAgentGuard(
   const keptServers: Record<string, OpenclawMcpServer> = {};
 
   for (const [name, server] of Object.entries(servers)) {
-    // Skip existing agentguard entry — it will be replaced
-    if (name === "agentguard") continue;
+    // Skip an existing habena/agentguard entry — it will be replaced
+    if (OUR_SERVER_KEYS.includes(name)) continue;
     if (isStdioServer(server)) {
       migratedServers[name] = server;
     } else {
@@ -145,13 +154,15 @@ export function migrateServersToAgentGuard(
     args: [agentGuardPath, "start"],
   };
 
-  // Replace servers: keep HTTP ones + add agentguard entry
+  // Replace servers: keep HTTP ones + add the habena entry.
+  // Any legacy `agentguard` key was skipped above and is intentionally
+  // dropped here so we end up with a single canonical entry.
   if (!newConfig.mcp) {
     newConfig.mcp = {};
   }
   newConfig.mcp.servers = {
     ...keptServers,
-    agentguard: agentGuardEntry,
+    [HABENA_SERVER_KEY]: agentGuardEntry,
   };
 
   return { migratedServers, newOpenclawConfig: newConfig };
@@ -193,7 +204,7 @@ function mergeIntoAgentGuardConfig(
     const targetName = name in merged ? `openclaw_${name}` : name;
     if (name in merged) {
       console.warn(
-        `Warning: AgentGuard config already has a server named "${name}", migrating as "${targetName}"`
+        `Warning: Habena config already has a server named "${name}", migrating as "${targetName}"`
       );
     }
     merged[targetName] = serverDef;
@@ -219,11 +230,12 @@ export async function installOpenclaw(options: InstallOptions): Promise<InstallR
   // 2. Read the config
   const openclawConfig = readOpenclawConfig(openclawConfigPath)!;
 
-  // 3. Check if already installed
+  // 3. Check if already installed (recognize both the new and legacy keys)
   const existingServers = openclawConfig.mcp?.servers ?? {};
-  if ("agentguard" in existingServers && !options.force) {
+  const alreadyInstalled = OUR_SERVER_KEYS.some((k) => k in existingServers);
+  if (alreadyInstalled && !options.force) {
     throw new Error(
-      "AgentGuard already installed in OpenClaw — use --force to overwrite."
+      "Habena already installed in OpenClaw — use --force to overwrite."
     );
   }
 
@@ -233,7 +245,7 @@ export async function installOpenclaw(options: InstallOptions): Promise<InstallR
     options.agentguardBinaryPath
   );
 
-  const agentGuardEntry = newOpenclawConfig.mcp?.servers?.agentguard as OpenclawStdioServer;
+  const agentGuardEntry = newOpenclawConfig.mcp?.servers?.[HABENA_SERVER_KEY] as OpenclawStdioServer;
 
   // 5. Read AgentGuard config
   const agConfig = readAgentGuardConfig(agentguardConfigPath);

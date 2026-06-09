@@ -31,13 +31,13 @@ import { securityAuditCommand } from "./commands/security.js";
 const program = new Command();
 
 program
-  .name("agentguard")
+  .name("habena")
   .description("MCP middleware proxy for AI agent safety")
   .version("0.1.0");
 
 program
   .command("init")
-  .description("Create default config at ~/.agentguard/config.yaml")
+  .description("Create default config at ~/.habena/config.yaml")
   .option("--force", "overwrite existing files")
   .action(initCommand);
 
@@ -76,12 +76,12 @@ agentCmd
   .description("List registered agents")
   .action(agentListCommand);
 
-const installCmd = program.command("install").description("Install AgentGuard into an MCP client");
+const installCmd = program.command("install").description("Install Habena into an MCP client");
 installCmd
   .command("openclaw")
-  .description("Wire AgentGuard into OpenClaw's config")
+  .description("Wire Habena into OpenClaw's config")
   .option("--dry-run", "Show what would happen without writing")
-  .option("--force", "Overwrite existing AgentGuard entry")
+  .option("--force", "Overwrite existing Habena entry")
   .action(installOpenclawCommand);
 
 const approvalsCmd = program
@@ -138,7 +138,7 @@ downstreamAddCmd
   .option("--dry-run", "Show what would be written without touching the config")
   .action(downstreamAddGmailCommand);
 
-const policyCmd = program.command("policy").description("Manage AgentGuard policy");
+const policyCmd = program.command("policy").description("Manage Habena policy");
 const presetCmd = policyCmd
   .command("preset")
   .description("Manage policy presets (observe, cautious, deny-all)")
@@ -204,7 +204,7 @@ program
   .option("--json", "Output JSON instead of human-readable")
   .action(doctorCommand);
 
-const uninstallCmd = program.command("uninstall").description("Remove AgentGuard from an MCP client");
+const uninstallCmd = program.command("uninstall").description("Remove Habena from an MCP client");
 uninstallCmd
   .command("openclaw")
   .description("Restore OpenClaw's previous MCP config from backup")
