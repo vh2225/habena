@@ -66,7 +66,7 @@ export function ApprovalCard(
       {/* Safe choices first/low-friction; Deny is visually separated and not the primary. */}
       <div className="mt-3 flex items-center gap-2">
         <Button variant="primary" disabled={busy} onClick={() => act("allow_once")}>Allow once</Button>
-        <Button variant="safe" disabled={busy} onClick={() => act("allow_session")}>Allow this session</Button>
+        <Button variant="safe" disabled={busy} onClick={() => act("allow_session")} title="Allows this tool for this agent for 1 hour">Allow this session (1h)</Button>
         <div className="flex-1" />
         <Button variant="danger" disabled={busy} onClick={() => act("deny")}><span aria-hidden>⛔</span> Deny</Button>
       </div>
