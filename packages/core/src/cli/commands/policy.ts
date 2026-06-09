@@ -119,8 +119,9 @@ export async function policyExplainCommand(
     console.error(chalk.red(`✗ ${(err as Error).message}`));
     console.error(
       chalk.gray(
-        `Usage: habena policy explain '{"tool":"gmail_send","args":{"to":"x@y"}}'\n` +
-          `       habena policy explain --tool gmail_send --args '{"to":"x@y"}'`
+        `Usage: habena policy explain gmail_send\n` +
+          `       habena policy explain gmail_send --args '{"to":"x@y"}'\n` +
+          `       habena policy explain '{"tool":"gmail_send","args":{"to":"x@y"}}'`
       )
     );
     process.exit(1);
@@ -192,6 +193,12 @@ function parseCallInput(
   positional: string | undefined,
   options: { tool?: string; args?: string }
 ): ToolCallContext {
+  // A bare tool name is the most natural first thing to type
+  // (`habena policy explain filesystem_write`) — treat anything that
+  // doesn't look like a JSON object as `--tool <name>`.
+  if (positional && !positional.trimStart().startsWith("{")) {
+    return { tool: positional.trim(), args: parseArgsOption(options.args) };
+  }
   if (positional) {
     let parsed: unknown;
     try {
@@ -210,15 +217,16 @@ function parseCallInput(
     };
   }
   if (!options.tool) {
-    throw new Error(`Provide a JSON argument or --tool <name> [--args <json>]`);
+    throw new Error(`Provide a tool name, a JSON call, or --tool <name> [--args <json>]`);
   }
-  let args: Record<string, unknown> = {};
-  if (options.args) {
-    try {
-      args = JSON.parse(options.args) as Record<string, unknown>;
-    } catch {
-      throw new Error(`--args is not valid JSON: ${options.args.slice(0, 80)}`);
-    }
+  return { tool: options.tool, args: parseArgsOption(options.args) };
+}
+
+function parseArgsOption(raw: string | undefined): Record<string, unknown> {
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    throw new Error(`--args is not valid JSON: ${raw.slice(0, 80)}`);
   }
-  return { tool: options.tool, args };
 }

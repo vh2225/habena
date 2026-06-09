@@ -161,8 +161,8 @@ presetCmd
 policyCmd
   .command("explain")
   .description("Trace which rule would match a tool call against the loaded policy")
-  .argument("[call-json]", 'Tool call as JSON, e.g. \'{"tool":"gmail_send","args":{"to":"x"}}\'')
-  .option("--tool <name>", "Tool name (alternative to positional JSON)")
+  .argument("[call]", 'Tool name (e.g. gmail_send) or a full call as JSON, e.g. \'{"tool":"gmail_send","args":{"to":"x"}}\'')
+  .option("--tool <name>", "Tool name (alternative to the positional argument)")
   .option("--args <json>", "Tool arguments as JSON")
   .option("--json", "Emit the decision as JSON")
   .action((callJson: string | undefined, opts: { tool?: string; args?: string; json?: boolean }) =>

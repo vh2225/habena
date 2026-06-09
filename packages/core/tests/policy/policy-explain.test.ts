@@ -32,18 +32,46 @@ describe("policy explain (CLI smoke)", () => {
     try {
       const r = runCli(["policy", "explain"], dir);
       expect(r.status).toBe(1);
-      expect(r.stderr).toMatch(/Provide a JSON argument or --tool/);
+      expect(r.stderr).toMatch(/Provide a tool name/);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
   });
 
-  it("errors on non-JSON positional arg", () => {
+  it("errors on a malformed JSON positional arg", () => {
     const dir = mkdtempSync(join(tmpdir(), "ag-explain-"));
     try {
-      const r = runCli(["policy", "explain", "not-json"], dir);
+      const r = runCli(["policy", "explain", '{"tool": broken'], dir);
       expect(r.status).toBe(1);
       expect(r.stderr).toMatch(/not valid JSON/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("treats a bare positional argument as a tool name", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ag-explain-"));
+    try {
+      const r = runCli(["policy", "explain", "--json", "filesystem_read"], dir);
+      expect(r.status).toBe(0);
+      const parsed = JSON.parse(r.stdout);
+      expect(parsed.call.tool).toBe("filesystem_read");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("combines a bare tool name with --args", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ag-explain-"));
+    try {
+      const r = runCli(
+        ["policy", "explain", "--json", "shell_execute", "--args", '{"command":"rm -rf /"}'],
+        dir
+      );
+      expect(r.status).toBe(0);
+      const parsed = JSON.parse(r.stdout);
+      expect(parsed.decision.action).toBe("deny");
+      expect(parsed.decision.tier).toBe("built_in");
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
