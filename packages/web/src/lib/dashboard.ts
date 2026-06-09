@@ -26,9 +26,13 @@ export function fmtTime(iso: string, now: Date = new Date()): string {
   }
 }
 
-/** Threat-engine decisions carry a `threat:<detector>: …` reason (see core threat/engine.ts). */
+/**
+ * Threat-engine decisions carry a `threat:<detector>: …` reason (see core
+ * threat/engine.ts). Substring match, not prefix: the approval flow prefixes
+ * resolved reasons ("approved: threat:…", "denied: threat:…").
+ */
 export function isThreat(row: Pick<DecisionRow, "reason">): boolean {
-  return (row.reason ?? "").startsWith("threat:");
+  return (row.reason ?? "").includes("threat:");
 }
 
 export function fmtLatency(ms: number | null): string {

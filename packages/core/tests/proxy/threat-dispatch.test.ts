@@ -34,4 +34,29 @@ describe("ProxyDispatcher threat integration", () => {
     expect(res.decision.action).toBe("allow");
     expect(res.forwarded).toBe(true);
   });
+
+  it("warn-mode findings reach the audit log even when policy allows with mandatory enforcement", async () => {
+    // warn → advisory allow, which loses stricter() to a soft_mandatory policy
+    // allow; the threat reason must still be carried into the audit entry.
+    const warnEngine = new ThreatEngine(
+      { ...DEFAULT_THREAT_CONFIG, credential_egress: "warn" },
+      new ToolSnapshotStore(join(mkdtempSync(join(process.env.TMPDIR || tmpdir(), "td-")), "s.json"))
+    );
+    const d = deps(warnEngine);
+    d.policy = {
+      evaluate: () => ({ action: "allow", reason: "user rule", tool: "x", enforcement: "soft_mandatory", risk_level: "medium", tier: "user" }),
+      addSessionOverride() {},
+    } as any;
+    const logged: any[] = [];
+    d.audit = { log: (e: any) => logged.push(e) } as any;
+
+    const res = await new ProxyDispatcher(d).handleToolCall({
+      agentType: "a", instanceId: "i", tool: "read_file",
+      args: { body: "AKIAIOSFODNN7EXAMPLE" }, estimatedCost: 0, mcpServer: "fs",
+    });
+    expect(res.decision.action).toBe("allow"); // warn never blocks
+    expect(res.forwarded).toBe(true);
+    expect(logged).toHaveLength(1);
+    expect(logged[0].reason).toMatch(/threat:credential_egress/);
+  });
 });

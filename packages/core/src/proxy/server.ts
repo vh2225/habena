@@ -79,6 +79,12 @@ export class ProxyDispatcher {
     const threatDecision = this.deps.threat?.checkCall(req.mcpServer ?? "unknown", req.tool, req.args);
     if (threatDecision) {
       decision = stricter(decision, threatDecision);
+      // A warn-mode finding is an advisory allow, which loses stricter() to a
+      // mandatory policy allow. The call still goes through, but the threat
+      // reason must reach the audit log — that is the whole point of warn.
+      if (decision.action === "allow" && !decision.reason.includes("threat:")) {
+        decision = { ...decision, reason: threatDecision.reason };
+      }
     }
 
     // 2b. If decision is require_approval AND approval queue is available, ask the human.

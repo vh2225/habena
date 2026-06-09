@@ -32,6 +32,7 @@ describe("dashboard helpers", () => {
 
   it("isThreat flags rows whose reason came from the threat engine", () => {
     expect(isThreat(row({ reason: "threat:credential-egress: AWS key in args" }))).toBe(true);
+    expect(isThreat(row({ reason: "approved: threat:tool_poisoning: injection cue" }))).toBe(true);
     expect(isThreat(row({ reason: "writes blocked" }))).toBe(false);
     expect(isThreat(row({ reason: null }))).toBe(false);
   });
