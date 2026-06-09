@@ -121,12 +121,16 @@ describe("TelegramApprovalChannel", () => {
   beforeEach(async () => {
     queue = new ApprovalQueue();
     api = new FakeTelegramApi();
-    // backoffMs: 0 keeps the loop tight; we never start the auto-loop in most
-    // tests — we drive pollOnce() by hand for determinism.
+    // autoPoll:false — start() subscribes the queue listeners but does NOT
+    // spawn the background long-poll loop, so we drive pollOnce() by hand with
+    // no background poller racing on the fake getUpdates/offset. backoffMs:0 /
+    // idlePollMs:0 keep each pollOnce a single real (0ms) macrotask tick.
     channel = new TelegramApprovalChannel(queue, {
       api: api as never,
       ownerId: OWNER_ID,
       backoffMs: 0,
+      idlePollMs: 0,
+      autoPoll: false,
     });
   });
 
@@ -229,6 +233,10 @@ describe("TelegramApprovalChannel", () => {
   it("6. resolved elsewhere: a CLI-watch respond edits the message and a later tap is a no-op", async () => {
     await channel.start();
     const p = queue.request(sampleDecision(), sampleRequest(), 60000);
+    // Let handleRequest finish sending & registering the token before we
+    // simulate the out-of-band resolve (in prod sendMessage is a real network
+    // round-trip; here we just flush its microtasks).
+    await new Promise((r) => setTimeout(r, 0));
     const token = tokenFromKeyboard(api.sent[0]);
     const pending = queue.list()[0];
 
@@ -289,10 +297,51 @@ describe("TelegramApprovalChannel", () => {
       api: throwingApi as never,
       ownerId: OWNER_ID,
       backoffMs: 0,
+      idlePollMs: 0,
+      autoPoll: false,
     });
     await c.start();
     // pollOnce must swallow the error rather than reject.
     await expect(c.pollOnce()).resolves.toBeUndefined();
     await c.stop();
+  });
+
+  it("8. background loop (autoPoll) does not hot-spin / starve timers on empty getUpdates", async () => {
+    // REGRESSION: the empty-success path used to return after only microtasks,
+    // so `while(running) await pollOnce()` microtask-hot-spun and starved every
+    // setTimeout (incl. this test's). Here getUpdates returns [] instantly and
+    // the loop runs for real; a setTimeout MUST still fire if timers aren't
+    // starved. idlePollMs:0 keeps it a 0ms macrotask tick (fast but not a spin).
+    let pollCount = 0;
+    const spinApi = {
+      async sendMessage() {
+        return { message_id: 1 };
+      },
+      async editMessageText() {},
+      async answerCallbackQuery() {},
+      async getUpdates(): Promise<TelegramUpdate[]> {
+        pollCount++;
+        return []; // always empty, returns synchronously — the trap.
+      },
+    };
+    const c = new TelegramApprovalChannel(queue, {
+      api: spinApi as never,
+      ownerId: OWNER_ID,
+      backoffMs: 0,
+      idlePollMs: 0,
+      autoPoll: true, // run the REAL background loop
+    });
+    await c.start();
+
+    // If timers are starved this setTimeout never resolves and the test times
+    // out. With the macrotask-yield fix it resolves promptly.
+    const timerFired = await new Promise<boolean>((resolve) => {
+      setTimeout(() => resolve(true), 20);
+    });
+    expect(timerFired).toBe(true);
+    // The loop actually ran multiple cycles (it polled), not blocked.
+    expect(pollCount).toBeGreaterThan(0);
+
+    await c.stop(); // must settle cleanly, not hang
   });
 });

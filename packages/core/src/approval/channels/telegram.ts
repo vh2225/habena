@@ -38,6 +38,23 @@ export interface TelegramApprovalChannelOptions {
   backoffMs?: number;
   /** Long-poll timeout passed to getUpdates, seconds. */
   pollTimeoutSec?: number;
+  /**
+   * Idle delay between poll cycles, ms. Acts as a hot-spin floor: even when
+   * getUpdates returns an empty batch instantly (e.g. a misconfigured 0s
+   * long-poll timeout, or a fake in tests), this guarantees the loop yields a
+   * real macrotask each cycle so it can NEVER starve setTimeout/timers or peg a
+   * CPU. Negligible in prod since getUpdates already blocks ~30s. Injectable so
+   * tests can set it to 0 — a 0ms setTimeout is still a macrotask, which is what
+   * breaks the starvation. Default 250ms.
+   */
+  idlePollMs?: number;
+  /**
+   * Whether start() spawns the background long-poll loop. Default true (prod).
+   * Tests set false so they can subscribe the queue listeners via start() and
+   * then drive pollOnce() by hand — no background poller racing on the fake
+   * getUpdates / offset, so assertions stay deterministic.
+   */
+  autoPoll?: boolean;
 }
 
 export class TelegramApprovalChannel implements ApprovalChannel {
@@ -48,6 +65,8 @@ export class TelegramApprovalChannel implements ApprovalChannel {
   private readonly ownerId: string | number;
   private readonly backoffMs: number;
   private readonly pollTimeoutSec: number;
+  private readonly idlePollMs: number;
+  private readonly autoPoll: boolean;
 
   private running = false;
   private offset = 0;
@@ -74,6 +93,8 @@ export class TelegramApprovalChannel implements ApprovalChannel {
     this.ownerId = opts.ownerId;
     this.backoffMs = opts.backoffMs ?? 1500;
     this.pollTimeoutSec = opts.pollTimeoutSec ?? 30;
+    this.idlePollMs = opts.idlePollMs ?? 250;
+    this.autoPoll = opts.autoPoll ?? true;
   }
 
   async start(): Promise<void> {
@@ -81,7 +102,9 @@ export class TelegramApprovalChannel implements ApprovalChannel {
     this.running = true;
     this.queue.on("approval_request", this.onRequest);
     this.queue.on("approval_resolved", this.onResolved);
-    this.loopPromise = this.pollLoop();
+    if (this.autoPoll) {
+      this.loopPromise = this.pollLoop();
+    }
   }
 
   async stop(): Promise<void> {
@@ -147,15 +170,26 @@ export class TelegramApprovalChannel implements ApprovalChannel {
     }
   }
 
-  /** One long-poll cycle. Errors are swallowed (a Telegram outage must not
-   *  crash the proxy); the loop backs off and retries. */
+  /**
+   * One long-poll cycle. Errors are swallowed (a Telegram outage must not crash
+   * the proxy); the loop backs off and retries.
+   *
+   * CRITICAL — anti-starvation: every path ends with a REAL `setTimeout`-based
+   * `delay` (a macrotask). Without this, the empty-success path would return
+   * after only microtasks, and `pollLoop`'s `while(running) await pollOnce()`
+   * would microtask-hot-spin and starve all `setTimeout`s (incl. the approval
+   * queue's timeout and any test timers) and peg a CPU. A 0ms delay is still a
+   * macrotask, so it breaks the starvation while staying negligible in prod
+   * (getUpdates already long-polls ~30s).
+   */
   async pollOnce(): Promise<void> {
     if (!this.running) return;
-    let updates;
+    let updates: import("./telegram-api.js").TelegramUpdate[];
     try {
       updates = await this.api.getUpdates(this.offset, this.pollTimeoutSec);
     } catch {
-      if (this.backoffMs > 0) await delay(this.backoffMs);
+      // Telegram outage: back off, then yield a macrotask before retrying.
+      await delay(this.backoffMs);
       return;
     }
     for (const update of updates) {
@@ -166,6 +200,8 @@ export class TelegramApprovalChannel implements ApprovalChannel {
         // A single bad update must not abort the batch or the loop.
       }
     }
+    // Always yield a macrotask between cycles — this is the hot-spin floor.
+    await delay(this.idlePollMs);
   }
 
   private async pollLoop(): Promise<void> {
