@@ -4,151 +4,155 @@
 **Status:** Research-backed design recommendation for Workstream C (web UI)
 **Audience:** technical-but-non-expert prosumers running always-on assistants, Mac-first.
 
-This synthesizes deep UI/UX research (sources cited inline) into a concrete, buildable
-design + component stack for Habena's two web surfaces: the **onboarding wizard** and the
-**live dashboard** (localhost, Next.js 16 + React 19).
+Synthesis of deep UI/UX research (19 claims verified 3-0, 6 refuted) into a buildable design +
+component stack for Habena's two web surfaces — the **onboarding wizard** and the **live
+dashboard** (localhost, Next.js 16 + React 19).
+
+**Evidence tags** on each recommendation: **[verified]** = backed by ≥1 primary source,
+adversarially confirmed; **[judgment]** = my engineering call, *not* found in the research (treat
+as a default to revisit); **[taste]** = a defensible aesthetic choice the research explicitly did
+**not** support as a best practice (use it because we like it, don't claim it as proven).
 
 ---
 
 ## 0. The one-line UX thesis
-
 > Make the abstract promise ("your agent can't drain your wallet or go rogue") **visible and
-> tactile**: a spend gauge you watch, an approval you tap, a decision stream you can read.
-> Premium feel comes from restraint, speed, and trustworthy clarity — not decoration.
+> tactile**: a spend gauge you watch, an approval you tap, a decision stream you read. Premium
+> feel = restraint, speed, and trustworthy clarity — not decoration.
 
 ---
 
-## 1. Component stack (do this first)
+## 1. Component stack
 
-A "low-effort, high-polish" stack that the research consistently points to:
-
-- **Tailwind CSS + shadcn/ui** (Radix primitives) — copy-in components, full control, no
-  runtime lock-in, strong accessibility baseline (shadcn/ui Accessibility Audit 2026). This is
-  the spine.
-- **Tremor** for dashboard primitives (KPI cards, gauges, progress circles, bar lists, spark
-  charts) — it's built *on* Tailwind and pairs with shadcn; fastest path to a polished
-  dashboard. Use **Recharts v3** underneath for any custom chart Tremor doesn't cover. Skip
-  Nivo unless we need exotic viz (heavier) — per the Recharts-vs-Tremor-vs-Nivo comparison,
-  Tremor=dashboards, Recharts=flexible custom charts.
-- **TanStack Table** (headless) + shadcn table for the decision stream (virtualized).
-- **cmdk** (command palette), **sonner** (toasts), **lucide** (icons), **Framer Motion** used
-  sparingly for purposeful 150–200ms micro-interactions.
-- **Dark-first** theme, system-aware, via CSS-variable design tokens (shadcn theming).
+- **[verified]** **Tailwind + shadcn/ui (Radix primitives).** Radix gives correct focus/ARIA;
+  copy-in components, no runtime lock-in. **Caveat (verified):** shadcn's *default styling can
+  undercut* Radix a11y — the default `muted-foreground` is **4.34:1**, below WCAG AA's 4.5:1
+  (shadcn issue #8088). **Action:** override muted text to ≥4.5:1 and verify the focus ring hits
+  3:1 non-text contrast. (Note: a widely-cited "34/48 components pass" audit was *refuted* —
+  don't rely on its specific counts; do the contrast fix, which is independently confirmed.)
+- **[verified]** Add a **Cmd+K command palette** and a proper **data-table** to the stack.
+- **[taste]** Optional **Linear-style tokens** (these specific tokens are verified as what Linear
+  uses, but adopting them is a taste choice): **Inter / Inter Display** for headings, **LCH**
+  color space, and a small set of (~three) theme variables.
+- **[judgment]** **Charts/gauges: Tremor** (built on Tailwind, dashboard-native) with **Recharts
+  v3** underneath for custom charts. ⚠️ *The research found NO verifiable claims comparing
+  chart libs (Tremor/Recharts/visx/Nivo) or spend-viz patterns* — this is my call, not evidence.
+  Revisit before committing; visx/Nivo are fine alternatives.
+- **[judgment]** TanStack Table (headless) for the stream; `sonner` toasts; `lucide` icons.
 
 ---
 
-## 2. Premium-feel principles (Linear / Vercel / Stripe)
-
-From "How Stripe, Linear, and Vercel Ship Premium UI," Linear design patterns, and the Vercel
-Blueprint-grid aesthetic:
-
-- **Restraint & density.** One accent color + a disciplined neutral ramp; generous whitespace
-  on a tight underlying grid; **monospace for technical values** (tool names, costs, latency,
-  IDs).
-- **Speed & keyboard-first.** Command palette (`⌘K`), keyboard shortcuts, instant transitions.
-  Perceived performance *is* polish.
-- **Purposeful motion only.** Fast, subtle, never bouncy. Skeletons over spinners.
-- **Empty states that teach**, not blank panels ("No decisions yet — start your agent and
-  tool calls will stream here").
-- **Consistent status semantics** everywhere (see §5 color).
+## 2. Premium-feel principles
+- **[taste]** **Restraint & density** — one accent + a disciplined neutral ramp; **monospace for
+  technical values** (tools, costs, latency, IDs). (Note: specific Linear claims about a *flat
+  grid / sharp edges / 1px separators* were **refuted 0-3** — don't treat those as rules.)
+- **[taste]** **Dark-first, system-aware** theme. (The "dark-first + keyboard-first + vim-nav is
+  the recommended system" claim was **refuted 1-2** — so dark-first is our aesthetic choice, not
+  a proven best practice.)
+- **[taste]** **Purposeful, fast motion**; skeletons over spinners. (The specific "200ms
+  ease-out / optimistic-updates" prescription was **refuted 1-2** — keep motion subtle by
+  preference, don't cite a magic duration.)
+- **[judgment]** **Empty states that teach** ("No decisions yet — start your agent and tool calls
+  stream here") and a command palette for speed.
 
 ---
 
 ## 3. Onboarding wizard
-
-**Goal = time-to-first-value:** the "aha" is *seeing a guarded tool call happen*. Optimize the
-whole flow to reach that fast (Time-to-Value SaaS frameworks; NN/g "Wizards").
-
-**When a wizard is right (NN/g):** infrequent, complex, sequential setup — onboarding qualifies.
-Don't wizard-ify things that should be a single form.
-
-**Steps** (linear, visible step indicator, **safe defaults pre-filled so Next→Next→Done
-works**, advanced options behind progressive disclosure — NN/g "Progressive Disclosure"):
-
-1. **Welcome / pick what you're guarding** — OpenClaw · Hermes · Claude Desktop · "just guard
-   tools manually." Sets the wiring path.
-2. **Wire a downstream** — filesystem one-click default (pick a folder); Gmail/others optional
-   and collapsed.
-3. **Choose a policy preset** — `cautious` pre-selected; one plain-language line each
-   (observe / cautious / deny-all).
-4. **Set a daily budget** — pre-filled sane default (e.g. $10/day); a single field.
-5. **(Optional) phone approvals** — connect Telegram; clearly skippable ("you can add this
-   later"). Links to `docs/approval-channels.md`.
-6. **Done → "Send a test call"** — triggers a sample tool call and **highlights it landing on
-   the dashboard**. That's the aha moment.
-
-**Rules:** inline validation + friendly error recovery; never block on optional steps; a
-persistent "you can change all of this later" reassurance; remember progress if they bounce.
+- **[verified]** Use a **single-pass wizard with a visible, highlighted step list** —
+  wizards are best for **novice / infrequent setup** (NN/g "Wizards"), which first-run is.
+- **[verified]** **Progressive disclosure**: show a few options with **safe defaults**, hide
+  advanced behind "more" — it measurably improves learnability, efficiency, and error rate (NN/g).
+- **[verified/judgment]** Target **~4–5 steps** (research says "3–5"; exact count is an open
+  question):
+  1. **Pick what you're guarding** — OpenClaw · Hermes · Claude Desktop · "guard tools manually."
+  2. **Wire a downstream** — filesystem one-click default; others collapsed.
+  3. **Policy preset** — `cautious` pre-selected, one plain line each.
+  4. **Daily budget** — pre-filled sane default (e.g. $10/day).
+  5. **(Optional) phone approvals** — connect Telegram, clearly skippable.
+- **[judgment]** End on **"send a test call" → watch it land on the dashboard** (the aha / first
+  value). Safe defaults so **Next→Next→Done** yields a working guarded agent; inline validation;
+  never block on optional steps; "you can change this later" reassurance.
 
 ---
 
 ## 4. Live dashboard
+**[judgment]** Frame: left nav (Overview · Decisions · Approvals · Agents · Spend · Policy) + a
+persistent **top status bar** (proxy health, today's spend vs budget, pending-approvals count).
 
-**Frame:** left nav (Overview · Decisions · Approvals · Agents · Spend · Policy) + a persistent
-**top status bar** (proxy health dot, today's spend vs budget, pending-approvals count).
+### 4a. Decision stream — model on observability log UIs **[verified]**
+- **Live-tail that *samples uniformly under load*** rather than dropping or freezing (Datadog Live
+  Tail). For a single personal assistant, volume is low, so this mostly matters during bursts —
+  but build the sampling/pause affordance in from the start.
+- **Two density modes — condensed vs. expanded** (New Relic Logs UI).
+- **Drill-down two ways: a side panel *and* inline expansion, with auto-formatted JSON** for args.
+- **A "patterns" view** (group similar events; click/drag to select a span) to tame repetition.
+- **[judgment]** Columns: time · agent · tool · server · decision badge · tier · rule · latency;
+  filters (agent/decision/server/time); row → drawer shows the `policy explain` trace (the *why*).
 
-### 4a. Decision stream (the heart)
-A **live-tail, virtualized table**: time · agent · tool · server · **decision badge** · tier ·
-rule · latency. From log-viewer UX (Logdy/observability patterns):
-- **Live-tail toggle** — pause to inspect, resume to follow (don't yank rows out from under a
-  reading user).
-- **Filters**: agent, decision type, time, server. **Group/collapse** repetitive identical
-  rows to fight volume.
-- **Row → drawer**: full args + the **policy trace** (reuse `habena policy explain` output) so
-  the user sees *why* it was allowed/denied.
+### 4b. Approvals queue (build first) **[verified] + [judgment]**
+- **[verified]** Present the decision with a **plain-language rationale / benefit copy** — giving
+  a *reason* makes people meaningfully more likely to decide correctly (NN/g permission requests;
+  effect size from Tan et al. CHI 2014 — **caveat: a 2014 smartphone study, directional not
+  precise**). Trigger the ask **in context**, not preemptively.
+- **[verified]** **Status badges use ≥2 of {color, shape, symbol} at ≥3:1 contrast** — never
+  color alone (Carbon/WCAG).
+- **[judgment]** Card: **"Agent X wants to call `tool` — [Allow once] [Allow session] [Deny]"**
+  with the **real tool + args** shown, reason, countdown to timeout. The **safe choice is the
+  low-friction default**; the destructive action is *not* the easy/primary button (prevents
+  mis-taps). This is the browser twin of the Telegram phone-tap flow.
+- **[judgment]** **Lies-in-the-loop guard:** show the agent's *actual* requested tool + args
+  faithfully (truncated, not misleading) — a HITL approval is only as safe as what the human sees.
 
-### 4b. Approvals queue (highest-value panel — build first)
-The browser twin of the phone-tap flow: a card per pending approval —
-**"Agent X wants to call `tool` — [Allow once] [Allow session] [Deny]"** with the **real tool +
-args** shown, the reason, a **countdown to timeout**, and risk signaling.
-- **Safety-critical:** the destructive/allow action must NOT be the easy/primary-styled button;
-  make the safe choice the low-friction default (NN/g permission requests; web.dev Permission
-  UX). Prevents mis-taps.
-- **"Lies-in-the-loop" caveat (Checkmarx):** a HITL approval is only as safe as what's shown —
-  display the agent's *actual* requested tool + args faithfully (truncated but not misleading),
-  not just a narrative a poisoned tool could author.
-
-### 4c. Per-agent drilldown
+### 4c. Per-agent drilldown **[judgment]**
 Spend, decision history, top tools, budget status, fingerprint — one screen per agent/instance.
 
-### 4d. Spend gauges (the "won't drain your wallet" promise, made visible)
-Top-bar + Spend page: today vs daily budget (Tremor ProgressCircle/BarList), burn-rate,
-**threshold colors** green <50% · amber 50–80% · red >80% (AWS Budgets / Stripe usage). Surface
-a calm warning as the cap approaches — before, not after.
+### 4d. Spend gauges **[judgment]** ⚠️ research gap
+Top-bar + Spend page: today vs daily budget, burn-rate, **threshold colors** (green/amber/red),
+a calm warning *before* the cap. *No spend-viz pattern was verifiable in the research* — this
+follows common billing-dashboard convention (AWS/Stripe/Vercel), but treat as unvalidated.
 
-### 4e. Threat alerts (low-noise)
-A dedicated panel for rug-pull / tool-poisoning / credential-egress flags (Workstream B feeds
-this). **Avoid alarm fatigue (Wiz):** only high-signal alerts, grouped, with ack/snooze. A wall
-of red trains users to ignore it.
+### 4e. Threat alerts (low-noise) **[verified]**
+- **Each alert enriched with severity + scope/affected + recommended action/remediation** — this
+  is the verified antidote to **alert fatigue** (Wiz). Only high-signal alerts; group; allow
+  ack/snooze. A wall of red trains users to ignore it. (Feeds from Workstream B.)
 
 ---
 
-## 5. Trust & safety UX (the security-tool lens)
-
-"Cybersecurity UI fails when users don't trust it" — so look **authoritative but calm**:
-- Muted palette; **reserve red strictly** for genuine deny/threat. Plain-language "why this was
-  flagged," never jargon-walls.
-- **Color semantics (consistent, + icons not color-alone for a11y):** green = allow ·
-  red = deny/block · amber = needs-approval/warning · neutral = info.
-- Explain requested permissions in terms of *what* + *why* + *consequence* (NN/g, web.dev).
+## 5. Trust & safety lens **[verified core]**
+- **Status semantics:** green = allow · red = deny/block · amber = needs-approval/warning ·
+  neutral = info — always **color + a second channel (shape/icon)** at ≥3:1 (a11y).
+- **Authoritative but calm [taste]:** reserve red strictly for genuine deny/threat; plain-language
+  "why this was flagged," no jargon walls. (A security UI that feels alarmist loses trust.)
+- **Explain requests** in terms of *what + why + consequence* (NN/g, verified rationale effect).
 
 ---
 
 ## 6. Do-these-first (5 moves, in order)
-
-1. **Adopt the stack:** Tailwind + shadcn/ui + Tremor, dark-first CSS-variable tokens.
-2. **Approvals queue UI** — highest value, mirrors the phone-tap demo, the core trust moment.
-3. **Decision stream** — live-tail virtualized table + pause + row-drawer policy trace.
-4. **Spend gauge in the top bar** — threshold colors; the wallet promise made visible.
-5. **Onboarding wizard** with safe defaults → ends on a test-call "aha" on the dashboard.
+1. **[verified]** Stand up Tailwind + shadcn/ui; **fix the muted-text contrast to ≥4.5:1** and
+   focus-ring to ≥3:1 on day one.
+2. **[verified+judgment]** Build the **approvals queue** first — rationale copy, ≥2-channel
+   status badges, safe-default button, real tool+args. Highest-value trust moment.
+3. **[verified]** **Decision stream** as live-tail (sample-under-load + pause) with
+   condensed/expanded density and a side-panel/inline JSON drill-down to the policy trace.
+4. **[judgment]** **Spend gauge** with threshold colors in the top bar (validate the pattern).
+5. **[verified]** **Wizard**: visible highlighted step list + progressive disclosure + safe
+   defaults, ending on a test-call aha.
 
 ---
 
-## 7. Sources (verified in research)
-NN/g (Wizards; Progressive Disclosure; Mobile Permission Requests) · Krystal Higgins (setup
-wizards) · "How Stripe, Linear, and Vercel Ship Premium UI" (Mantlr) · Linear design patterns ·
-Vercel Blueprint-grid aesthetic (Setproduct) · SaaS Time-to-Value frameworks (Digital Applied) ·
-Logdy / log-viewer UX · HITL agent-approval patterns (Mastra) · "Lies-in-the-Loop" HITL caveat
-(Checkmarx) · web.dev Permission UX · "Why Cybersecurity UI Design Fails…" (Skins Factory) ·
-Alert fatigue (Wiz) · Recharts v3 vs Tremor vs Nivo (PkgPulse) · shadcn/ui Accessibility Audit
-2026 · AWS Budgets / Stripe usage (spend viz).
+## 7. Open questions (decide during build)
+- Exact wizard step count (research says 3–5; I lean 4–5).
+- Approval **default action + undo** behavior (research didn't settle this — pick deny-default,
+  add an undo window?).
+- Live-tail defaults for **single-assistant** (low) volume — sampling may rarely trigger; tune
+  pause/auto-scroll behavior for low rates.
+- Chart/gauge library + spend-viz pattern (research gap — Tremor is a default, not a verdict).
+
+## 8. Verified sources
+NN/g (Wizards; Progressive Disclosure; Permission Requests) · Datadog Live Tail · New Relic Logs
+UI · IBM Carbon status-indicator pattern (WCAG) · Wiz (alert fatigue) · shadcn/ui issue #8088
+(muted-foreground contrast) · Linear redesign (Inter Display / LCH / theme tokens) · Krystal
+Higgins setup wizards · Mastra HITL approval.
+**Refuted (do not cite as fact):** Linear 200ms-motion/optimistic-updates; dark-first+vim-nav as
+"the system"; flat-grid/sharp-edges; the 34/48 shadcn audit counts; Wiz's 26k→12 funnel stat.
+**Gaps:** no verifiable chart-lib or spend-viz claims.
