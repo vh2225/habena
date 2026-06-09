@@ -149,9 +149,15 @@ on positioning or pivot.
 Ordered by the GitHub-first critical path. **A is the floor for any public push.**
 
 ### A. Core correctness *(P0 — blocks the GitHub-first launch)*
-1. **Finish the forwarding path** — proxy executes approved calls against downstream MCP
-   servers. The single most important item.
-2. **Get tests green** — fix 11 failing policy-explain tests; CI gate.
+1. **Verify + clean the forwarding path** — *correction after code review:* end-to-end
+   forwarding **already works** on the live stdio path (`createMcpServer` →
+   `DownstreamManager.forward()` → `DownstreamClient.callTool()` via the real MCP SDK). The
+   only "stub" is a **vestigial, unused `Forwarder` class** that throws. Task is: add an
+   integration test proving end-to-end forward, delete/retire the dead `Forwarder`, and fix
+   the misleading "Phase 1/Phase 2" comments. Not a build-from-scratch item.
+2. **Get tests green** — fix the 4 failing `policy-explain` tests: `policy explain --json`
+   exits status 1 on a `deny` decision, but it's a trace command — a deny is a valid result,
+   so it must exit 0. CI gate.
 3. **npm + `npx` ready** — publish `habena`; `npx habena` works cold.
 4. **Rename** — AgentGuard → Habena across repo, CLI, config dir (`~/.habena/`), docs. Provide
    a migration shim for existing `~/.agentguard/` users (the author).
