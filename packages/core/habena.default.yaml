@@ -83,7 +83,7 @@ approval:
   # --- Phone-tap approvals (Telegram) — optional, disabled by default ---
   # Get one-tap Allow/Deny on your phone when a tool call hits a
   # `require_approval` rule. No extra process — just config.
-  # Setup (60s): https://github.com/vh2225/agentguard/blob/main/docs/approval-channels.md
+  # Setup (60s): https://github.com/vh2225/habena/blob/main/docs/approval-channels.md
   #
   # channels:
   #   telegram:

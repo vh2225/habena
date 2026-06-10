@@ -48,13 +48,13 @@ function buildDefaultConfig(): string {
 // Commented-out template that makes the phone-tap approval channel discoverable
 // without enabling it. Uncomment + fill in to get one-tap Allow/Deny on your
 // phone when an agent hits a `require_approval` rule. Setup guide:
-//   https://github.com/vh2225/agentguard/blob/main/docs/approval-channels.md
+//   https://github.com/vh2225/habena/blob/main/docs/approval-channels.md
 const TELEGRAM_TEMPLATE = [
   "",
   "# --- Phone-tap approvals (Telegram) — optional, disabled by default ---",
   "# Get one-tap Allow/Deny on your phone when a tool call hits a",
   "# `require_approval` rule. No extra process — just config.",
-  "# Setup (60s): https://github.com/vh2225/agentguard/blob/main/docs/approval-channels.md",
+  "# Setup (60s): https://github.com/vh2225/habena/blob/main/docs/approval-channels.md",
   "#",
   "# approval:",
   "#   channels:",

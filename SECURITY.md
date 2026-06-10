@@ -6,7 +6,7 @@ AgentGuard sits in the authority chain between your AI agent and its downstream 
 
 **Please do not open a public GitHub issue for security reports.**
 
-Use GitHub's [private vulnerability reporting](https://github.com/vh2225/agentguard/security/advisories/new) to submit a coordinated disclosure. Include:
+Use GitHub's [private vulnerability reporting](https://github.com/vh2225/habena/security/advisories/new) to submit a coordinated disclosure. Include:
 
 - A description of the issue
 - Steps to reproduce (ideally a minimal proof-of-concept)

@@ -5,11 +5,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/vh2225/agentguard.git"
+    "url": "https://github.com/vh2225/habena.git"
   },
-  "homepage": "https://github.com/vh2225/agentguard#readme",
+  "homepage": "https://github.com/vh2225/habena#readme",
   "bugs": {
-    "url": "https://github.com/vh2225/agentguard/issues"
+    "url": "https://github.com/vh2225/habena/issues"
   },
   "keywords": [
     "mcp",

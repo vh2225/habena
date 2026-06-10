@@ -11,7 +11,7 @@ See [`docs/roadmap.md`](docs/roadmap.md) for what's in flight and [`docs/specs/`
 ## Setup
 
 ```bash
-git clone https://github.com/vh2225/agentguard.git
+git clone https://github.com/vh2225/habena.git
 cd agentguard
 pnpm install
 pnpm -F habena build

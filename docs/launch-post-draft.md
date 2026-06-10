@@ -1,105 +1,191 @@
 # Launch post drafts (for your eyes — not public)
 
-A few angles. Pick one based on where you post. Polish tone to taste before shipping.
+Updated 2026-06-09 for the Habena rename, npm publish (`habena@0.3.0`), threat
+firewall, Telegram approvals, and the full dashboard. Pick the angle per venue;
+polish tone to taste before shipping. Demo script at the bottom.
 
 ---
 
 ## Show HN (preferred)
 
-**Title:** `Show HN: AgentGuard – MCP middleware that makes AI agents safer and more automated`
+**Title:** `Show HN: Habena – open-source safety proxy for AI agents (policy, approvals, threat detection)`
 
 **Body:**
 
 ```
-Hi HN — I've been running AI agents (OpenClaw, mostly) against my own
-email, calendar, and short-term rental business for a few weeks, and
-got tired of either over-restricting them (useless) or not restricting
-them enough (scary). Built AgentGuard as the middle layer.
+Hi HN — I run AI agents (OpenClaw, mostly) against my own email,
+calendar, and a small rental business. I got tired of choosing between
+over-restricting them (useless) and under-restricting them (scary), so
+I built the middle layer.
 
-Repo: https://github.com/vh2225/agentguard  (MIT)
+Repo: https://github.com/vh2225/habena  (MIT, no paid tier)
+Install: npm i -g habena
 
-An agent connects to AgentGuard as its MCP server. AgentGuard forwards
-every tool call to the real MCP servers downstream, running it through
-a policy engine, cost budget, and optional human approval. Every
-decision is audited to SQLite.
+Your agent connects to Habena as its only MCP server. Habena forwards
+every tool call to the real MCP servers downstream — after running it
+through a policy engine, budget checks, threat detection, and (when a
+rule says so) human approval. Every decision is audited to SQLite, with
+a local dashboard on localhost:7700.
 
-One command to get a safe baseline:
+Safe baseline in four commands:
 
-  agentguard init
-  agentguard downstream add gmail     # guided OAuth
-  agentguard start
+  habena init                                 # cautious preset: reads ok,
+                                              # writes need approval,
+                                              # destructive ops denied
+  habena downstream add filesystem ~/workspace
+  habena agent add --name openclaw
+  habena start
 
-`agentguard policy preset cautious` writes a rule set that allows
-reads, requires approval for writes, hard-denies destructive ops. The
-config is a YAML file you can edit, but you don't have to start with
-YAML — the preset is the first-use story.
+Things in it I haven't seen together elsewhere:
 
-`agentguard doctor` catches most of the silent misconfigurations I
-hit personally while building this: better-sqlite3 ABI mismatches,
-OpenClaw pointing at a deleted binary, downstream MCP servers that
-started but can't authenticate, audit DB unwritable, etc. Example
-output from my machine right now:
+- A local threat firewall for MCP: heuristics for tool-poisoning
+  (malicious instructions hidden in tool descriptions — the Invariant
+  Labs attack), credential-egress (secrets in call args), and rug-pulls
+  (a tool's definition silently changing — checked across restarts AND
+  mid-session on a periodic re-scan). No cloud feed; runs entirely on
+  your machine.
 
-  ✓ proxy-reachable          hello in 2ms
-  ✓ audit-db-writable        1.2 MB, 4,822 rows
-  ⚠ downstream-reachable     gcal: auth token expired
-      └─ fix: Re-run the downstream's auth flow or re-issue its token
-  ✓ openclaw-pointed-at-us   points at the current install path
-  ✓ node-version             Node v20.12.2, better-sqlite3 loads
-  ✓ clock-skew               +0s vs google.com
-  ✓ approval-queue-draining  no pending approvals
+- One-tap phone approvals: a held call buzzes a Telegram bot; only your
+  chat id can answer; choices are allow-once / deny. The CLI
+  (`habena watch`) and the web dashboard work alongside it.
 
-Thesis: the middle layer is how you get safer AND more automated at
-the same time, not either alone. Observe what agents do, turn the
-stable patterns into rules, keep humans in the loop for the long tail.
+- Honest cost controls. Habena sits between the agent and its TOOLS,
+  not between the agent and its LLM, so it never sees your token bill —
+  and I refuse to pretend otherwise. What it enforces instead: call-rate
+  caps (the thing that actually stops a runaway loop), caps on how many
+  tokens of tool results get stuffed into the agent's context (the
+  measurable driver of LLM spend), and per-call dollar prices you
+  declare for metered tools. For true dollar caps, put an LLM gateway
+  in front of your model API; they compose.
 
-Status: early, single-operator tested. Chat-channel approvals are
-spec'd but not built. Learning-mode (observe → propose rules) is
-stubbed. Fleet/dashboard is a local-only Next.js scaffold. Everything
-on the roadmap is MIT, no gated tier — goal is adoption.
+- `habena policy explain shell_execute --args '{"command":"rm -rf /"}'`
+  tells you exactly which rule fires and why, without running anything.
 
-Would love pointers to people solving the same problem, or holes in
-the thesis. Happy to answer anything.
+- A learning mode: run permissive for a week, then `habena learn`
+  proposes a least-privilege rule set from what your agent actually did.
+
+Status: early, working, single-operator tested. stdio MCP transport
+only. Threat detection is heuristic/best-effort, not a guarantee.
+Registry integrations (Glama et al) and provider-side cost ingestion
+are stubs/roadmap. Everything is MIT — the goal is adoption.
+
+Thesis: the middle layer is how agents get safer AND more autonomous at
+the same time — observe, turn stable patterns into rules, keep a human
+on the long tail. Would love pointers to people attacking the same
+problem, or holes in the thesis.
 ```
 
 ---
 
 ## Reddit — r/LocalLLaMA
 
-**Title:** `I built a middleware proxy so my local agents stop doing dumb things`
+**Title:** `I built an open-source proxy that sits between my agents and their tools — approvals on my phone, runaway loops capped, poisoned MCP tools flagged`
 
-Shorter, less buttoned-up than HN. Link to repo. Show 3-screenshot flow: Telegram DM → agent → approval prompt → reply. Emphasize local-first, open source, no paid tier.
+**Body:**
+
+```
+Everything local: policy engine, SQLite audit log, dashboard on
+localhost:7700, threat heuristics with no cloud feed. MIT, no paid
+tier, no telemetry.
+
+The pitch in one flow: my agent tries to write outside its workspace →
+the call freezes → my phone buzzes (Telegram) → I tap Deny → the agent
+gets a structured denial and the whole thing is in the audit log.
+
+It also scans MCP tool descriptions for prompt-injection patterns
+(the "tool poisoning" attack), watches for tools whose definitions
+change mid-session (rug-pulls), and blocks credentials from leaving in
+call args. Plus call-rate caps so a looping agent gets stopped instead
+of running all night.
+
+npm i -g habena && habena init
+
+Repo: https://github.com/vh2225/habena — would love feedback,
+especially from anyone running always-on local agents.
+```
+
+Attach: 3-screenshot flow (Telegram approval buzz → dashboard decisions
+stream with a threat badge → `habena watch` terminal). Local-first angle
+front and center.
 
 ---
 
 ## Reddit — r/selfhosted
 
-**Title:** `AgentGuard: self-hostable safety layer for MCP-based AI agents`
+**Title:** `Habena: self-hostable safety layer for MCP-based AI agents`
 
-Lead with the "everything stays on your machine" angle. SQLite audit log, config in ~/.agentguard/, systemd service file shipped. Call out that it works behind a firewall / air-gapped, no telemetry.
+Lead with "everything stays on your machine": SQLite audit, config in
+`~/.habena/`, dashboard bound to localhost, threat detection is local
+heuristics (explicitly NO cloud feed), works air-gapped except the
+optional Telegram channel. MIT, no telemetry, no phone-home.
 
 ---
 
 ## X / Twitter thread
 
-Eight tweets max. Structure:
+Eight tweets max:
 
-1. "Spent a month building an MCP middleware proxy. Shipped today: MIT, adoption-first, no paid tier. Thread → github.com/vh2225/agentguard"
-2. Why: agents getting powerful faster than safe; every project picks ONE of (safer, more automated) — I wanted both.
+1. "My AI agent can read my email. Today I shipped the thing that makes
+   that less terrifying: Habena, an open-source safety proxy for MCP
+   agents. MIT, no paid tier. npm i -g habena → github.com/vh2225/habena"
+2. Why: agents get powerful faster than they get safe; every tool picks
+   ONE of (safer, more autonomous). The middle layer gets you both.
 3. Architecture diagram (the one in the README).
-4. Demo of policy preset → start → doctor in screenshots.
-5. The three design pieces I think matter: scope-based policy (not rule-regex), auth-probe for downstreams, doctor command that catches silent misconfigs.
-6. What's NOT done: chat-channel approvals, learning mode, multi-user. Invite contributors.
-7. Credits: /cc @obra for superpowers, which was the reason I trusted the "build in public" path.
-8. Repo link again, honest ask: "tell me what I got wrong."
+4. 30s clip: write blocked → phone buzz → tap Deny → audit log entry.
+5. The threat firewall: tool-poisoning, credential-egress, rug-pull
+   drift — checked at startup AND mid-session. All local heuristics.
+6. The honest part: it can't see your token bill (it proxies tools, not
+   the LLM), so it caps what it CAN measure — call rates and context
+   stuffing. Honesty section in the README.
+7. What's not done: registry trust scores, provider-side cost ingestion,
+   multi-user. All MIT, contributors welcome.
+8. Repo + ask: "tell me what I got wrong."
+
+---
+
+## Demo script (record once, use everywhere)
+
+Target: 60–90 seconds, terminal left, dashboard right. Rehearse twice.
+
+**Setup beforehand (off camera):** clean `~/.habena` (`mv ~/.habena
+~/.habena.bak`), Telegram channel configured, dashboard running
+(`pnpm -F habena-web dev`), an MCP client you can drive (OpenClaw or
+the MCP inspector) pointed at Habena.
+
+1. **Install + init (10s).**
+   `npm i -g habena && habena init`
+   — point at the output: cautious preset, call-rate caps on by default.
+2. **Wire + start (10s).**
+   `habena downstream add filesystem ~/workspace && habena start`
+   — point at the startup lines: downstreams healthy, threat scan ran.
+3. **The money shot (20s).** Agent asks to write a file OUTSIDE
+   `~/workspace`. Call freezes. Phone buzzes (film the phone or screen-
+   mirror). Tap **⛔ Deny**. Agent receives a structured denial.
+4. **Receipts (10s).** Dashboard: Decisions stream shows the deny;
+   Overview shows the counters tick. `habena logs --decision deny`
+   shows the same from the terminal.
+5. **Hard floor (10s).**
+   `habena policy explain shell_execute --args '{"command":"rm -rf /"}'`
+   → hard_mandatory deny, built_in tier. "Some things are never
+   negotiable — no approval can override these."
+6. **Close (5s).** "Policy, approvals, threat detection, audit — one
+   proxy, all local, MIT. github.com/vh2225/habena"
+
+Optional 15s extension if it lands well: edit a mock tool's description
+mid-session, wait for the re-scan tick, show the rug-pull flag appear.
 
 ---
 
 ## General cross-post notes
 
-- Post times: HN Tuesday 8-10am PT. Reddit any weekday mid-morning.
-- HN: use "Show HN" prefix and a clear demo link — not just a GitHub URL. If you can include a 30-second asciicinema or similar showing the install/doctor flow, use it.
-- Keep the thesis (safer AND automated) front-and-center. "Yet another MCP tool" won't hold attention.
-- Don't over-promise. The "what's missing" section in the README is a feature — honest about early-stage status + invites contribution.
-- Respond to every comment in the first 4 hours. This is how HN / Reddit stories get traction.
-- Track where traffic comes from — GitHub's Insights → Traffic shows referrers for 14 days.
+- Post times: HN Tuesday 8–10am PT. Reddit any weekday mid-morning.
+- HN: "Show HN" prefix + a demo asciinema/video link near the top — not
+  just a GitHub URL.
+- Keep the thesis (safer AND more autonomous) front-and-center. "Yet
+  another MCP tool" won't hold attention.
+- The honesty is the differentiator: the cost section says plainly what
+  it can't see, the README says "heuristic, best-effort", the status
+  section says single-operator tested. HN rewards this; don't sand it off.
+- Respond to every comment in the first 4 hours.
+- Track referrers: GitHub Insights → Traffic (14-day window), npm
+  download stats at npmjs.com/package/habena.

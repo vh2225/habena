@@ -4,14 +4,14 @@
   "license": "MIT",
   "description": "Habena — keep your AI agent on a short rein. MCP middleware proxy: policy guardrails, spend caps, and human approval for AI agents.",
   "author": "Vinh Hoang",
-  "homepage": "https://github.com/vh2225/agentguard#readme",
+  "homepage": "https://github.com/vh2225/habena#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vh2225/agentguard.git",
+    "url": "git+https://github.com/vh2225/habena.git",
     "directory": "packages/core"
   },
   "bugs": {
-    "url": "https://github.com/vh2225/agentguard/issues"
+    "url": "https://github.com/vh2225/habena/issues"
   },
   "keywords": [
     "mcp",

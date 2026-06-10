@@ -2,7 +2,7 @@
 
 > **Keep your AI agent on a short rein.**
 
-[![CI](https://github.com/vh2225/agentguard/actions/workflows/ci.yml/badge.svg)](https://github.com/vh2225/agentguard/actions/workflows/ci.yml)
+[![CI](https://github.com/vh2225/habena/actions/workflows/ci.yml/badge.svg)](https://github.com/vh2225/habena/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Habena is the open-source safety layer that sits between your AI assistant (OpenClaw, Hermes, any Claude-based agent) and the real MCP servers and tools it calls. It enforces a policy engine, spend caps, and one-tap human approval on every tool call, and audits every decision to SQLite — so a runaway loop can't drain your wallet, a poisoned tool can't quietly exfiltrate your secrets, and nothing dangerous happens without your say-so. Install an assistant and guard it end-to-end. Mac-first.
@@ -100,7 +100,7 @@ Every allow, deny, and held call is written to the SQLite audit log, queryable w
 > buzzes → tap **⛔ Deny** → the call is blocked and audited. Only your own
 > chat id can approve, and the choices are Allow-once / Deny. Setup is a few
 > lines of config — see
-> [docs/approval-channels.md](https://github.com/vh2225/agentguard/blob/main/docs/approval-channels.md).
+> [docs/approval-channels.md](https://github.com/vh2225/habena/blob/main/docs/approval-channels.md).
 > The `habena watch` CLI (and raw IPC) still work alongside it.
 
 ## Status & roadmap
@@ -137,7 +137,7 @@ Roadmap:
 - **Cloud-backed threat intel** — shared signatures for known-bad servers, layered on the local heuristic detection that already ships.
 - **Mac guarded-sandbox recipe** — a documented, locked-down setup for running an assistant under Habena on macOS.
 
-Full design: [`docs/plans/2026-06-08-habena-design.md`](https://github.com/vh2225/agentguard/blob/main/docs/plans/2026-06-08-habena-design.md).
+Full design: [`docs/plans/2026-06-08-habena-design.md`](https://github.com/vh2225/habena/blob/main/docs/plans/2026-06-08-habena-design.md).
 
 ## License
 
