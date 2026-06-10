@@ -18,6 +18,7 @@ calendar, and a small rental business. I got tired of choosing between
 over-restricting them (useless) and under-restricting them (scary), so
 I built the middle layer.
 
+Site: https://habena.3app.studio
 Repo: https://github.com/vh2225/habena  (MIT, no paid tier)
 Install: npm i -g habena
 

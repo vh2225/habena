@@ -4,6 +4,9 @@
 
 [![CI](https://github.com/vh2225/habena/actions/workflows/ci.yml/badge.svg)](https://github.com/vh2225/habena/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![npm](https://img.shields.io/npm/v/habena)](https://www.npmjs.com/package/habena)
+
+**Website:** [habena.3app.studio](https://habena.3app.studio) · an open-source project by [3app.studio](https://3app.studio)
 
 Habena is the open-source safety layer that sits between your AI assistant (OpenClaw, Hermes, any Claude-based agent) and the real MCP servers and tools it calls. It enforces a policy engine, spend caps, and one-tap human approval on every tool call, and audits every decision to SQLite — so a runaway loop can't drain your wallet, a poisoned tool can't quietly exfiltrate your secrets, and nothing dangerous happens without your say-so. Install an assistant and guard it end-to-end. Mac-first.
 
