@@ -33,17 +33,15 @@ Your agent connects to Habena as its single MCP server. Habena inspects every to
 
 ## Quickstart (60 seconds)
 
-Requires Node 20+ and pnpm.
+Requires Node 20+.
 
-**Install.** `npm i -g habena` is the goal, but **the npm package is not published yet.** Until it is, install from source:
+**Install** from npm:
 
 ```bash
-git clone https://github.com/vh2225/agentguard.git
-cd agentguard
-pnpm install
-pnpm -F habena build
-cd packages/core && npm link
+npm i -g habena
 ```
+
+(Or run any command ad hoc with `npx habena@latest <command>`. To hack on the source instead: clone the repo, `pnpm install`, `pnpm -F habena build`, then `npm link` from `packages/core`.)
 
 **Initialize.** Creates `~/.habena/config.yaml` seeded with the safe `cautious` preset (allow read/list, require approval for writes and destructive ops, deny the rest):
 
@@ -107,7 +105,7 @@ Every allow, deny, and held call is written to the SQLite audit log, queryable w
 
 ## Status & roadmap
 
-**Early, working, single-operator tested.** Habena is public because it's more useful to others than sitting on a laptop, not because it's production-grade. It's MIT licensed with no paid tier, no gated features, and no open-core split. The npm package is not published yet — install from source for now.
+**Early, working, single-operator tested.** Habena is public because it's more useful to others than sitting on a laptop, not because it's production-grade. It's MIT licensed with no paid tier, no gated features, and no open-core split. Install with `npm i -g habena` ([npmjs.com/package/habena](https://www.npmjs.com/package/habena)).
 
 Today: stdio MCP transport only; approvals via CLI/IPC, one-tap Telegram, or the local web dashboard (live decision stream, approvals queue, agents, policy viewer, and a setup wizard at `localhost:7700`).
 
