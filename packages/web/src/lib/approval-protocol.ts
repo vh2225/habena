@@ -15,17 +15,30 @@ export interface SerializedPendingApproval {
   expiresAt: string;
 }
 
+export interface SerializedOverride {
+  id: string;
+  tool: string;
+  reason: string;
+  expiresAt: string;
+}
+
 export type ServerMessage =
   | { type: "hello"; version: string }
   | { type: "approval_request"; id: string; pending: SerializedPendingApproval }
   | { type: "approval_resolved"; id: string; outcome: ApprovalChoice }
   | { type: "respond_ack"; id: string; ok: boolean; reason?: string }
   | { type: "pending_list"; pending: SerializedPendingApproval[] }
+  | { type: "lockdown_ack"; on: boolean }
+  | { type: "overrides_list"; lockdown: boolean; overrides: SerializedOverride[] }
+  | { type: "revoke_ack"; id: string; ok: boolean }
   | { type: "error"; message: string };
 
 export type ClientMessage =
   | { type: "respond"; id: string; choice: ApprovalChoice; durationMs?: number; note?: string }
-  | { type: "list_pending" };
+  | { type: "list_pending" }
+  | { type: "set_lockdown"; on: boolean }
+  | { type: "list_overrides" }
+  | { type: "revoke_override"; id: string };
 
 export function encode(msg: ClientMessage | ServerMessage): string {
   return JSON.stringify(msg) + "\n";

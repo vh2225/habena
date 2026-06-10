@@ -72,6 +72,26 @@ export async function listPending(opts: IpcOptions = {}): Promise<SerializedPend
   );
 }
 
+/** Operator status: lockdown flag + active allow_session grants. */
+export async function getOperatorStatus(
+  opts: IpcOptions = {}
+): Promise<{ lockdown: boolean; overrides: import("./approval-protocol").SerializedOverride[] }> {
+  return roundTrip(
+    { type: "list_overrides" },
+    (msg) => (msg.type === "overrides_list" ? { lockdown: msg.lockdown, overrides: msg.overrides } : undefined),
+    opts
+  );
+}
+
+/** Toggle the proxy-wide lockdown (panic button). */
+export async function setLockdown(on: boolean, opts: IpcOptions = {}): Promise<boolean> {
+  return roundTrip(
+    { type: "set_lockdown", on },
+    (msg) => (msg.type === "lockdown_ack" ? msg.on : undefined),
+    opts
+  );
+}
+
 export async function respond(
   id: string,
   choice: ApprovalChoice,

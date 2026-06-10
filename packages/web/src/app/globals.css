@@ -1,32 +1,64 @@
 @import "tailwindcss";
 
 @theme {
-  /* Surfaces (dark-first) */
-  --color-bg: #0b0b0d;
-  --color-surface: #141417;
-  --color-surface-2: #1a1a1f;
-  --color-border: #2a2a32;
+  /* Surfaces — blue-black layering, dark-first. Each step is one elevation. */
+  --color-bg: #0a0c10;
+  --color-surface: #10131a;
+  --color-surface-2: #171b24;
+  --color-surface-3: #1e2330;
+  --color-border: #232a38;
+  --color-border-strong: #303a4d;
 
-  /* Text — muted is #a1a1ac on #0b0b0d ≈ 7.7:1, well past WCAG AA 4.5:1
+  /* Text — muted is ≥7:1 on bg, well past WCAG AA 4.5:1
      (fixes shadcn issue #8088's 4.34:1 default we deliberately avoid). */
-  --color-fg: #eaeaea;
-  --color-muted-foreground: #a1a1ac;
+  --color-fg: #e8ebf2;
+  --color-muted-foreground: #9aa3b4;
 
   /* One accent + status ramp (each used with a SECOND channel — icon/shape — never color alone) */
-  --color-accent: #6e8bff;
+  --color-accent: #7c93ff;
   --color-allow: #34d399;   /* green  ≈ 7:1 on bg */
   --color-deny: #f87171;    /* red    ≈ 5.9:1 on bg */
   --color-warn: #fbbf24;    /* amber  ≈ 10:1 on bg */
 
+  --font-sans: "Inter", "SF Pro Text", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
-body { background: var(--color-bg); color: var(--color-fg); }
+
+body {
+  background:
+    radial-gradient(1100px 480px at 70% -180px, rgba(124, 147, 255, 0.07), transparent 70%),
+    var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection { background: rgba(124, 147, 255, 0.35); }
+
+/* Subtle, theme-matched scrollbars. */
+* { scrollbar-width: thin; scrollbar-color: var(--color-border-strong) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: var(--color-border-strong); border-radius: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
 
 /* Focus ring ≥3:1 non-text contrast on every interactive element (verified a11y req). */
-:where(button, a, input, [tabindex]):focus-visible {
+:where(button, a, input, select, [tabindex]):focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Status-bar live dot. Static for users who prefer reduced motion. */
+@keyframes hb-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.45); }
+  50% { box-shadow: 0 0 0 5px rgba(52, 211, 153, 0); }
+}
+.hb-live-dot { animation: hb-pulse 2.4s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .hb-live-dot { animation: none; }
+  * { transition-duration: 0.01ms !important; }
 }
