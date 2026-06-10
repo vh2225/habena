@@ -81,7 +81,15 @@ export default function PolicyPage() {
                     <span className="w-5 shrink-0 text-[var(--color-muted-foreground)]">{r.index + 1}.</span>
                     <Badge kind={actionKind(r.action)}>{r.action || "—"}</Badge>
                     {r.enforcement && <Badge kind="neutral">{r.enforcement}</Badge>}
-                    <code className="text-[var(--color-fg)]">{JSON.stringify(r.match)}</code>
+                    {Object.entries(r.match).map(([k, v]) => (
+                      <span
+                        key={k}
+                        className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-1.5 py-0.5 font-mono text-[11px]"
+                      >
+                        <span className="text-[var(--color-muted-foreground)]">{k}:</span>{" "}
+                        {Array.isArray(v) ? v.join(", ") : String(v)}
+                      </span>
+                    ))}
                     {r.reason && <span className="text-[var(--color-muted-foreground)]">— {r.reason}</span>}
                   </div>
                 ))}

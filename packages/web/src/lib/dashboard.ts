@@ -39,6 +39,28 @@ export function fmtLatency(ms: number | null): string {
   return ms !== null && ms !== undefined ? `${ms}ms` : "—";
 }
 
+/** Compact relative time for live feeds: "just now", "42s ago", "5m ago", "3h ago", "2d ago". */
+export function fmtRelative(iso: string, now: Date = new Date()): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const s = Math.max(0, Math.floor((now.getTime() - d.getTime()) / 1000));
+  if (s < 10) return "just now";
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86_400) return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86_400)}d ago`;
+}
+
+/** Pretty-print a JSON-text args preview; falls back to the raw text. */
+export function prettyArgs(raw: string | null): string {
+  if (!raw) return "—";
+  try {
+    return JSON.stringify(JSON.parse(raw), null, 2);
+  } catch {
+    return raw; // truncated previews won't parse — show as-is
+  }
+}
+
 export function uniqueValues<K extends keyof DecisionRow>(rows: DecisionRow[], key: K): string[] {
   const set = new Set<string>();
   for (const r of rows) {

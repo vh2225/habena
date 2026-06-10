@@ -7,7 +7,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { DecisionDrawer } from "@/components/decision-drawer";
 import {
-  fmtTime, fmtLatency, uniqueValues, matchesFilters, decisionKind, isThreat,
+  fmtTime, fmtRelative, fmtLatency, uniqueValues, matchesFilters, decisionKind, isThreat,
   type DecisionRow, type DecisionFilters,
 } from "@/lib/dashboard";
 
@@ -64,7 +64,11 @@ export default function DecisionsPage() {
   const servers = useMemo(() => uniqueValues(rows, "mcpServer"), [rows]);
 
   const columns = useMemo<ColumnDef<DecisionRow>[]>(() => [
-    { header: "Time", accessorKey: "timestamp", cell: (c) => <span className="text-[var(--color-muted-foreground)]">{fmtTime(c.getValue<string>())}</span> },
+    { header: "Time", accessorKey: "timestamp", cell: (c) => (
+      <span className="text-[var(--color-muted-foreground)] tabular-nums" title={fmtTime(c.getValue<string>())}>
+        {fmtRelative(c.getValue<string>())}
+      </span>
+    ) },
     { header: "Agent", accessorKey: "agentType", cell: (c) => <span className="font-mono">{c.getValue<string>()}</span> },
     { header: "Tool", accessorKey: "tool", cell: (c) => <span className="font-mono">{c.getValue<string>()}</span> },
     { header: "Server", accessorKey: "mcpServer", cell: (c) => <span className="font-mono text-[var(--color-muted-foreground)]">{c.getValue<string>()}</span> },
@@ -153,7 +157,19 @@ export default function DecisionsPage() {
             )}
             {loaded && table.getRowModel().rows.length === 0 && (
               <tr><td colSpan={columns.length} className="px-3 py-8 text-center text-[var(--color-muted-foreground)]">
-                {rows.length > 0 ? "No decisions match the current filters." : "No decisions yet — start your agent and tool calls stream here."}
+                {rows.length > 0 ? (
+                  <span>
+                    No decisions match the current filters.{" "}
+                    <button
+                      onClick={() => setFilters({ agentType: "", decision: "", mcpServer: "", threatsOnly: false })}
+                      className="underline underline-offset-2 hover:text-[var(--color-fg)]"
+                    >
+                      Clear filters
+                    </button>
+                  </span>
+                ) : (
+                  "No decisions yet — start your agent and tool calls stream here."
+                )}
               </td></tr>
             )}
             {table.getRowModel().rows.map((r) => (

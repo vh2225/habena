@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StatCardSkeleton } from "@/components/ui/skeleton";
-import { fmtTime } from "@/lib/dashboard";
+import { fmtTime, fmtRelative } from "@/lib/dashboard";
 import type { ThreatSummary } from "@/lib/audit";
 
 type Resp = { ok: boolean; reason?: string; hint?: string; threats: ThreatSummary | null };
@@ -100,8 +100,8 @@ export default function ThreatsPage() {
             <div className="flex flex-wrap items-center gap-2">
               <Badge kind="threat">{DETECTOR_LABELS[g.detector] ?? g.detector}</Badge>
               <span className="font-mono text-sm">{g.mcpServer}/{g.tool}</span>
-              <span className="ml-auto text-xs text-[var(--color-muted-foreground)]">
-                {g.count.toLocaleString()} event{g.count === 1 ? "" : "s"} · first {fmtTime(g.firstSeen)} · last {fmtTime(g.lastSeen)}
+              <span className="ml-auto text-xs text-[var(--color-muted-foreground)]" title={`first ${fmtTime(g.firstSeen)} · last ${fmtTime(g.lastSeen)}`}>
+                {g.count.toLocaleString()} event{g.count === 1 ? "" : "s"} · first {fmtRelative(g.firstSeen)} · last {fmtRelative(g.lastSeen)}
               </span>
             </div>
             <p className="mt-2 break-words font-mono text-xs text-[var(--color-muted-foreground)]">{g.lastReason}</p>

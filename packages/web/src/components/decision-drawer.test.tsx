@@ -8,6 +8,7 @@ const row: DecisionRow = {
   id: 1, timestamp: "2026-06-09T12:00:00.000Z", agentType: "openclaw", instanceId: "i1",
   tool: "fs.write", mcpServer: "filesystem", decision: "deny", tier: "user_rule",
   ruleMatched: "no-writes", reason: "writes are blocked by policy", latencyMs: 12, resultStatus: "blocked",
+  argsPreview: '{"path":"/etc/passwd"}',
 };
 
 describe("DecisionDrawer", () => {

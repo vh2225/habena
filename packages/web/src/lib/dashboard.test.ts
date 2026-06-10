@@ -1,10 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { fmtTime, fmtLatency, uniqueValues, matchesFilters, isThreat, type DecisionRow } from "./dashboard";
+import { fmtTime, fmtLatency, fmtRelative, prettyArgs, uniqueValues, matchesFilters, isThreat, type DecisionRow } from "./dashboard";
 
 const row = (over: Partial<DecisionRow>): DecisionRow => ({
   id: 1, timestamp: "2026-06-09T12:00:00.000Z", agentType: "openclaw", instanceId: "i1",
   tool: "fs.write", mcpServer: "filesystem", decision: "deny", tier: "user_rule",
   ruleMatched: "no-writes", reason: "writes blocked", latencyMs: 12, resultStatus: "blocked",
+  argsPreview: null,
   ...over,
 });
 
@@ -28,6 +29,22 @@ describe("dashboard helpers", () => {
     // cross-day is prefixed with a date and therefore longer.
     expect(yesterday.length).toBeGreaterThan(today.length);
     expect(yesterday).toMatch(/[A-Za-z]/); // month name present
+  });
+
+  it("fmtRelative buckets ages sensibly and never throws", () => {
+    const now = new Date("2026-06-10T12:00:00.000Z");
+    expect(fmtRelative("2026-06-10T11:59:55.000Z", now)).toBe("just now");
+    expect(fmtRelative("2026-06-10T11:59:18.000Z", now)).toBe("42s ago");
+    expect(fmtRelative("2026-06-10T11:55:00.000Z", now)).toBe("5m ago");
+    expect(fmtRelative("2026-06-10T09:00:00.000Z", now)).toBe("3h ago");
+    expect(fmtRelative("2026-06-08T11:00:00.000Z", now)).toBe("2d ago");
+    expect(fmtRelative("garbage", now)).toBe("garbage");
+  });
+
+  it("prettyArgs formats parseable JSON and passes truncated text through", () => {
+    expect(prettyArgs('{"a":1}')).toBe('{\n  "a": 1\n}');
+    expect(prettyArgs('{"a":1,"b…')).toBe('{"a":1,"b…');
+    expect(prettyArgs(null)).toBe("—");
   });
 
   it("isThreat flags rows whose reason came from the threat engine", () => {

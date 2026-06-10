@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StatCardSkeleton } from "@/components/ui/skeleton";
-import { fmtTime, decisionKind, isThreat, type DecisionRow } from "@/lib/dashboard";
+import { fmtTime, fmtRelative, decisionKind, isThreat, type DecisionRow } from "@/lib/dashboard";
 import type { SpendSummary } from "@/lib/audit";
 
 type Summary = {
@@ -86,7 +86,9 @@ function RecentActivity({ rows }: { rows: DecisionRow[] }) {
               {isThreat(r) && <Badge kind="threat" />}
               <span className="truncate font-mono">{r.tool}</span>
               <span className="truncate text-[var(--color-muted-foreground)]">{r.agentType}</span>
-              <span className="ml-auto shrink-0 tabular-nums text-[var(--color-muted-foreground)]">{fmtTime(r.timestamp)}</span>
+              <span className="ml-auto shrink-0 tabular-nums text-[var(--color-muted-foreground)]" title={fmtTime(r.timestamp)}>
+                {fmtRelative(r.timestamp)}
+              </span>
             </li>
           ))}
         </ul>

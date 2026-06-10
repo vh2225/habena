@@ -17,6 +17,9 @@ export interface DecisionRow {
   reason: string | null;
   latencyMs: number | null;
   resultStatus: string;
+  /** First 2KB of the call args (raw JSON text) — enough to see what the
+   * agent tried without shipping multi-MB payloads on every poll. */
+  argsPreview: string | null;
 }
 
 export interface AuditSummary {
@@ -49,7 +52,8 @@ export function recentDecisions(limit: number = 100): DecisionRow[] {
     const rows = db
       .prepare(
         `SELECT id, timestamp, agent_type, instance_id, tool, mcp_server,
-                decision, tier, rule_matched, reason, latency_ms, result_status
+                decision, tier, rule_matched, reason, latency_ms, result_status,
+                substr(args, 1, 2048) AS args_preview, length(args) AS args_len
          FROM audit_entries
          ORDER BY id DESC
          LIMIT ?`
@@ -68,6 +72,10 @@ export function recentDecisions(limit: number = 100): DecisionRow[] {
       reason: (r.reason as string | null) ?? null,
       latencyMs: (r.latency_ms as number | null) ?? null,
       resultStatus: r.result_status as string,
+      argsPreview:
+        typeof r.args_preview === "string"
+          ? r.args_preview + ((r.args_len as number) > 2048 ? "…" : "")
+          : null,
     }));
   } finally {
     db.close();
