@@ -1,171 +1,164 @@
-# AgentGuard Architecture
+# Habena Architecture
 
-Engineer onboarding doc. Assumes you know what MCP is. Pair this with `docs/specs/2026-04-08-agentguard-design.md` (business framing) and the phase plans in `docs/plans/` (implementation history).
+Engineer onboarding doc. Assumes you know what MCP is. Pair this with `docs/plans/2026-06-08-habena-design.md` (product framing) and the phase plans in `docs/plans/` (implementation history). Renamed from AgentGuard 2026-06; the `agentguard` binary and `~/.agentguard/` remain as deprecated aliases.
 
-## What AgentGuard is, in one sentence
+Last updated: 2026-06-10 (v0.4.0).
 
-A stdio MCP server that impersonates the MCP servers an agent wanted to talk to, intercepts every `tools/call`, and enforces policy + budget + human approval before forwarding.
+## What Habena is, in one sentence
+
+A stdio MCP server that impersonates the MCP servers an agent wanted to talk to, intercepts every `tools/call`, and enforces policy + threat detection + budgets + human approval before forwarding — with every decision audited to SQLite.
 
 ## The data path
 
 ```
-┌──────────┐  stdio/MCP   ┌──────────────── AgentGuard proxy ───────────────┐   stdio/MCP   ┌────────────┐
-│  Agent   │ ◄──────────►│  McpServer (proxy/server.ts:142)                │ ◄────────────►│ filesystem │
-│ (Open-   │              │    └─ ProxyDispatcher.handleToolCall()          │               │  fetch     │
-│  Claw)   │              │        1. BudgetEnforcer.check()                │               │  sqlite    │
-│          │              │        2. PolicyEngine.evaluate()               │               │  …         │
-└──────────┘              │        3. ApprovalQueue.request() (if required) │               └────────────┘
-                          │        4. AuditLogger.log() (allow or deny)     │
-                          │        5. CostTracker.record() + forward        │
+┌──────────┐  stdio/MCP   ┌──────────────── Habena proxy ───────────────────┐   stdio/MCP   ┌────────────┐
+│  Agent   │ ◄──────────► │  McpServer (proxy/server.ts createMcpServer)    │ ◄────────────►│ filesystem │
+│ (Open-   │              │    └─ ProxyDispatcher.handleToolCall()          │               │  gmail     │
+│  Claw)   │              │        1. resolve declared per-tool price       │               │  …         │
+│          │              │        2. BudgetEnforcer.check()        ─┐      │               └────────────┘
+└──────────┘              │        3. PolicyEngine.evaluate()        ├─ stricter() merge
+                          │        4. ThreatEngine.checkCall()      ─┘      │
+                          │        5. ApprovalQueue.request() (if required) │
+                          │        6. AuditLogger.log() (every decision)    │
+                          │        7. CostTracker.record() + authorize      │
                           │  DownstreamManager owns all child MCP clients   │
+                          │  (auto-restart w/ backoff; periodic re-scan)    │
                           └───────────┬─────────────────────────────────────┘
                                       │ IPC (unix socket)
-                                      ▼
-                              ┌───────────────┐
-                              │ agentguard    │  human approves/denies
-                              │   watch       │  soft_mandatory calls
-                              └───────────────┘
+                       ┌──────────────┼───────────────────┐
+                       ▼              ▼                   ▼
+               ┌───────────────┐ ┌──────────────┐ ┌──────────────────┐
+               │ habena watch  │ │ Telegram bot │ │ habena dashboard │
+               │ (terminal)    │ │ (one-tap)    │ │ (localhost:7700) │
+               └───────────────┘ └──────────────┘ └──────────────────┘
 ```
 
-Everything in `packages/core/src/` maps to one of those boxes.
+Everything in `packages/core/src/` maps to one of those boxes; `packages/web/` is the dashboard (published separately as `habena-web`).
 
 ## Read-these-first files
 
 If you only have 30 minutes, read these four in order:
 
-1. **`policy/engine.ts`** (~80 lines) — the security model. The header comment is load-bearing; read it verbatim.
-2. **`proxy/server.ts:46-128`** — `ProxyDispatcher.handleToolCall`. The whole system's contract in ~80 lines. Numbered steps in the comments map to the modules below.
-3. **`proxy/server.ts:142-229`** — `createMcpServer`. The MCP-protocol adapter wrapping the dispatcher.
-4. **`downstream/manager.ts`** — how child MCP servers are spawned, indexed, and kept isolated from each other's failures.
+1. **`policy/engine.ts`** — the security model. The header comment is load-bearing; read it verbatim.
+2. **`proxy/server.ts` — `ProxyDispatcher.handleToolCall`**. The whole system's contract: pricing → budget → policy → threat (all merged via `stricter()`) → approval → audit → spend.
+3. **`threat/engine.ts`** — scan-time + call-time threat checks and why flags are sticky.
+4. **`downstream/manager.ts`** — how child MCP servers are spawned, indexed, isolated, refreshed, and respawned.
 
 ## Module reference
 
 ### `proxy/` — the hot path
 
-Split deliberately into two classes:
+Two classes, deliberately split:
 
-- **`ProxyDispatcher`** (`server.ts:46`) is pure logic. Takes a `ToolCallRequest`, returns a `ToolCallResult`. No transports, no child processes — this is what unit tests hit. Request order is numbered in the comments: budget → policy → approval → audit → spend → forward.
-- **`createMcpServer`** (`server.ts:142`) is the MCP protocol adapter. Implements `ListTools` + `CallTool`. Pulls the aggregated catalog from `DownstreamManager`. On `allow` it calls `downstream.forward()` and returns the child server's response; on non-allow it returns a structured error to the agent.
+- **`ProxyDispatcher`** is pure logic. Takes a `ToolCallRequest`, returns a `ToolCallResult`. No transports, no child processes — this is what unit tests hit. Decisions from budget, policy, and threat are combined with `stricter()` (exported by `policy/engine.ts`): a stricter source can only escalate, never loosen. This closed a real hole — a budget `require_approval` must never bypass a policy deny.
+- **`createMcpServer`** is the MCP protocol adapter. Implements `ListTools` + `CallTool`, advertises `tools.listChanged` (the catalog can change mid-session after a downstream refresh). On `allow` it forwards via `DownstreamManager` and meters the result size (see cost). On non-allow it returns a structured error to the agent.
 
-**Vestigial file: `proxy/forwarder.ts`.** This is the Phase-1 stub. `Forwarder.forward()` throws "not yet wired". Today the dispatcher only uses `forwarder.routeFor(tool)` as an audit-log fallback to guess which server owned a tool when `DownstreamManager` can't attribute it. Real forwarding happens in `createMcpServer` via `DownstreamManager`. The `// Phase 1` comment at `server.ts:122` is accurate only for the dispatcher's role — don't read it as "forwarding is mocked."
+### `threat/` — local detection, no cloud
+
+Four detectors, each independently configurable (`off | warn | require_approval | block`, default `require_approval`):
+
+- **`tool-poisoning.ts`** — heuristics over tool *descriptions* (prompt-injection cues, exfiltration instructions, zero-width chars).
+- **`credential-egress.ts`** — secrets in call args (AWS keys, GitHub tokens, PEM blocks…). Iterative, bounded walk; fails closed.
+- **`snapshots.ts`** — rug-pull/drift: tool-definition hashes compared across runs *and* mid-session (`threat.rescan_interval`, default 10m, re-fetches downstream catalogs and re-scans).
+- **`signatures.ts`** — optional local feed (`threat.feed_file`): known-bad server names, tool-name patterns, description substrings.
+
+`ThreatEngine.scanTools()` runs at startup and on each re-scan; `checkCall()` runs per call. Scan flags are **sticky for the session** — after a drift the new definition becomes the snapshot baseline, so clearing flags on a clean re-scan would silently unflag a rug-pulled tool. Evidence strings are redacted (`match:<id>`, never the secret). Warn-mode findings are carried onto the final allow decision so they reach the audit log.
 
 ### `downstream/` — child MCP server fleet
 
-`downstream/manager.ts` is the supervisor:
+`manager.ts` is the supervisor:
 
-- `start()` spawns every configured server in parallel with **per-server failure isolation** — one broken downstream doesn't take down the proxy. See tests at `tests/downstream/manager.test.ts`.
-- Maintains two indexes: `tools` (flat list for `tools/list`) and `ownerIndex` (tool name → owning server).
-- Handles namespace collisions when two downstreams advertise the same tool name (tool gets auto-prefixed; config can force a prefix).
+- `start()` spawns every configured server in parallel with **per-server failure isolation**.
+- `refresh()` re-fetches tool lists (driven by the threat re-scan interval); a failing server keeps its cached catalog — stale-but-known beats empty.
+- `restartServer()` respawns a dead downstream with exponential backoff (also kicked off in the background after a failed forward). The old client is stopped only after its replacement is up, because `stop()` clears the cached tool list.
+- Namespace collisions auto-prefix (`server/tool`); config can force a prefix.
 
-`DownstreamClient` is the per-child wrapper — spawns the process, MCP handshake, tracks `isAlive()`.
+`DownstreamClient` is the per-child wrapper — spawn, MCP handshake, tool cache, optional `auth_probe`.
 
 ### `policy/` — the decision engine
 
-`policy/engine.ts` is a **3-tier, first-match-wins evaluator**. The header comment documents the model; the short version:
+A tiered, first-match-wins evaluator. The header comment in `engine.ts` documents the model; the short version:
 
 1. **Hard boundaries** (built-in, always win — cannot be overridden).
 2. **Session overrides** (from `allow_session` approvals, time-limited).
-3. **User rules** (from `~/.agentguard/config.yaml`).
+3. **Host-policy floor + user rules** (stricter-of-two when both match).
 4. **Default rules** (built-in fallbacks).
 5. **Implicit deny** (fail-safe).
 
-**Within a tier, first match wins** (iptables / Cloudflare WAF / security-groups model) — **not** true "deny-overrides-allow." Operators must order rules intentionally: specific denies before broad allows. This nuance is security-relevant and a common source of misconfig; call it out in any config review.
+**Within a tier, first match wins** (iptables / security-groups model) — **not** "deny-overrides-allow." Order rules intentionally: specific denies before broad allows.
 
-Hard boundaries can never be overridden, not even by session approvals. Session approvals *can* bypass user denies — that's explicit, because they originate from a human in the loop.
+Conditional rules **work**: `deny_unless` allows when its `condition` block holds and denies otherwise; `deny_if` is the inverse. Conditions share the `match` field vocabulary, `~` expands in path prefixes, and anything unevaluable (missing/empty condition, reserved fields) **fails closed**.
 
-Other files:
-- `policy/matcher.ts` — rule predicates (tool-name globs, server, arg patterns).
-- `policy/decisions.ts` — the structured `PolicyDecision` type. Action + enforcement level + risk level + tier + reason + rule_matched. Downstream code uses the whole structure for audit and approval UX — do not collapse it to a boolean.
-- `policy/built-in-rules.ts` — the non-negotiable deny list.
+Other files: `matcher.ts` (predicates, shared by `match` and `condition`), `decisions.ts` (the structured `PolicyDecision` — never collapse it to a boolean), `built-in-rules.ts` (the non-negotiable deny list), `packs.ts`/`presets.ts` (rule packs + `observe|cautious|deny-all`), `audit.ts` (`security audit` static analysis).
 
 ### `approval/` — human-in-the-loop
 
-`approval/queue.ts` turns a `require_approval` decision into a blocking `await` on an in-process queue. `ProxyDispatcher` (`server.ts:71-88`) awaits `approval.request()` with a 5 min default timeout. Three outcomes:
+`queue.ts` turns a `require_approval` decision into a blocking `await` (default 5 min timeout). Outcomes: `allow_once`; `allow_session` (also pushes a time-limited session override); decline/timeout/no-watcher → deny. Channels: `habena watch` (terminal over IPC), the web dashboard, and `channels/telegram.ts` (owner-only one-tap Allow/Deny with callback allowlisting and one-shot consume).
 
-- `allow_once` → single-call allow; decision flips.
-- `allow_session` → flips decision **and** pushes a time-limited session override rule so future matching calls don't re-prompt.
-- decline / timeout / no watcher attached → deny.
+### `cost/` — what budgets actually enforce
 
-### `ipc/` — proxy ↔ watcher transport
+Habena proxies tools, not the LLM, so it never sees token bills. Three honest mechanisms (see `cost/tool-pricing.ts` header):
 
-Proxy runs attached to the agent's stdio. Watcher runs on its own tty. They communicate over a unix socket (`ipc/server.ts`, NDJSON protocol at `ipc/protocol.ts`). This is why operating the proxy needs two processes — one attached to the agent, one for approvals.
+- **Call-count limits** (`budget.calls`) — rolling per-minute/hour + calendar-day caps per agent type. Hard deny. The runaway-loop guard.
+- **Result-token limits** (`budget.result_tokens`) — caps the estimated tokens tool results inject into context (~serialized length / 4, metered in `createMcpServer` after each forward). Hard deny.
+- **Dollar limits** (`daily`/`monthly`/`per_session`/`per_request`) — enforce against `pricing:`, user-declared USD-per-call. Because declared prices are a guess, overruns follow `on_exceed` (default **warn**; `deny`/`require_approval` opt in). `alert_at` percent thresholds alert once per limit/threshold/agent.
 
-### `cost/` — budget + spend
-
-- `cost/pricing.ts` — per-model token prices.
-- `cost/tracker.ts` — records spend per instance.
-- `cost/budget.ts` — `BudgetEnforcer.check()` returns either `null` (under budget) or a pre-built `deny` decision.
-
-**Budget runs before policy** (`server.ts:53`). An over-budget call is denied even if a user `allow *` rule matches. Budget is effectively a hard boundary.
+Per-agent overrides from `agents.yaml` (`agent add --budget-daily`) merge over the global config. Counters **survive restarts**: spend/calls hydrate from the audit log at startup; result-token readings write through to the `result_meter` table. `CostTracker` keeps the current month in memory and prunes older records.
 
 ### `audit/` — forensic log
 
-SQLite. Every call produces one row: timestamp, agent type, instance id, tool, args, mcp server, decision, tier, rule matched, reason, cost, latency, result status (`server.ts:95-109`). Audit logs every decision including denials — tamper-evidence requires continuity, so denied calls must appear too.
+WAL-mode SQLite, single writer (the proxy). One row per decision: timestamp, agent, instance, tool, args (truncated at 64KB), server, decision, tier, rule, reason, cost, latency, result status. Threat-driven decisions carry a `threat:<detector>` reason — that string is how the dashboard counts threat flags. Plus the `result_meter` table for token metering.
 
-**Ops note:** keep the audit DB on a different physical drive from the agent's scratch data. An agent that compromises its workspace must not be able to delete its own audit trail.
+**Ops note:** keep the audit DB on a different physical drive from the agent's scratch data — an agent that compromises its workspace must not be able to delete its own audit trail.
 
 ### `identity/` — who is calling
 
-Two-level model, baked into the data model:
+Two-level: **agent type** (permissions + budget, registered via `habena agent add`) and **instance** (per-connection, lazy-created; session overrides and per-instance spend attach here). The connection's agent type comes from the `HABENA_AGENT` env var (legacy `AGENTGUARD_AGENT` honored). Process fingerprinting is roadmap — today identity is declarative.
 
-- **Agent type** (e.g. `openclaw`) — permissions and daily budget live here. Registered via `agentguard agent add`.
-- **Instance** — per-connection runtime identity, created lazily when the MCP connection opens (`server.ts:173-176`). Session overrides and per-instance spend attach here.
+### `learn/` — least-privilege proposals
 
-`identity/fingerprint.ts` computes a process fingerprint for verification. The `AGENTGUARD_AGENT` env var (`server.ts:224`) is how the CLI wrapper tells the proxy which agent type owns this connection.
-
-### `install/` — middleware installer
-
-`install/openclaw.ts` rewrites `~/.openclaw/openclaw.json`: migrates stdio servers into `~/.agentguard/config.yaml`, replaces OpenClaw's `mcp.servers` with a single `agentguard` entry, writes a timestamped backup. HTTP MCP servers stay in OpenClaw's config — only stdio is migrated (`migrateServersToAgentGuard`, `install/openclaw.ts:118`). Uninstall restores the latest backup.
-
-### `registry/`, `threat/`, `learning/` — strategic, lower traffic
-
-- `registry/` — Official/Smithery/Glama MCP registry clients (discovery).
-- `threat/` — periodic sync of blocklisted servers and pattern signatures. Antivirus-style.
-- `learning/` — observe mode + least-privilege policy profiler. Powers `agentguard learn --agent X`.
+`analyzer.ts` reads the audit DB, buckets calls by `(agent, tool)`, and proposes `allow`/`deny`/`require_approval` rules from observed history (`habena learn`). Never proposes weakening a hard boundary. This is the product thesis: safer AND more automated by learning from real behavior.
 
 ### `cli/` — commander thin wrapper
 
-`cli/commands/` has `init`, `start`, `agent`, `logs`, `watch`, `install`, `learn`. All domain logic lives in the modules above; commands are assembly only.
+`init`, `start`, `dashboard`, `watch`, `logs`, `agent`, `approvals`, `downstream`, `policy` (presets/explain/audit), `packs`, `security`, `learn`, `doctor`, `install`/`uninstall`. All domain logic lives in the modules above; commands are assembly only. `doctor` runs 7 operational checks with fix hints; a boot-time subset runs inside `start`.
+
+### `packages/web/` — the dashboard (`habena-web` on npm)
+
+Next.js app at `localhost:7700`: overview, live decisions (threat badges, deep-linkable filters), approvals queue (resolve from the browser), agents, spend (call volume, result tokens, declared dollars), policy viewer, setup wizard, ⌘K palette. Read-only against `audit.db` + the IPC socket; **secret-safe by construction** (channel names only, never tokens). Published with a prebuilt `.next` (webpack — Turbopack externals don't survive install) and launched via `habena dashboard` → `npx habena-web`.
 
 ## Invariants to keep in your head
 
-- **Budget check precedes policy.** An over-budget call is denied even under an `allow *` rule.
+- **Decisions only ever escalate.** Budget, policy, and threat results merge via `stricter()`; nothing later in the pipeline can loosen an earlier deny.
 - **Hard boundaries cannot be overridden.** Not by user rules, not by session approvals.
-- **Session approvals can bypass user denies.** This is explicit — they originate from a human in the loop.
+- **Session approvals can bypass user denies** — explicit, human-in-the-loop.
 - **Implicit deny is the floor.** An empty config still fails safe.
-- **Audit logs every decision.** Allow and deny. Latency and rule matched included.
-- **One failing downstream doesn't fail the proxy.** The rest stay up; calls to the dead server get a structured error.
-- **`PolicyDecision` is structured, not boolean.** Consumers need tier, reason, enforcement, rule_matched for UX and audit — don't collapse.
-
-## Drift from the spec
-
-`docs/specs/2026-04-08-agentguard-design.md` ("Approved" status) was written before implementation and has diverged. Known drift:
-
-- Spec describes the evaluation model as "ALLOW (specificity) → explicit DENY → hard boundaries cannot be overridden." Implementation is the simpler and safer **first-match-wins within tier**, with hard boundaries on top. The code comment at `policy/engine.ts:1-16` is authoritative.
-- Spec lists tier order as "built-in → user → session overrides." Implementation order is hard boundaries → session overrides → user rules → defaults → implicit deny.
-- Spec shows cloud dashboard, threat feed, and Glama integration as connected components. These exist as scaffolding (`cloud/`, `threat/`, `registry/`) but are not wired end-to-end.
-
-When spec and code disagree, **trust the code**. File drift against the spec as a doc issue; don't "fix" the engine to match the spec without an explicit decision.
+- **Measured data blocks; guessed data warns.** Call counts and result tokens hard-deny; declared-pricing dollar overruns default to warn.
+- **Threat flags are sticky for the session.** Re-scans add, never remove.
+- **Conditions fail closed.** Unevaluable conditional rules deny.
+- **Audit logs every decision**, allow and deny, with the threat reason carried through (including warn-mode).
+- **One failing downstream doesn't fail the proxy** — and it gets respawned with backoff.
+- **`PolicyDecision` is structured, not boolean.** Consumers need tier/reason/enforcement/rule for UX and audit.
 
 ## Testing
 
-- 139 tests across 23 files. `pnpm test` from repo root, or `pnpm test` in `packages/core`.
-- Unit tests target the pure-logic modules (`policy`, `cost`, `approval`, `identity`).
-- `tests/e2e/` covers the proxy + real downstream MCP servers (filesystem, mock approval flow).
-- CLI smoke tests in `tests/e2e/cli-smoke.test.ts`.
-- No mocked filesystem in tests — `tests/downstream/manager.test.ts` spawns real MCP servers. Slower but catches integration drift.
+- ~355 core tests + ~87 web tests. `pnpm test` per package (`test` = `tsc && vitest run` — always build first; CLI tests execute the real `dist/` binary against isolated HOMEs).
+- No mocked filesystem — `tests/downstream/manager.test.ts` spawns real MCP servers; e2e tests spawn the real proxy.
+- CI runs on Node 20/22 (`.github/workflows/ci.yml`).
 
 ## Common extension points
 
-- **New downstream server** — add to `mcp_servers:` in `~/.agentguard/config.yaml`. No code change.
-- **New policy rule** — add to `rules:` under the config. Engine picks it up at startup.
-- **Built-in hard boundary** — edit `policy/built-in-rules.ts`. Security-sensitive; expect review.
+- **New downstream server** — `mcp_servers:` in `~/.habena/config.yaml` (or `habena downstream add`). No code change.
+- **New policy rule / pack / preset** — config, `rule-packs/`, or `policy/presets.ts`.
+- **New threat detector** — module in `threat/`, a `DetectorId`, a mode field on `ThreatConfig`, wire into `ThreatEngine.scanTools`/`checkCall`.
+- **New built-in hard boundary** — `policy/built-in-rules.ts`. Security-sensitive; expect review.
 - **New CLI command** — file in `cli/commands/`, register in `cli/index.ts`.
-- **New decision field** — touch `policy/decisions.ts` and `audit/types.ts` together; audit-log schema needs to match.
+- **New decision field** — touch `policy/decisions.ts` and `audit/types.ts` together; the audit schema must match.
 
 ## Things to know that aren't obvious from the code
 
-- **Two tmux panes are the normal dev setup.** Proxy pane is attached to the agent (stdio); `agentguard watch` runs in the other. There is no "one process does both."
-- **The `learn` flow is the intended onboarding path** for a new agent, not manual rule writing. Observe mode → profile → tighten.
-- **`agentguard install openclaw` writes a timestamped backup** on every run. Safe to re-run; `--force` overwrites an existing agentguard entry.
-- **Audit DB is WAL-mode SQLite.** Fine for a single writer (the proxy). Don't open it from multiple processes for writes.
+- **Two processes is the normal setup.** The proxy is attached to the agent's stdio; approvals arrive in `habena watch`, the dashboard, or Telegram.
+- **The `learn` flow is the intended onboarding path** for a new agent — observe, profile, tighten — not hand-writing rules.
+- **`habena install openclaw` writes a timestamped backup** on every run; uninstall restores the latest.
+- **The dashboard ships separately** (`habena-web`) because it carries the Next.js runtime; the CLI stays a 137KB package.
+- **Rename compat is everywhere on purpose**: `agentguard` bin, `~/.agentguard/`, `AGENTGUARD_*` env, `agentguard.sock` all still work so existing deployments don't break.
