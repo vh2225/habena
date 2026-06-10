@@ -1,6 +1,6 @@
 {
   "name": "habena",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "license": "MIT",
   "description": "Habena — keep your AI agent on a short rein. MCP middleware proxy: policy guardrails, spend caps, and human approval for AI agents.",
   "author": "Vinh Hoang",
