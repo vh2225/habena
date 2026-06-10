@@ -60,6 +60,8 @@ export interface BudgetConfig {
 export interface ApprovalConfig {
   timeout?: string;              // duration string like "5m"
   timeout_action?: "deny" | "allow";
+  /** Reserved — approval batching is NOT implemented yet; the field is
+   * accepted for forward compatibility but has no effect. */
   batch_similar?: boolean;
   /**
    * Tools and tool tags that always require approval, overriding user allow rules.

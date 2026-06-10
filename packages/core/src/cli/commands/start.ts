@@ -51,12 +51,52 @@ export async function startCommand(): Promise<void> {
     );
   }
 
+  const agentRegistry = new AgentRegistry(getAgentsPath());
+  const agents = agentRegistry.list();
+
   const policy = new PolicyEngine(rules, hostPolicy.rules);
-  const tracker = new CostTracker();
-  const budget = new BudgetEnforcer(tracker, budgetConfig, (msg) =>
-    console.error(chalk.yellow(`! ${msg}`))
-  );
   const audit = new AuditLogger(getAuditDbPath());
+  // Live meter readings write through to the audit DB so token counters
+  // survive a restart; calls/spend are already persisted as audit entries.
+  const tracker = new CostTracker({ resultTokens: (r) => audit.insertResultTokens(r) });
+
+  // Hydrate counters from the persisted audit log — a proxy restart (or
+  // crash) must not hand a runaway agent a fresh per-day budget.
+  try {
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+    const past = audit.query({ since: monthStart, decision: "allow", limit: 250_000 });
+    tracker.hydrateSpend(
+      past.map((e) => ({
+        agentType: e.agentType,
+        instanceId: e.instanceId,
+        tool: e.tool,
+        cost: e.cost ?? 0,
+        timestamp: e.timestamp,
+      }))
+    );
+    tracker.hydrateResultTokens(audit.queryResultTokens(monthStart));
+  } catch (err) {
+    console.error(chalk.yellow(`! Budget counter hydration failed (continuing with fresh counters): ${(err as Error).message}`));
+  }
+
+  // Per-agent budgets from agents.yaml (habena agent add --budget-daily N)
+  // override the global config amounts for that agent's calls.
+  const agentBudgets = new Map(
+    agents
+      .filter((a) => a.permissions?.budget)
+      .map((a) => [
+        a.name,
+        { daily: a.permissions.budget?.daily, per_session: a.permissions.budget?.per_session },
+      ])
+  );
+  const budget = new BudgetEnforcer(
+    tracker,
+    budgetConfig,
+    (msg) => console.error(chalk.yellow(`! ${msg}`)),
+    agentBudgets
+  );
   const instances = new InstanceTracker();
 
   const threatConfig = resolveThreatConfig(config.threat);
@@ -64,9 +104,6 @@ export async function startCommand(): Promise<void> {
     threatConfig,
     new ToolSnapshotStore(join(getConfigDir(), "tool-snapshots.json"))
   );
-
-  const agentRegistry = new AgentRegistry(getAgentsPath());
-  const agents = agentRegistry.list();
 
   // Approval queue + IPC server
   const approval = new ApprovalQueue({

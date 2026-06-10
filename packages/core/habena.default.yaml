@@ -18,6 +18,7 @@ budget:
   # monthly: 500
   # per_session: 20
   # per_request: 5
+  alert_at: [50, 80]  # alert when daily/monthly spend crosses these percents
   on_exceed: warn     # dollar overruns: warn | require_approval | deny
 
 # USD-per-call for metered tools (anything undeclared costs $0).
@@ -78,7 +79,6 @@ rules:
 approval:
   timeout: "5m"
   timeout_action: deny
-  batch_similar: true
 
   # --- Phone-tap approvals (Telegram) — optional, disabled by default ---
   # Get one-tap Allow/Deny on your phone when a tool call hits a

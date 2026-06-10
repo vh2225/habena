@@ -6,13 +6,26 @@ import type {
   DownstreamServerStatus,
 } from "./types.js";
 
+export interface DownstreamManagerOpts {
+  /** Base delay for the restart backoff (doubles per consecutive failure, capped at 2min). */
+  restartBackoffBaseMs?: number;
+}
+
 export class DownstreamManager {
   private clients: Map<string, DownstreamClient> = new Map();
   private errors: Map<string, string> = new Map();
   private tools: AggregatedTool[] = [];
   private ownerIndex: Map<string, ToolOwner> = new Map();
+  /** Consecutive restart failures + earliest next attempt, per server. */
+  private restartState: Map<string, { failures: number; nextAttemptAt: number }> = new Map();
+  private restartBackoffBaseMs: number;
 
-  constructor(private configs: Record<string, DownstreamServerConfig>) {}
+  constructor(
+    private configs: Record<string, DownstreamServerConfig>,
+    opts: DownstreamManagerOpts = {}
+  ) {
+    this.restartBackoffBaseMs = opts.restartBackoffBaseMs ?? 5_000;
+  }
 
   async start(): Promise<void> {
     // Spawn all servers in parallel; isolate failures per server.
@@ -48,7 +61,8 @@ export class DownstreamManager {
 
   /**
    * Re-fetch tool lists from all live downstreams and rebuild the index.
-   * Per-server isolation: a server whose refresh fails keeps its previously
+   * Per-server isolation: a server whose refresh fails gets one respawn
+   * attempt (with backoff); if that also fails it keeps its previously
    * cached tools (a stale-but-known catalog beats an empty one).
    */
   async refresh(): Promise<{ refreshed: string[]; failed: string[] }> {
@@ -58,14 +72,52 @@ export class DownstreamManager {
       Array.from(this.clients.entries()).map(async ([name, client]) => {
         try {
           await client.refreshTools();
+          this.restartState.delete(name);
           refreshed.push(name);
         } catch {
-          failed.push(name);
+          if (await this.restartServer(name)) {
+            refreshed.push(name);
+          } else {
+            failed.push(name);
+          }
         }
       })
     );
     this.rebuildToolIndex();
     return { refreshed, failed };
+  }
+
+  /**
+   * Stop-and-respawn a downstream (it died or stopped answering). Respects
+   * exponential backoff so a crash-looping server doesn't get hammered. On
+   * failure the old (dead) client stays in the map so its cached catalog
+   * remains visible; forwards to it keep erroring until a respawn succeeds.
+   */
+  async restartServer(name: string): Promise<boolean> {
+    const config = this.configs[name];
+    if (!config) return false;
+    const state = this.restartState.get(name);
+    if (state && Date.now() < state.nextAttemptAt) return false;
+
+    // Don't stop the old client until the replacement is up: stop() clears
+    // its cached tool list, which must survive a failed respawn.
+    const old = this.clients.get(name);
+    const fresh = new DownstreamClient(name, config);
+    try {
+      await fresh.start();
+      if (old) await old.stop().catch(() => {});
+      this.clients.set(name, fresh);
+      this.restartState.delete(name);
+      this.errors.delete(name);
+      this.rebuildToolIndex();
+      return true;
+    } catch (err) {
+      this.errors.set(name, `restart failed: ${(err as Error).message}`);
+      const failures = (state?.failures ?? 0) + 1;
+      const delay = Math.min(this.restartBackoffBaseMs * 2 ** (failures - 1), 120_000);
+      this.restartState.set(name, { failures, nextAttemptAt: Date.now() + delay });
+      return false;
+    }
   }
 
   findTool(name: string): ToolOwner | undefined {
@@ -81,7 +133,14 @@ export class DownstreamManager {
     if (!client) {
       throw new Error(`Downstream ${server} is not available`);
     }
-    return await client.callTool(toolName, args);
+    try {
+      return await client.callTool(toolName, args);
+    } catch (err) {
+      // Transport-level failure — kick off a respawn in the background
+      // (backoff-guarded) so the NEXT call can succeed. This call still fails.
+      void this.restartServer(server).catch(() => {});
+      throw err;
+    }
   }
 
   status(): DownstreamServerStatus[] {

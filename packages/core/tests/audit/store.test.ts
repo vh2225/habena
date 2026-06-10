@@ -110,4 +110,22 @@ describe("AuditStore", () => {
     expect(deleted).toBe(1);
     expect(store.query({}).length).toBe(1);
   });
+
+  it("round-trips result-meter records and filters by since", () => {
+    const old = new Date(Date.now() - 48 * 3_600_000);
+    store.insertResultTokens({ agentType: "openclaw", instanceId: "i1", tokens: 100, timestamp: old });
+    store.insertResultTokens({ agentType: "openclaw", instanceId: "i1", tokens: 250, timestamp: new Date() });
+    const recent = store.queryResultTokens(new Date(Date.now() - 3_600_000));
+    expect(recent).toHaveLength(1);
+    expect(recent[0].tokens).toBe(250);
+    expect(recent[0].agentType).toBe("openclaw");
+  });
+
+  it("prune also clears old result-meter rows", () => {
+    const old = new Date(Date.now() - 31 * 24 * 3_600_000);
+    store.insertResultTokens({ agentType: "a", instanceId: "i", tokens: 10, timestamp: old });
+    store.insertResultTokens({ agentType: "a", instanceId: "i", tokens: 20, timestamp: new Date() });
+    store.prune(30);
+    expect(store.queryResultTokens(new Date(0))).toHaveLength(1);
+  });
 });

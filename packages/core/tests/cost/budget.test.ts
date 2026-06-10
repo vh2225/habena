@@ -145,6 +145,54 @@ describe("BudgetEnforcer", () => {
     expect(enforcer.check({ agentType: "research-bot", instanceId: "i2", proposedCost: 0 })).toBeNull();
   });
 
+  it("per-agent budget overrides take precedence over the global config", () => {
+    // habena agent add --budget-daily N stores this in agents.yaml; it must
+    // actually enforce for that agent, not just display on the agents page.
+    const enforcer = new BudgetEnforcer(
+      tracker,
+      { daily: 30, on_exceed: "deny" },
+      undefined,
+      new Map([["openclaw", { daily: 5 }]])
+    );
+    tracker.record({ agentType: "openclaw", instanceId: "i1", tool: "x", cost: 4, timestamp: new Date() });
+    tracker.record({ agentType: "research-bot", instanceId: "i2", tool: "x", cost: 4, timestamp: new Date() });
+
+    // openclaw is over ITS daily 5; research-bot is under the global 30.
+    expect(enforcer.check({ agentType: "openclaw", instanceId: "i1", proposedCost: 2 })?.action).toBe("deny");
+    expect(enforcer.check({ agentType: "research-bot", instanceId: "i2", proposedCost: 2 })).toBeNull();
+  });
+
+  it("per-agent overrides work without any global budget", () => {
+    const enforcer = new BudgetEnforcer(
+      tracker,
+      { on_exceed: "deny" },
+      undefined,
+      new Map([["openclaw", { per_session: 1 }]])
+    );
+    tracker.record({ agentType: "openclaw", instanceId: "i1", tool: "x", cost: 1, timestamp: new Date() });
+    expect(enforcer.check({ agentType: "openclaw", instanceId: "i1", proposedCost: 0.5 })?.action).toBe("deny");
+    expect(enforcer.check({ agentType: "other", instanceId: "i9", proposedCost: 0.5 })).toBeNull();
+  });
+
+  it("alert_at fires once per threshold per agent as spend crosses it", () => {
+    const alerts: string[] = [];
+    const enforcer = new BudgetEnforcer(tracker, { daily: 10, alert_at: [50, 80] }, (m) => alerts.push(m));
+    const call = { agentType: "openclaw", instanceId: "i1", proposedCost: 0 };
+
+    tracker.record({ agentType: "openclaw", instanceId: "i1", tool: "x", cost: 6, timestamp: new Date() });
+    enforcer.check(call);
+    expect(alerts).toHaveLength(1); // crossed 50, not 80
+    expect(alerts[0]).toMatch(/50%/);
+
+    enforcer.check(call);
+    expect(alerts).toHaveLength(1); // no repeat
+
+    tracker.record({ agentType: "openclaw", instanceId: "i1", tool: "x", cost: 3, timestamp: new Date() });
+    enforcer.check(call);
+    expect(alerts).toHaveLength(2); // crossed 80
+    expect(alerts[1]).toMatch(/80%/);
+  });
+
   it("returns null when no budget configured", () => {
     const enforcer = new BudgetEnforcer(tracker, {});
     const decision = enforcer.check({

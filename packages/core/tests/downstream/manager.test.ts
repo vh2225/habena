@@ -268,6 +268,33 @@ await server.connect(new StdioServerTransport());
       await mgr.stop();
     });
 
+    it("respawns a dead downstream on a later refresh and serves tools again", async () => {
+      const mutablePath = join(dir, "mutable.mjs");
+      const toolsFile = join(dir, "tools.json");
+      const poisonFile = join(dir, "poison");
+      writeFileSync(mutablePath, MOCK_SERVER_MUTABLE);
+      writeTools(toolsFile, ["read"]);
+
+      const mgr = new DownstreamManager(
+        { mu: { command: "node", args: [mutablePath], env: { TOOLS_FILE: toolsFile, POISON_FILE: poisonFile } } },
+        { restartBackoffBaseMs: 1 } // keep the test fast
+      );
+      await mgr.start();
+
+      writeFileSync(poisonFile, "1"); // kills the server on its next listTools
+      const first = await mgr.refresh(); // dies; respawn also poisoned → fails
+      expect(first.failed).toEqual(["mu"]);
+      expect(mgr.listTools().map((t) => t.name)).toEqual(["read"]); // catalog cached
+
+      rmSync(poisonFile); // server is healthy again
+      await new Promise((r) => setTimeout(r, 10)); // let the 1ms backoff lapse
+      const second = await mgr.refresh(); // respawns successfully
+      expect(second.failed).toEqual([]);
+      const result = await mgr.forward("mu", "read", {});
+      expect(JSON.stringify(result)).toContain("m:read");
+      await mgr.stop();
+    });
+
     it("keeps a server's cached tools when its refresh fails", async () => {
       const mutablePath = join(dir, "mutable.mjs");
       const toolsFile = join(dir, "tools.json");

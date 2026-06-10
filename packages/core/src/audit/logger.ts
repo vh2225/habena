@@ -16,6 +16,14 @@ export class AuditLogger {
     return this.store.query(filters);
   }
 
+  insertResultTokens(r: { agentType: string; instanceId: string; tokens: number; timestamp: Date }): void {
+    this.store.insertResultTokens(r);
+  }
+
+  queryResultTokens(since: Date): Array<{ agentType: string; instanceId: string; tokens: number; timestamp: Date }> {
+    return this.store.queryResultTokens(since);
+  }
+
   prune(retentionDays: number): number {
     return this.store.prune(retentionDays);
   }

@@ -53,7 +53,35 @@ export class AuditStore {
       CREATE INDEX IF NOT EXISTS idx_audit_instance_id ON audit_entries(instance_id);
       CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_entries(timestamp);
       CREATE INDEX IF NOT EXISTS idx_audit_decision ON audit_entries(decision);
+      CREATE TABLE IF NOT EXISTS result_meter (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp TEXT NOT NULL,
+        agent_type TEXT NOT NULL,
+        instance_id TEXT NOT NULL,
+        tokens INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_meter_agent_ts ON result_meter(agent_type, timestamp);
     `);
+  }
+
+  /** Persist a result-size meter reading (see budget.result_tokens). */
+  insertResultTokens(r: { agentType: string; instanceId: string; tokens: number; timestamp: Date }): void {
+    this.db
+      .prepare(`INSERT INTO result_meter (timestamp, agent_type, instance_id, tokens) VALUES (?, ?, ?, ?)`)
+      .run(r.timestamp.toISOString(), r.agentType, r.instanceId, r.tokens);
+  }
+
+  /** Meter readings since `since` — used to hydrate the in-memory tracker at startup. */
+  queryResultTokens(since: Date): Array<{ agentType: string; instanceId: string; tokens: number; timestamp: Date }> {
+    const rows = this.db
+      .prepare(`SELECT timestamp, agent_type, instance_id, tokens FROM result_meter WHERE timestamp >= ?`)
+      .all(since.toISOString()) as Array<Record<string, unknown>>;
+    return rows.map((r) => ({
+      agentType: r.agent_type as string,
+      instanceId: r.instance_id as string,
+      tokens: r.tokens as number,
+      timestamp: new Date(r.timestamp as string),
+    }));
   }
 
   insert(entry: AuditEntry): void {
@@ -111,6 +139,7 @@ export class AuditStore {
 
   prune(retentionDays: number): number {
     const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
+    this.db.prepare("DELETE FROM result_meter WHERE timestamp < ?").run(cutoff.toISOString());
     const result = this.db
       .prepare("DELETE FROM audit_entries WHERE timestamp < ?")
       .run(cutoff.toISOString());
