@@ -1,7 +1,8 @@
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import chalk from "chalk";
 import { join } from "node:path";
-import { getConfigPath, getAgentsPath, getAuditDbPath, getConfigDir } from "../../config/paths.js";
+import { getConfigPath, getAgentsPath, getAuditDbPath, getConfigDir, expandHome } from "../../config/paths.js";
+import { loadSignatureFeed } from "../../threat/signatures.js";
 import { loadYaml, loadConfigWithPacks, loadHostPolicy } from "../../config/loader.js";
 import type { AgentGuardConfig } from "../../policy/types.js";
 import { PolicyEngine } from "../../policy/engine.js";
@@ -100,9 +101,26 @@ export async function startCommand(): Promise<void> {
   const instances = new InstanceTracker();
 
   const threatConfig = resolveThreatConfig(config.threat);
+  // Local signature feed (threat.feed_file) — optional, no cloud sync. A
+  // present-but-broken feed warns loudly instead of silently not protecting.
+  let signatureFeed = null;
+  if (threatConfig.feed_file) {
+    try {
+      signatureFeed = loadSignatureFeed(expandHome(threatConfig.feed_file));
+      if (signatureFeed) {
+        const n = signatureFeed.servers.length + signatureFeed.tools.length + signatureFeed.descriptionPatterns.length;
+        console.error(chalk.gray(`Threat signatures: ${n} from ${threatConfig.feed_file}`));
+      } else {
+        console.error(chalk.yellow(`! threat.feed_file not found: ${threatConfig.feed_file} — continuing without signatures`));
+      }
+    } catch (err) {
+      console.error(chalk.yellow(`! threat.feed_file unreadable (${(err as Error).message}) — continuing without signatures`));
+    }
+  }
   const threat = new ThreatEngine(
     threatConfig,
-    new ToolSnapshotStore(join(getConfigDir(), "tool-snapshots.json"))
+    new ToolSnapshotStore(join(getConfigDir(), "tool-snapshots.json")),
+    signatureFeed
   );
 
   // Approval queue + IPC server

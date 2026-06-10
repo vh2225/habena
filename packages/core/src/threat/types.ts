@@ -1,6 +1,6 @@
 export type Severity = "low" | "medium" | "high" | "critical";
 export type EnforcementMode = "off" | "warn" | "require_approval" | "block";
-export type DetectorId = "tool_poisoning" | "credential_egress" | "rug_pull";
+export type DetectorId = "tool_poisoning" | "credential_egress" | "rug_pull" | "signatures";
 
 export interface Finding {
   detector: DetectorId;
@@ -19,7 +19,10 @@ export interface ThreatConfig {
    * rug-pulls that happen while the proxy is running, not just across
    * restarts. */
   rescan_interval: string;
-  /** Optional local signature file (no cloud sync). Unused in v1's detectors. */
+  /** Enforcement for matches from the local signature feed (feed_file). */
+  signatures: EnforcementMode;
+  /** Optional local signature file (no cloud sync) — known-bad servers,
+   * tool-name patterns, description substrings. See threat/signatures.ts. */
   feed_file?: string;
 }
 
@@ -27,6 +30,7 @@ export const DEFAULT_THREAT_CONFIG: ThreatConfig = {
   tool_poisoning: "require_approval",
   credential_egress: "require_approval",
   rug_pull: "require_approval",
+  signatures: "require_approval",
   rescan_interval: "10m",
 };
 
@@ -43,6 +47,7 @@ export function resolveThreatConfig(partial: Partial<ThreatConfig> | undefined):
     tool_poisoning: mode(p.tool_poisoning, DEFAULT_THREAT_CONFIG.tool_poisoning),
     credential_egress: mode(p.credential_egress, DEFAULT_THREAT_CONFIG.credential_egress),
     rug_pull: mode(p.rug_pull, DEFAULT_THREAT_CONFIG.rug_pull),
+    signatures: mode(p.signatures, DEFAULT_THREAT_CONFIG.signatures),
     rescan_interval:
       typeof p.rescan_interval === "string" && p.rescan_interval.trim() !== ""
         ? p.rescan_interval.trim()

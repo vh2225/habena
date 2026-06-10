@@ -74,6 +74,9 @@ const THREAT_TEMPLATE = [
   "#   tool_poisoning: require_approval",
   "#   credential_egress: require_approval",
   "#   rug_pull: require_approval",
+  "#   signatures: require_approval        # matches from feed_file below",
+  "#   rescan_interval: 10m                # mid-session re-scan cadence ('off' to disable)",
+  "#   feed_file: ~/.habena/threat-signatures.yaml   # local known-bad list (servers/tools/descriptions)",
   "",
 ].join("\n");
 

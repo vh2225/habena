@@ -7,6 +7,7 @@ describe("resolveThreatConfig", () => {
       tool_poisoning: "require_approval",
       credential_egress: "require_approval",
       rug_pull: "require_approval",
+      signatures: "require_approval",
       rescan_interval: "10m",
     });
     expect(DEFAULT_THREAT_CONFIG.credential_egress).toBe("require_approval");
@@ -17,6 +18,7 @@ describe("resolveThreatConfig", () => {
       tool_poisoning: "require_approval",
       credential_egress: "block",
       rug_pull: "off",
+      signatures: "require_approval",
       rescan_interval: "10m",
     });
   });

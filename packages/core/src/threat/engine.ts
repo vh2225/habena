@@ -2,6 +2,7 @@ import type { PolicyDecision } from "../policy/decisions.js";
 import type { AggregatedTool } from "../downstream/types.js";
 import { detectCredentialEgress } from "./credential-egress.js";
 import { detectToolPoisoning } from "./tool-poisoning.js";
+import { matchSignatures, type SignatureFeed } from "./signatures.js";
 import type { ToolSnapshotStore } from "./snapshots.js";
 import type { ThreatConfig, Finding, EnforcementMode, DetectorId, Severity } from "./types.js";
 
@@ -19,7 +20,12 @@ export class ThreatEngine {
    * later clean scan would otherwise silently unflag a rug-pulled tool. */
   private toolFlags = new Map<string, Finding[]>();
 
-  constructor(private config: ThreatConfig, private snapshots: ToolSnapshotStore) {}
+  constructor(
+    private config: ThreatConfig,
+    private snapshots: ToolSnapshotStore,
+    /** Optional local signature feed (threat.feed_file). */
+    private feed?: SignatureFeed | null
+  ) {}
 
   /** Scan: poison (description) + drift (snapshot) per tool. Remembers flags;
    * returns a summary. Safe to re-run mid-session after a downstream refresh. */
@@ -33,6 +39,7 @@ export class ThreatEngine {
         const drift = this.snapshots.checkAndRecord(t);
         if (drift) fs.push(drift);
       }
+      if (this.feed && this.config.signatures !== "off") fs.push(...matchSignatures(this.feed, t));
       if (fs.length > 0) {
         this.toolFlags.set(`${t.server}/${t.originalName}`, fs);
         findings.push(...fs.map((f) => ({ ...f, tool: t.name })));
@@ -62,6 +69,7 @@ export class ThreatEngine {
   private modeFor(d: DetectorId): EnforcementMode {
     return d === "tool_poisoning" ? this.config.tool_poisoning
       : d === "credential_egress" ? this.config.credential_egress
+      : d === "signatures" ? this.config.signatures
       : this.config.rug_pull;
   }
 
