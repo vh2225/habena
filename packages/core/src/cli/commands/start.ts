@@ -128,7 +128,7 @@ export async function startCommand(): Promise<void> {
     timeoutAction: config.approval?.timeout_action ?? "deny",
   });
   const socketPath = join(getConfigDir(), "agentguard.sock");
-  const ipcServer = new IpcServer(approval, socketPath);
+  const ipcServer = new IpcServer(approval, socketPath, policy);
   try {
     await ipcServer.start();
     console.error(chalk.gray(`IPC:    ${socketPath}`));
@@ -157,6 +157,31 @@ export async function startCommand(): Promise<void> {
         new TelegramApprovalChannel(approval, {
           api: new TelegramApi(token),
           ownerId: telegramCfg.owner_id,
+          // Owner text commands: the phone-side panic button.
+          onCommand: async (command) => {
+            const cmd = command.split(/[\s@]/)[0].toLowerCase();
+            if (cmd === "/lockdown") {
+              policy.setLockdown(true);
+              return "🔒 LOCKDOWN ACTIVE — every tool call is denied until you send /resume.";
+            }
+            if (cmd === "/resume") {
+              policy.setLockdown(false);
+              return "🔓 Lockdown released — policy enforcement resumes normally.";
+            }
+            if (cmd === "/status") {
+              const overrides = policy.listSessionOverrides();
+              const pending = approval.list().length;
+              return [
+                policy.isLockdown() ? "🔒 LOCKDOWN ACTIVE" : "🔓 No lockdown",
+                `Pending approvals: ${pending}`,
+                `Active session approvals: ${overrides.length}`,
+              ].join("\n");
+            }
+            if (cmd === "/help") {
+              return "Commands: /lockdown (deny everything), /resume, /status, /help";
+            }
+            return null; // unknown command — stay silent
+          },
         })
       );
     }

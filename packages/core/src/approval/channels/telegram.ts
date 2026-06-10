@@ -68,6 +68,13 @@ export interface TelegramApprovalChannelOptions {
    * left, the warning fires ~immediately (delay clamped to 0).
    */
   warnBeforeMs?: number;
+  /**
+   * Owner text-command hook (e.g. "/lockdown", "/status"). Receives the
+   * command line, returns reply text (or null for unknown commands). Owner
+   * auth happens BEFORE this is called. Optional — without it, plain
+   * messages are ignored as before.
+   */
+  onCommand?: (command: string) => Promise<string | null>;
 }
 
 export class TelegramApprovalChannel implements ApprovalChannel {
@@ -81,6 +88,7 @@ export class TelegramApprovalChannel implements ApprovalChannel {
   private readonly idlePollMs: number;
   private readonly autoPoll: boolean;
   private readonly warnBeforeMs: number;
+  private readonly onCommand?: (command: string) => Promise<string | null>;
 
   private running = false;
   private offset = 0;
@@ -108,6 +116,7 @@ export class TelegramApprovalChannel implements ApprovalChannel {
     this.backoffMs = opts.backoffMs ?? 1500;
     this.pollTimeoutSec = opts.pollTimeoutSec ?? 30;
     this.idlePollMs = opts.idlePollMs ?? 250;
+    this.onCommand = opts.onCommand;
     this.autoPoll = opts.autoPoll ?? true;
     this.warnBeforeMs = opts.warnBeforeMs ?? 30000;
   }
@@ -235,6 +244,18 @@ export class TelegramApprovalChannel implements ApprovalChannel {
   private async handleUpdate(
     update: import("./telegram-api.js").TelegramUpdate
   ): Promise<void> {
+    // Owner text commands (/lockdown, /status, ...). Same trust boundary as
+    // taps: sender id must match the owner before anything else happens.
+    const msg = update.message;
+    if (msg?.text?.startsWith("/") && this.onCommand) {
+      if (String(msg.from?.id ?? "") !== String(this.ownerId)) return;
+      const reply = await this.onCommand(msg.text.trim()).catch(
+        (err: Error) => `Command failed: ${err.message}`
+      );
+      if (reply) await this.api.sendMessage(msg.chat.id, reply).catch(() => {});
+      return;
+    }
+
     const cq = update.callback_query;
     if (!cq) return;
 

@@ -2,6 +2,7 @@ import { createServer } from "node:net";
 import type { Server, Socket } from "node:net";
 import { existsSync, unlinkSync, chmodSync } from "node:fs";
 import type { ApprovalQueue } from "../approval/queue.js";
+import type { PolicyEngine } from "../policy/engine.js";
 import type { PendingApproval, ApprovalResponse } from "../approval/types.js";
 import {
   encode,
@@ -31,7 +32,12 @@ export class IpcServer {
     });
   };
 
-  constructor(private queue: ApprovalQueue, private socketPath: string) {}
+  constructor(
+    private queue: ApprovalQueue,
+    private socketPath: string,
+    /** When present, lockdown + session-override operator commands work. */
+    private policy?: PolicyEngine
+  ) {}
 
   async start(): Promise<void> {
     if (existsSync(this.socketPath)) {
@@ -148,6 +154,38 @@ export class IpcServer {
       socket.write(encode({
         type: "pending_list",
         pending: this.queue.list().map(serializePending),
+      }));
+    } else if (msg.type === "set_lockdown") {
+      if (!this.policy) {
+        socket.write(encode({ type: "error", message: "lockdown unavailable: no policy engine attached" }));
+        return;
+      }
+      this.policy.setLockdown(Boolean(msg.on));
+      socket.write(encode({ type: "lockdown_ack", on: this.policy.isLockdown() }));
+    } else if (msg.type === "list_overrides") {
+      if (!this.policy) {
+        socket.write(encode({ type: "error", message: "overrides unavailable: no policy engine attached" }));
+        return;
+      }
+      socket.write(encode({
+        type: "overrides_list",
+        lockdown: this.policy.isLockdown(),
+        overrides: this.policy.listSessionOverrides().map((o) => ({
+          id: o.id,
+          tool: o.tool,
+          reason: o.reason,
+          expiresAt: o.expiresAt.toISOString(),
+        })),
+      }));
+    } else if (msg.type === "revoke_override") {
+      if (!this.policy) {
+        socket.write(encode({ type: "error", message: "overrides unavailable: no policy engine attached" }));
+        return;
+      }
+      socket.write(encode({
+        type: "revoke_ack",
+        id: msg.id,
+        ok: this.policy.revokeSessionOverride(msg.id),
       }));
     }
   }

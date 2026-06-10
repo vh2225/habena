@@ -443,3 +443,61 @@ describe("TelegramApprovalChannel", () => {
     });
   });
 });
+
+describe("TelegramApprovalChannel owner text commands", () => {
+  let queue: ApprovalQueue;
+  let api: FakeTelegramApi;
+  let channel: TelegramApprovalChannel;
+  let received: string[];
+
+  function textUpdate(updateId: number, fromId: number, text: string, chatId = 42): TelegramUpdate {
+    return { update_id: updateId, message: { from: { id: fromId }, chat: { id: chatId }, text } };
+  }
+
+  beforeEach(() => {
+    queue = new ApprovalQueue();
+    api = new FakeTelegramApi();
+    received = [];
+    channel = new TelegramApprovalChannel(queue, {
+      api: api as never,
+      ownerId: OWNER_ID,
+      backoffMs: 0,
+      idlePollMs: 0,
+      autoPoll: false,
+      onCommand: async (cmd) => {
+        received.push(cmd);
+        if (cmd.startsWith("/lockdown")) return "LOCKED";
+        return null;
+      },
+    });
+  });
+
+  afterEach(async () => {
+    await channel.stop();
+    queue.shutdown();
+  });
+
+  it("routes an owner /command to the hook and replies in the chat", async () => {
+    await channel.start();
+    api.inject([textUpdate(1, OWNER_ID, "/lockdown")]);
+    await channel.pollOnce();
+    expect(received).toEqual(["/lockdown"]);
+    expect(api.sent.some((m) => m.text === "LOCKED" && m.chatId === 42)).toBe(true);
+  });
+
+  it("ignores commands from non-owners entirely (no hook call, no reply)", async () => {
+    await channel.start();
+    api.inject([textUpdate(2, 999999, "/lockdown")]);
+    await channel.pollOnce();
+    expect(received).toEqual([]);
+    expect(api.sent).toHaveLength(0);
+  });
+
+  it("stays silent on unknown commands and ignores non-command text", async () => {
+    await channel.start();
+    api.inject([textUpdate(3, OWNER_ID, "/doesnotexist"), textUpdate(4, OWNER_ID, "hello there")]);
+    await channel.pollOnce();
+    expect(received).toEqual(["/doesnotexist"]); // plain text never reaches the hook
+    expect(api.sent).toHaveLength(0); // null reply means no message
+  });
+});

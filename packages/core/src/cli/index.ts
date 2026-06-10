@@ -28,6 +28,7 @@ import { learnCommand } from "./commands/learn.js";
 import { packsListCommand, packsShowCommand } from "./commands/packs.js";
 import { securityAuditCommand } from "./commands/security.js";
 import { dashboardCommand } from "./commands/dashboard.js";
+import { lockdownCommand, sessionListCommand, sessionRevokeCommand } from "./commands/session.js";
 import { VERSION } from "../version.js";
 
 const program = new Command();
@@ -67,6 +68,24 @@ program
   .description("Launch the local web dashboard (default http://localhost:7700)")
   .option("--port <port>", "Port to serve on", "7700")
   .action((opts: { port?: string }) => dashboardCommand(opts));
+
+program
+  .command("lockdown")
+  .description("Panic button: deny every tool call until released (on | off | status)")
+  .argument("[state]", "on | off | status (default: status)")
+  .action((state: string | undefined) => lockdownCommand(state));
+
+const sessionCmd = program.command("session").description("Inspect or revoke active allow_session approvals");
+sessionCmd
+  .command("list")
+  .description("List active session approvals (and lockdown state)")
+  .option("--json", "Emit JSON")
+  .action((opts: { json?: boolean }) => sessionListCommand(opts));
+sessionCmd
+  .command("revoke")
+  .description("Revoke a session approval before it expires")
+  .argument("<id>", "Override id from `habena session list`")
+  .action((id: string) => sessionRevokeCommand(id));
 
 const agentCmd = program.command("agent").description("Manage agent registrations");
 

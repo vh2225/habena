@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { createConnection } from "node:net";
 import type { Socket } from "node:net";
 import { ApprovalQueue } from "../../src/approval/queue.js";
+import { PolicyEngine } from "../../src/policy/engine.js";
 import { IpcServer } from "../../src/ipc/server.js";
 import { encode, decodeLines, type ServerMessage } from "../../src/ipc/protocol.js";
 import type { PolicyDecision } from "../../src/policy/decisions.js";
@@ -141,5 +142,83 @@ describe("IpcServer", () => {
     socket.end();
     await newServer.stop();
     newQueue.shutdown();
+  });
+});
+
+describe("IpcServer operator commands (lockdown + session overrides)", () => {
+  let dir: string;
+  let socketPath: string;
+  let queue: ApprovalQueue;
+  let policy: PolicyEngine;
+  let server: IpcServer;
+
+  beforeEach(async () => {
+    dir = mkdtempSync(join(tmpdir(), "agentguard-ipc-ops-"));
+    socketPath = join(dir, "agentguard.sock");
+    queue = new ApprovalQueue();
+    policy = new PolicyEngine([{ match: { tool: "*" }, action: "allow" }]);
+    server = new IpcServer(queue, socketPath, policy);
+    await server.start();
+  });
+
+  afterEach(async () => {
+    await server.stop();
+    queue.shutdown();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("set_lockdown toggles the engine and acks", async () => {
+    const socket = createConnection(socketPath);
+    await collectMessages(socket, 1); // hello
+    socket.write(encode({ type: "set_lockdown", on: true }));
+    const [ack] = await collectMessages(socket, 1);
+    expect(ack).toEqual({ type: "lockdown_ack", on: true });
+    expect(policy.evaluate({ tool: "github_search", args: {} }).action).toBe("deny");
+
+    socket.write(encode({ type: "set_lockdown", on: false }));
+    const [ack2] = await collectMessages(socket, 1);
+    expect(ack2).toEqual({ type: "lockdown_ack", on: false });
+    socket.end();
+  });
+
+  it("list_overrides returns active grants; revoke_override kills one", async () => {
+    const id = policy.addSessionOverride(
+      { match: { tool: "gmail_send" }, action: "allow", reason: "session approval" },
+      new Date(Date.now() + 60_000)
+    );
+    const socket = createConnection(socketPath);
+    await collectMessages(socket, 1); // hello
+
+    socket.write(encode({ type: "list_overrides" }));
+    const [list] = await collectMessages(socket, 1);
+    expect(list.type).toBe("overrides_list");
+    if (list.type === "overrides_list") {
+      expect(list.lockdown).toBe(false);
+      expect(list.overrides).toHaveLength(1);
+      expect(list.overrides[0].id).toBe(id);
+      expect(list.overrides[0].tool).toBe("gmail_send");
+    }
+
+    socket.write(encode({ type: "revoke_override", id }));
+    const [ack] = await collectMessages(socket, 1);
+    expect(ack).toEqual({ type: "revoke_ack", id, ok: true });
+    expect(policy.listSessionOverrides()).toHaveLength(0);
+
+    socket.write(encode({ type: "revoke_override", id }));
+    const [ack2] = await collectMessages(socket, 1);
+    expect(ack2).toEqual({ type: "revoke_ack", id, ok: false });
+    socket.end();
+  });
+
+  it("operator commands error cleanly when no policy engine is attached", async () => {
+    const bare = new IpcServer(queue, join(dir, "bare.sock"));
+    await bare.start();
+    const socket = createConnection(join(dir, "bare.sock"));
+    await collectMessages(socket, 1); // hello
+    socket.write(encode({ type: "set_lockdown", on: true }));
+    const [err] = await collectMessages(socket, 1);
+    expect(err.type).toBe("error");
+    socket.end();
+    await bare.stop();
   });
 });

@@ -8,13 +8,27 @@ export type ServerMessage =
   | { type: "approval_resolved"; id: string; outcome: ApprovalResponse["choice"] }
   | { type: "respond_ack"; id: string; ok: boolean; reason?: string }
   | { type: "pending_list"; pending: SerializedPendingApproval[] }
+  | { type: "lockdown_ack"; on: boolean }
+  | { type: "overrides_list"; lockdown: boolean; overrides: SerializedOverride[] }
+  | { type: "revoke_ack"; id: string; ok: boolean }
   | { type: "audit"; entry: AuditEntry }
   | { type: "error"; message: string };
 
 /** Messages sent from client to server. */
 export type ClientMessage =
   | { type: "respond"; id: string; choice: ApprovalResponse["choice"]; durationMs?: number; note?: string }
-  | { type: "list_pending" };
+  | { type: "list_pending" }
+  | { type: "set_lockdown"; on: boolean }
+  | { type: "list_overrides" }
+  | { type: "revoke_override"; id: string };
+
+/** An active allow_session grant, as shown to the operator. */
+export interface SerializedOverride {
+  id: string;
+  tool: string;
+  reason: string;
+  expiresAt: string;
+}
 
 export interface SerializedPendingApproval {
   id: string;

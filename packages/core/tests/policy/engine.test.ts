@@ -126,6 +126,40 @@ describe("PolicyEngine", () => {
     expect(denyFirst.evaluate(call).action).toBe("deny");
   });
 
+  it("lockdown denies everything, even calls user rules allow", () => {
+    const engine = new PolicyEngine([{ match: { tool: "*" }, action: "allow" }]);
+    expect(engine.evaluate({ tool: "github_search", args: {} }).action).toBe("allow");
+
+    engine.setLockdown(true);
+    const d = engine.evaluate({ tool: "github_search", args: {} });
+    expect(d.action).toBe("deny");
+    expect(d.enforcement).toBe("hard_mandatory");
+    expect(d.reason).toMatch(/lockdown/i);
+    expect(engine.isLockdown()).toBe(true);
+
+    engine.setLockdown(false);
+    expect(engine.evaluate({ tool: "github_search", args: {} }).action).toBe("allow");
+  });
+
+  it("session overrides can be listed and revoked by id", () => {
+    const engine = new PolicyEngine([{ match: { tool: "gmail_send" }, action: "deny" }]);
+    const id = engine.addSessionOverride(
+      { match: { tool: "gmail_send" }, action: "allow", reason: "session approval" },
+      new Date(Date.now() + 60_000)
+    );
+    expect(engine.evaluate({ tool: "gmail_send", args: {} }).action).toBe("allow");
+
+    const listed = engine.listSessionOverrides();
+    expect(listed).toHaveLength(1);
+    expect(listed[0].id).toBe(id);
+    expect(listed[0].tool).toBe("gmail_send");
+
+    expect(engine.revokeSessionOverride(id)).toBe(true);
+    expect(engine.revokeSessionOverride(id)).toBe(false); // already gone
+    expect(engine.evaluate({ tool: "gmail_send", args: {} }).action).toBe("deny");
+    expect(engine.listSessionOverrides()).toHaveLength(0);
+  });
+
   it("conditional rules without a condition fail closed (deny)", () => {
     const engine = new PolicyEngine([
       { match: { tool: "filesystem_write" }, action: "deny_unless" },

@@ -15,6 +15,12 @@ export interface TelegramUpdate {
     data?: string;
     message?: { message_id: number; chat: { id: number } };
   };
+  /** Plain chat message (owner text commands like /lockdown). */
+  message?: {
+    from?: { id: number };
+    chat: { id: number };
+    text?: string;
+  };
 }
 
 interface InlineButton {

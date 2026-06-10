@@ -16,6 +16,7 @@
  *     host). A user config cannot weaken a host-policy deny.
  */
 
+import { randomUUID } from "node:crypto";
 import { matches, fieldsMatch, type ToolCallContext } from "./matcher.js";
 import { HARD_BOUNDARIES, DEFAULTS } from "./built-in-rules.js";
 import type { Rule } from "./types.js";
@@ -28,7 +29,16 @@ import type {
 } from "./decisions.js";
 
 interface SessionOverride {
+  id: string;
   rule: Rule;
+  expiresAt: Date;
+}
+
+/** Operator-visible view of an active session override. */
+export interface SessionOverrideView {
+  id: string;
+  tool: string;
+  reason: string;
   expiresAt: Date;
 }
 
@@ -36,13 +46,35 @@ export class PolicyEngine {
   private userRules: Rule[];
   private hostRules: Rule[];
   private sessionOverrides: SessionOverride[] = [];
+  private lockdown = false;
 
   constructor(userRules: Rule[] = [], hostRules: Rule[] = []) {
     this.userRules = userRules;
     this.hostRules = hostRules;
   }
 
+  /** Panic button: deny every call until released. Outranks everything. */
+  setLockdown(on: boolean): void {
+    this.lockdown = on;
+  }
+
+  isLockdown(): boolean {
+    return this.lockdown;
+  }
+
   evaluate(call: ToolCallContext): PolicyDecision {
+    // 0. Lockdown — the operator's kill switch, above every tier.
+    if (this.lockdown) {
+      return {
+        action: "deny",
+        reason: "Lockdown active — all tool calls denied until the operator releases it",
+        tool: call.tool,
+        enforcement: "hard_mandatory",
+        risk_level: "critical",
+        tier: "built_in",
+      };
+    }
+
     // 1. Hard boundaries ALWAYS win
     for (const rule of HARD_BOUNDARIES) {
       if (matches(rule, call)) {
@@ -90,8 +122,28 @@ export class PolicyEngine {
     return null;
   }
 
-  addSessionOverride(rule: Rule, expiresAt: Date): void {
-    this.sessionOverrides.push({ rule, expiresAt });
+  addSessionOverride(rule: Rule, expiresAt: Date): string {
+    const id = randomUUID();
+    this.sessionOverrides.push({ id, rule, expiresAt });
+    return id;
+  }
+
+  /** Active (non-expired) session overrides, for operator inspection. */
+  listSessionOverrides(): SessionOverrideView[] {
+    this.clearExpiredOverrides();
+    return this.sessionOverrides.map((o) => ({
+      id: o.id,
+      tool: o.rule.match.tool ?? "*",
+      reason: o.rule.reason ?? "session approval",
+      expiresAt: o.expiresAt,
+    }));
+  }
+
+  /** Revoke a session override before it expires. Returns false if unknown. */
+  revokeSessionOverride(id: string): boolean {
+    const before = this.sessionOverrides.length;
+    this.sessionOverrides = this.sessionOverrides.filter((o) => o.id !== id);
+    return this.sessionOverrides.length < before;
   }
 
   clearExpiredOverrides(): void {
