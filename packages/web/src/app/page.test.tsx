@@ -26,7 +26,7 @@ describe("Overview", () => {
     // Stat cards deep-link into pre-filtered Decisions views.
     expect(screen.getByRole("link", { name: /total decisions/i })).toHaveAttribute("href", "/decisions");
     expect(screen.getByRole("link", { name: /denied/i })).toHaveAttribute("href", "/decisions?decision=deny");
-    expect(screen.getByRole("link", { name: /threat flags/i })).toHaveAttribute("href", "/decisions?threats=1");
+    expect(screen.getByRole("link", { name: /threat flags/i })).toHaveAttribute("href", "/threats");
     expect(screen.getByText("2")).toBeInTheDocument();
   });
 

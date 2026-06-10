@@ -7,6 +7,7 @@ const ITEMS: Item[] = [
   { label: "Overview", href: "/" },
   { label: "Decisions", href: "/decisions" },
   { label: "Approvals", href: "/approvals" },
+  { label: "Threats", href: "/threats" },
   { label: "Agents", href: "/agents" },
   { label: "Spend", href: "/spend" },
   { label: "Policy", href: "/policy" },

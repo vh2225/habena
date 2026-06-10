@@ -84,7 +84,7 @@ export default function Overview() {
             <Stat label="Allowed" value={sum?.allowed ?? 0} accent="var(--color-allow)" href="/decisions?decision=allow" />
             <Stat label="Denied" value={sum?.denied ?? 0} accent="var(--color-deny)" href="/decisions?decision=deny" />
             <Stat label="Require approval" value={sum?.approvalPending ?? 0} accent="var(--color-warn)" href="/decisions?decision=require_approval" />
-            <Stat label="Threat flags" value={sum?.threats ?? 0} accent="var(--color-deny)" href="/decisions?threats=1" />
+            <Stat label="Threat flags" value={sum?.threats ?? 0} accent="var(--color-deny)" href="/threats" />
           </>
         )}
       </section>

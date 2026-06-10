@@ -260,6 +260,92 @@ export function spendSummary(): SpendSummary {
   }
 }
 
+export interface ThreatGroup {
+  mcpServer: string;
+  tool: string;
+  detector: string;
+  count: number;
+  firstSeen: string;
+  lastSeen: string;
+  lastReason: string;
+  /** Outcome mix: blocked vs human-approved vs warn-allowed. */
+  denied: number;
+  allowed: number;
+  escalated: number;
+}
+
+export interface ThreatSummary {
+  totalEvents: number;
+  eventsToday: number;
+  byDetector: Array<{ detector: string; count: number }>;
+  groups: ThreatGroup[];
+}
+
+/** Extract the detector id from a `…threat:<detector>: …` reason. */
+function detectorOf(reason: string): string {
+  const m = /threat:([a-z_]+)/.exec(reason);
+  return m ? m[1] : "unknown";
+}
+
+/** Threat events grouped by (server, tool, detector), newest activity first. */
+export function threatSummary(): ThreatSummary {
+  const db = openReadOnly();
+  if (!db) return { totalEvents: 0, eventsToday: 0, byDetector: [], groups: [] };
+  try {
+    const midnight = new Date();
+    midnight.setHours(0, 0, 0, 0);
+    const rows = db
+      .prepare(
+        `SELECT timestamp, tool, mcp_server, decision, reason FROM audit_entries
+         WHERE reason LIKE '%threat:%' ORDER BY id DESC LIMIT 5000`
+      )
+      .all() as Array<{ timestamp: string; tool: string; mcp_server: string; decision: string; reason: string }>;
+
+    const groups = new Map<string, ThreatGroup>();
+    const byDetector = new Map<string, number>();
+    let eventsToday = 0;
+    const midnightIso = midnight.toISOString();
+
+    for (const r of rows) {
+      const detector = detectorOf(r.reason);
+      byDetector.set(detector, (byDetector.get(detector) ?? 0) + 1);
+      if (r.timestamp >= midnightIso) eventsToday++;
+
+      const key = `${r.mcp_server}|${r.tool}|${detector}`;
+      let g = groups.get(key);
+      if (!g) {
+        g = {
+          mcpServer: r.mcp_server, tool: r.tool, detector,
+          count: 0, firstSeen: r.timestamp, lastSeen: r.timestamp, lastReason: r.reason,
+          denied: 0, allowed: 0, escalated: 0,
+        };
+        groups.set(key, g);
+      }
+      g.count++;
+      // Rows arrive newest-first: the first row seen per group is its latest.
+      if (r.timestamp < g.firstSeen) g.firstSeen = r.timestamp;
+      if (r.timestamp > g.lastSeen) {
+        g.lastSeen = r.timestamp;
+        g.lastReason = r.reason;
+      }
+      if (r.decision === "deny") g.denied++;
+      else if (r.decision === "allow") g.allowed++;
+      else g.escalated++;
+    }
+
+    return {
+      totalEvents: rows.length,
+      eventsToday,
+      byDetector: Array.from(byDetector.entries())
+        .map(([detector, count]) => ({ detector, count }))
+        .sort((a, b) => b.count - a.count),
+      groups: Array.from(groups.values()).sort((a, b) => (a.lastSeen < b.lastSeen ? 1 : -1)),
+    };
+  } finally {
+    db.close();
+  }
+}
+
 export function dbExists(): boolean {
   return existsSync(dbPath());
 }
