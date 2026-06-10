@@ -20,9 +20,11 @@ describe("CLI smoke", () => {
   });
 
   it("init creates config files", () => {
+    // Fresh HOMEs get ~/.habena; ~/.agentguard remains only as a legacy
+    // fallback when it already exists (rename compat).
     execSync(`${CLI} init`, { env, cwd: "." });
-    expect(existsSync(join(homeDir, ".agentguard", "config.yaml"))).toBe(true);
-    expect(existsSync(join(homeDir, ".agentguard", "agents.yaml"))).toBe(true);
+    expect(existsSync(join(homeDir, ".habena", "config.yaml"))).toBe(true);
+    expect(existsSync(join(homeDir, ".habena", "agents.yaml"))).toBe(true);
   });
 
   it("agent add then list shows the agent", () => {
