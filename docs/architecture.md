@@ -93,7 +93,9 @@ Other files: `matcher.ts` (predicates, shared by `match` and `condition`), `deci
 
 ### `approval/` — human-in-the-loop
 
-`queue.ts` turns a `require_approval` decision into a blocking `await` (default 5 min timeout). Outcomes: `allow_once`; `allow_session` (also pushes a time-limited session override); decline/timeout/no-watcher → deny. Channels: `habena watch` (terminal over IPC), the web dashboard, and `channels/telegram.ts` (owner-only one-tap Allow/Deny with callback allowlisting and one-shot consume).
+`queue.ts` turns a `require_approval` decision into a blocking `await` (default 5 min timeout). Outcomes: `allow_once`; `allow_session` (also pushes a time-limited session override); decline/timeout/no-watcher → deny. Channels: `habena watch` (terminal over IPC), the web dashboard, and `channels/telegram.ts` (owner-only one-tap Allow/Deny with callback allowlisting and one-shot consume; also owner text commands `/lockdown` `/resume` `/status`).
+
+Operator controls over the same IPC socket: **lockdown** (`habena lockdown on|off` — an engine-level kill switch that outranks every tier) and **session-approval management** (`habena session list|revoke` — `allow_session` grants carry ids, are visible with their remaining time, and can be revoked early).
 
 ### `cost/` — what budgets actually enforce
 

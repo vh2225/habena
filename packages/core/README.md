@@ -109,6 +109,15 @@ Every allow, deny, and held call is written to the SQLite audit log, queryable w
 > [docs/approval-channels.md](https://github.com/vh2225/habena/blob/main/docs/approval-channels.md).
 > The `habena watch` CLI (and raw IPC) still work alongside it.
 
+**Panic button.** Something looks wrong and you want everything stopped *now*:
+
+```bash
+habena lockdown on     # every tool call is denied until you release it
+habena lockdown off
+```
+
+From your phone, the same Telegram bot accepts `/lockdown`, `/resume`, and `/status` (owner-only, like approval taps). And session approvals are inspectable: `habena session list` shows every active `allow_session` grant with its time left; `habena session revoke <id>` kills one early.
+
 ## Status & roadmap
 
 **Early, working, single-operator tested.** Habena is public because it's more useful to others than sitting on a laptop, not because it's production-grade. It's MIT licensed with no paid tier, no gated features, and no open-core split. Install with `npm i -g habena` ([npmjs.com/package/habena](https://www.npmjs.com/package/habena)).
