@@ -103,6 +103,20 @@ describe("spendSummary", () => {
     expect(s.hourly[23].calls).toBe(1); // newest bucket is last
   });
 
+  it("sums result_meter tokens for today and tolerates the table being absent", () => {
+    const now = new Date();
+    seed([{ ts: now, cost: 0 }]);
+    // Old DBs (pre-0.4 proxies) have no result_meter table.
+    expect(spendSummary().resultTokensToday).toBe(0);
+
+    const db = new Database(join(dir, "audit.db"));
+    db.exec(`CREATE TABLE result_meter (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT NOT NULL, agent_type TEXT NOT NULL, instance_id TEXT NOT NULL, tokens INTEGER NOT NULL)`);
+    db.prepare(`INSERT INTO result_meter (timestamp, agent_type, instance_id, tokens) VALUES (?, 'openclaw', 'i1', 1200)`).run(now.toISOString());
+    db.prepare(`INSERT INTO result_meter (timestamp, agent_type, instance_id, tokens) VALUES (?, 'openclaw', 'i1', 999)`).run(new Date(now.getTime() - 26 * 3_600_000).toISOString());
+    db.close();
+    expect(spendSummary().resultTokensToday).toBe(1200);
+  });
+
   it("returns zeros when the db is missing", () => {
     process.env.HABENA_AUDIT_DB = join(dir, "nope.db");
     const s = spendSummary();

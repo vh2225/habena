@@ -73,6 +73,12 @@ habena start
 habena watch
 ```
 
+**Or approve from the browser.** The local dashboard serves a live decision stream, the approvals queue, agents, spend, your policy, and a setup wizard:
+
+```bash
+habena dashboard    # http://localhost:7700 (first run downloads habena-web)
+```
+
 **Point your assistant at Habena.** For OpenClaw, the installer wires Habena in as the MCP proxy (it backs up your existing config and validates paths first):
 
 ```bash
@@ -107,7 +113,7 @@ Every allow, deny, and held call is written to the SQLite audit log, queryable w
 
 **Early, working, single-operator tested.** Habena is public because it's more useful to others than sitting on a laptop, not because it's production-grade. It's MIT licensed with no paid tier, no gated features, and no open-core split. Install with `npm i -g habena` ([npmjs.com/package/habena](https://www.npmjs.com/package/habena)).
 
-Today: stdio MCP transport only; approvals via CLI/IPC, one-tap Telegram, or the local web dashboard (live decision stream, approvals queue, agents, policy viewer, and a setup wizard at `localhost:7700`).
+Today: stdio MCP transport only; approvals via CLI/IPC, one-tap Telegram, or the local web dashboard (`habena dashboard` → `localhost:7700`: live decision stream, approvals queue, agents, spend, policy viewer, and a setup wizard).
 
 > **Local heuristic threat detection works today.** Habena scans downstream MCP
 > tools for tool-poisoning (suspicious tool-description patterns), rug-pulls

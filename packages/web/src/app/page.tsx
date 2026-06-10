@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
+import { StatCardSkeleton } from "@/components/ui/skeleton";
 
 type Summary = {
   totalDecisions: number;
@@ -63,7 +64,7 @@ export default function Overview() {
       </header>
 
       {hint && (
-        <div className="mb-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-sm text-[var(--color-muted-foreground)]">
+        <div role="status" aria-live="polite" className="mb-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-sm text-[var(--color-muted-foreground)]">
           {hint}
         </div>
       )}
@@ -75,11 +76,17 @@ export default function Overview() {
       )}
 
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <Stat label="Total decisions" value={sum?.totalDecisions ?? 0} href="/decisions" />
-        <Stat label="Allowed" value={sum?.allowed ?? 0} accent="var(--color-allow)" href="/decisions?decision=allow" />
-        <Stat label="Denied" value={sum?.denied ?? 0} accent="var(--color-deny)" href="/decisions?decision=deny" />
-        <Stat label="Require approval" value={sum?.approvalPending ?? 0} accent="var(--color-warn)" href="/decisions?decision=require_approval" />
-        <Stat label="Threat flags" value={sum?.threats ?? 0} accent="var(--color-deny)" href="/decisions?threats=1" />
+        {sum === null && !hint ? (
+          Array.from({ length: 5 }, (_, i) => <StatCardSkeleton key={i} />)
+        ) : (
+          <>
+            <Stat label="Total decisions" value={sum?.totalDecisions ?? 0} href="/decisions" />
+            <Stat label="Allowed" value={sum?.allowed ?? 0} accent="var(--color-allow)" href="/decisions?decision=allow" />
+            <Stat label="Denied" value={sum?.denied ?? 0} accent="var(--color-deny)" href="/decisions?decision=deny" />
+            <Stat label="Require approval" value={sum?.approvalPending ?? 0} accent="var(--color-warn)" href="/decisions?decision=require_approval" />
+            <Stat label="Threat flags" value={sum?.threats ?? 0} accent="var(--color-deny)" href="/decisions?threats=1" />
+          </>
+        )}
       </section>
 
       <p className="mt-6 text-sm text-[var(--color-muted-foreground)]">

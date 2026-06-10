@@ -14,6 +14,7 @@ const spend = {
   callsToday: 7,
   costToday: 0.07,
   callsLastHour: 7,
+  resultTokensToday: 3400,
   byAgent: [{ agentType: "openclaw", calls: 7, cost: 0.07 }],
   byTool: [{ tool: "web_search", calls: 7, cost: 0.07 }],
   hourly,
@@ -27,6 +28,7 @@ describe("Spend page", () => {
     await waitFor(() => expect(screen.getByText("Calls today")).toBeInTheDocument());
     expect(screen.getAllByText("7").length).toBeGreaterThan(0);
     expect(screen.getAllByText("$0.0700").length).toBeGreaterThan(0);
+    expect(screen.getByText("~3,400")).toBeInTheDocument();
     expect(screen.getByText("openclaw")).toBeInTheDocument();
     expect(screen.getByText("web_search")).toBeInTheDocument();
     // Honest framing must be on the page, not buried in docs.

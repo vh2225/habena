@@ -27,6 +27,7 @@ import {
 import { learnCommand } from "./commands/learn.js";
 import { packsListCommand, packsShowCommand } from "./commands/packs.js";
 import { securityAuditCommand } from "./commands/security.js";
+import { dashboardCommand } from "./commands/dashboard.js";
 import { VERSION } from "../version.js";
 
 const program = new Command();
@@ -60,6 +61,12 @@ program
   .command("watch")
   .description("Interactive approval terminal")
   .action(watchCommand);
+
+program
+  .command("dashboard")
+  .description("Launch the local web dashboard (default http://localhost:7700)")
+  .option("--port <port>", "Port to serve on", "7700")
+  .action((opts: { port?: string }) => dashboardCommand(opts));
 
 const agentCmd = program.command("agent").description("Manage agent registrations");
 

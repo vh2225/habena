@@ -168,6 +168,9 @@ export interface SpendSummary {
   /** Sum of declared-pricing cost (USD) since local midnight — NOT measured LLM spend. */
   costToday: number;
   callsLastHour: number;
+  /** Estimated tokens of tool results injected into agent context today
+   * (from the proxy's result_meter; 0 when the table is absent or empty). */
+  resultTokensToday: number;
   byAgent: Array<{ agentType: string; calls: number; cost: number }>;
   byTool: Array<{ tool: string; calls: number; cost: number }>;
   /** 24 buckets, oldest first; hourIso is the UTC hour prefix (YYYY-MM-DDTHH). */
@@ -175,7 +178,7 @@ export interface SpendSummary {
 }
 
 function emptySpend(): SpendSummary {
-  return { callsToday: 0, costToday: 0, callsLastHour: 0, byAgent: [], byTool: [], hourly: emptyHourly() };
+  return { callsToday: 0, costToday: 0, callsLastHour: 0, resultTokensToday: 0, byAgent: [], byTool: [], hourly: emptyHourly() };
 }
 
 function emptyHourly(): SpendSummary["hourly"] {
@@ -205,6 +208,15 @@ export function spendSummary(): SpendSummary {
     const lastHour = db
       .prepare(`SELECT COUNT(*) c FROM audit_entries WHERE decision = 'allow' AND timestamp >= ?`)
       .get(hourAgoIso) as { c: number };
+    // result_meter only exists in DBs written by habena >= 0.4 — treat absence as zero.
+    let resultTokensToday = 0;
+    try {
+      resultTokensToday = (
+        db.prepare(`SELECT COALESCE(SUM(tokens), 0) s FROM result_meter WHERE timestamp >= ?`).get(midnightIso) as { s: number }
+      ).s;
+    } catch {
+      /* table absent — older proxy wrote this DB */
+    }
     const byAgent = db
       .prepare(
         `SELECT agent_type, COUNT(*) c, COALESCE(SUM(cost), 0) s FROM audit_entries
@@ -238,6 +250,7 @@ export function spendSummary(): SpendSummary {
       callsToday: today.c,
       costToday: today.s,
       callsLastHour: lastHour.c,
+      resultTokensToday,
       byAgent: byAgent.map((r) => ({ agentType: r.agent_type, calls: r.c, cost: r.s })),
       byTool: byTool.map((r) => ({ tool: r.tool, calls: r.c, cost: r.s })),
       hourly,

@@ -1,14 +1,35 @@
 {
   "name": "habena-web",
-  "version": "0.1.0",
-  "private": true,
-  "description": "Habena local web dashboard (localhost:7700)",
+  "version": "0.3.0",
+  "license": "MIT",
+  "description": "Habena local web dashboard (localhost:7700) — companion to the habena MCP safety proxy",
+  "author": "Vinh Hoang",
+  "homepage": "https://github.com/vh2225/habena#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vh2225/habena.git",
+    "directory": "packages/web"
+  },
+  "keywords": ["habena", "mcp", "ai-agent", "ai-safety", "dashboard"],
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "habena-web": "./bin/habena-web.mjs"
+  },
+  "files": [
+    ".next",
+    "bin",
+    "next.config.js",
+    "public"
+  ],
   "scripts": {
     "dev": "next dev -p 7700",
     "build": "next build",
     "start": "next start -p 7700",
     "lint": "next lint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prepublishOnly": "next build --webpack && rm -rf .next/cache"
   },
   "dependencies": {
     "@tanstack/react-table": "^8.21.3",

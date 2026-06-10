@@ -17,6 +17,7 @@ const DECISIONS = ["allow", "deny", "require_approval"];
 
 export default function DecisionsPage() {
   const [rows, setRows] = useState<DecisionRow[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
   const [dense, setDense] = useState(true);
@@ -44,9 +45,13 @@ export default function DecisionsPage() {
         const r = (await fetch("/api/decisions?limit=200", { cache: "no-store" }).then((x) => x.json())) as Resp;
         if (cancelled) return;
         setRows(r.rows ?? []);
+        setLoaded(true);
         setHint(r.ok ? null : r.hint ?? r.reason ?? null);
       } catch (e) {
-        if (!cancelled) setHint((e as Error).message);
+        if (!cancelled) {
+          setLoaded(true);
+          setHint((e as Error).message);
+        }
       }
     }
     tick();
@@ -119,7 +124,7 @@ export default function DecisionsPage() {
         </label>
       </div>
 
-      {hint && <div className="mb-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-sm text-[var(--color-muted-foreground)]">{hint}</div>}
+      {hint && <div role="status" aria-live="polite" className="mb-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-sm text-[var(--color-muted-foreground)]">{hint}</div>}
 
       <div className="overflow-auto rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
         <table className="w-full text-xs">
@@ -137,7 +142,16 @@ export default function DecisionsPage() {
             ))}
           </thead>
           <tbody>
-            {table.getRowModel().rows.length === 0 && (
+            {!loaded && (
+              Array.from({ length: 5 }, (_, i) => (
+                <tr key={`skeleton-${i}`} className="border-b border-[var(--color-surface-2)]">
+                  {columns.map((_, j) => (
+                    <td key={j} className={pad}><div aria-hidden className="h-3 animate-pulse rounded bg-[var(--color-surface-2)]" /></td>
+                  ))}
+                </tr>
+              ))
+            )}
+            {loaded && table.getRowModel().rows.length === 0 && (
               <tr><td colSpan={columns.length} className="px-3 py-8 text-center text-[var(--color-muted-foreground)]">
                 {rows.length > 0 ? "No decisions match the current filters." : "No decisions yet — start your agent and tool calls stream here."}
               </td></tr>

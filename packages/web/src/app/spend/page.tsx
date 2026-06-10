@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
+import { StatCardSkeleton } from "@/components/ui/skeleton";
 import type { SpendSummary } from "@/lib/audit";
 
 type Resp = { ok: boolean; reason?: string; hint?: string; spend: SpendSummary | null };
@@ -90,19 +91,30 @@ export default function SpendPage() {
       </header>
 
       {hint && (
-        <div className="mb-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-sm text-[var(--color-muted-foreground)]">
+        <div role="status" aria-live="polite" className="mb-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-sm text-[var(--color-muted-foreground)]">
           {hint}
         </div>
       )}
 
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {spend === null && !hint ? (
+          Array.from({ length: 4 }, (_, i) => <StatCardSkeleton key={i} />)
+        ) : (
+          <>
         <Stat label="Calls today" value={(spend?.callsToday ?? 0).toLocaleString()} />
         <Stat label="Calls last hour" value={(spend?.callsLastHour ?? 0).toLocaleString()} />
+        <Stat
+          label="Result tokens today"
+          value={`~${(spend?.resultTokensToday ?? 0).toLocaleString()}`}
+          sub="est. tokens of tool results fed to agents"
+        />
         <Stat
           label="Declared spend today"
           value={fmtUsd(spend?.costToday ?? 0)}
           sub={spend && spend.costToday === 0 ? "no priced tools called — see pricing: in config" : undefined}
         />
+          </>
+        )}
       </section>
 
       <Card className="mt-3 p-4">
