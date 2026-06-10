@@ -1,6 +1,6 @@
 {
   "name": "habena-web",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "license": "MIT",
   "description": "Habena local web dashboard (localhost:7700) — companion to the habena MCP safety proxy",
   "author": "Vinh Hoang",
