@@ -108,4 +108,6 @@ export interface AgentGuardConfig {
   mcp_servers?: Record<string, DownstreamServerConfig>;
   /** Per-detector enforcement; resolveThreatConfig() applies defaults. */
   threat?: Partial<ThreatConfig>;
+  /** Chat bridge + inbound channels (Habena Home sub-project 1). */
+  chat?: import("../chat/types.js").ChatConfig;
 }
