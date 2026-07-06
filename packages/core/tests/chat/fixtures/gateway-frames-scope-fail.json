@@ -1,34 +1,34 @@
 {
   "url": "ws://127.0.0.1:18789",
-  "capturedAt": "2026-07-06T06:03:18.537Z",
+  "capturedAt": "2026-07-06T06:03:57.179Z",
   "frames": [
     {
       "dir": "in",
-      "at": "2026-07-06T06:02:48.526Z",
+      "at": "2026-07-06T06:03:27.176Z",
       "frame": {
         "type": "event",
         "event": "connect.challenge",
         "payload": {
-          "nonce": "57af58a8-21c2-4317-ab41-0c12c70a7b27",
-          "ts": 1783317768525
+          "nonce": "620ca088-7cc6-4619-882c-f6bb6aecd619",
+          "ts": 1783317807175
         }
       }
     },
     {
       "dir": "out",
-      "at": "2026-07-06T06:02:48.526Z",
+      "at": "2026-07-06T06:03:27.176Z",
       "frame": {
         "type": "req",
-        "id": "22c43696-ed22-4445-b22c-c952d4b868ae",
+        "id": "be797cbe-c607-40c5-b3d7-854be59a661b",
         "method": "connect",
         "params": {
           "minProtocol": 3,
           "maxProtocol": 4,
           "client": {
-            "id": "gateway-client",
+            "id": "openclaw-probe",
             "version": "0.0.1",
             "platform": "linux",
-            "mode": "backend"
+            "mode": "probe"
           },
           "role": "operator",
           "scopes": [
@@ -48,17 +48,17 @@
     },
     {
       "dir": "in",
-      "at": "2026-07-06T06:02:48.527Z",
+      "at": "2026-07-06T06:03:27.180Z",
       "frame": {
         "type": "res",
-        "id": "22c43696-ed22-4445-b22c-c952d4b868ae",
+        "id": "be797cbe-c607-40c5-b3d7-854be59a661b",
         "ok": true,
         "payload": {
           "type": "hello-ok",
           "protocol": 4,
           "server": {
             "version": "2026.6.10",
-            "connId": "efd64f99-7be7-488e-b6ec-001bce970d16"
+            "connId": "eeb8e21f-dc07-4018-b06a-7f787146fff0"
           },
           "features": {
             "methods": [
@@ -287,6 +287,31 @@
           "snapshot": {
             "presence": [
               {
+                "host": "jarvis-vm",
+                "ip": "<lan-ip>",
+                "version": "2026.6.10",
+                "platform": "linux 7.0.11-orbstack-00360-gc9bc4d96ac70",
+                "deviceFamily": "Linux",
+                "modelIdentifier": "arm64",
+                "mode": "gateway",
+                "reason": "self",
+                "instanceId": "b791c482-7ae1-479d-aa2d-ee16d08e0793",
+                "text": "Gateway: jarvis-vm (<lan-ip>) · app 2026.6.10 · mode gateway · reason self",
+                "ts": 1783317807177
+              },
+              {
+                "host": "openclaw-probe",
+                "version": "0.0.1",
+                "platform": "linux",
+                "mode": "probe",
+                "roles": [
+                  "operator"
+                ],
+                "reason": "connect",
+                "ts": 1783317807177,
+                "text": "Node: openclaw-probe · mode probe"
+              },
+              {
                 "host": "gateway-client",
                 "version": "0.0.1",
                 "platform": "linux",
@@ -298,36 +323,39 @@
                   "operator.read",
                   "operator.write"
                 ],
-                "reason": "connect",
-                "ts": 1783317768527,
+                "reason": "disconnect",
+                "ts": 1783317798550,
                 "text": "Node: gateway-client · mode backend"
               },
               {
-                "host": "jarvis-vm",
-                "ip": "<lan-ip>",
+                "host": "gateway:sessions.list",
                 "version": "2026.6.10",
-                "platform": "linux 7.0.11-orbstack-00360-gc9bc4d96ac70",
-                "deviceFamily": "Linux",
-                "modelIdentifier": "arm64",
-                "mode": "gateway",
-                "reason": "self",
-                "instanceId": "b791c482-7ae1-479d-aa2d-ee16d08e0793",
-                "text": "Gateway: jarvis-vm (<lan-ip>) · app 2026.6.10 · mode gateway · reason self",
-                "ts": 1783317768527
+                "platform": "linux",
+                "mode": "backend",
+                "roles": [
+                  "operator"
+                ],
+                "scopes": [
+                  "operator.read"
+                ],
+                "instanceId": "7c6ce6ef-d2c5-4d46-b37d-f3768ad93232",
+                "reason": "disconnect",
+                "ts": 1783317773206,
+                "text": "Node: gateway:sessions.list · mode backend"
               }
             ],
             "health": {
               "ok": true,
-              "ts": 1783317710983,
-              "durationMs": 18,
+              "ts": 1783317773200,
+              "durationMs": 14,
               "eventLoop": {
                 "degraded": false,
                 "reasons": [],
-                "intervalMs": 60001,
-                "delayP99Ms": 30.2,
-                "delayMaxMs": 38.3,
-                "utilization": 0.024,
-                "cpuCoreRatio": 0.028
+                "intervalMs": 2228,
+                "delayP99Ms": 185.1,
+                "delayMaxMs": 261.2,
+                "utilization": 0.605,
+                "cpuCoreRatio": 0.434
               },
               "plugins": {
                 "loaded": [
@@ -352,9 +380,9 @@
                   "connected": true,
                   "restartPending": false,
                   "reconnectAttempts": 0,
-                  "lastConnectedAt": 1783317690645,
-                  "lastEventAt": 1783317690645,
-                  "lastTransportActivityAt": 1783317690645,
+                  "lastConnectedAt": 1783317751705,
+                  "lastEventAt": 1783317751705,
+                  "lastTransportActivityAt": 1783317751705,
                   "lastInboundAt": null,
                   "lastOutboundAt": null,
                   "tokenSource": "config",
@@ -374,9 +402,9 @@
                       "connected": true,
                       "restartPending": false,
                       "reconnectAttempts": 0,
-                      "lastConnectedAt": 1783317690645,
-                      "lastEventAt": 1783317690645,
-                      "lastTransportActivityAt": 1783317690645,
+                      "lastConnectedAt": 1783317751705,
+                      "lastEventAt": 1783317751705,
+                      "lastTransportActivityAt": 1783317751705,
                       "lastInboundAt": null,
                       "lastOutboundAt": null,
                       "tokenSource": "config",
@@ -418,9 +446,9 @@
                       "connected": true,
                       "restartPending": false,
                       "reconnectAttempts": 2,
-                      "lastConnectedAt": 1783317696734,
-                      "lastEventAt": 1783317696734,
-                      "lastTransportActivityAt": 1783317696734,
+                      "lastConnectedAt": 1783317757704,
+                      "lastEventAt": 1783317757704,
+                      "lastTransportActivityAt": 1783317757704,
                       "lastInboundAt": null,
                       "lastOutboundAt": null,
                       "tokenSource": "config",
@@ -441,9 +469,9 @@
                       "connected": true,
                       "restartPending": false,
                       "reconnectAttempts": 0,
-                      "lastConnectedAt": 1783317690635,
-                      "lastEventAt": 1783317690635,
-                      "lastTransportActivityAt": 1783317690635,
+                      "lastConnectedAt": 1783317751705,
+                      "lastEventAt": 1783317751705,
+                      "lastTransportActivityAt": 1783317751705,
                       "lastInboundAt": null,
                       "lastOutboundAt": null,
                       "tokenSource": "config",
@@ -464,9 +492,9 @@
                       "connected": true,
                       "restartPending": false,
                       "reconnectAttempts": 3,
-                      "lastConnectedAt": 1783317690639,
-                      "lastEventAt": 1783317690639,
-                      "lastTransportActivityAt": 1783317690639,
+                      "lastConnectedAt": 1783317751705,
+                      "lastEventAt": 1783317751705,
+                      "lastTransportActivityAt": 1783317751705,
                       "lastInboundAt": null,
                       "lastOutboundAt": null,
                       "tokenSource": "config",
@@ -504,13 +532,13 @@
                     "recent": [
                       {
                         "key": "agent:main:habena-probe",
-                        "updatedAt": 1783317251340,
-                        "age": 459620
+                        "updatedAt": 1783317768553,
+                        "age": 4632
                       },
                       {
                         "key": "agent:main:cron:f3bf3006-1aea-4470-9231-25e79864a239",
                         "updatedAt": 1783245600104,
-                        "age": 72110856
+                        "age": 72173081
                       }
                     ]
                   }
@@ -534,7 +562,7 @@
                       {
                         "key": "agent:str-marketer:main",
                         "updatedAt": 1782277649488,
-                        "age": 1040061474
+                        "age": 1040123698
                       }
                     ]
                   }
@@ -558,7 +586,7 @@
                       {
                         "key": "agent:wp-editor:main",
                         "updatedAt": 1780447677740,
-                        "age": 2870033223
+                        "age": 2870095446
                       }
                     ]
                   }
@@ -582,7 +610,7 @@
                       {
                         "key": "agent:vc-analyst:main",
                         "updatedAt": 1782279685136,
-                        "age": 1038025828
+                        "age": 1038088050
                       }
                     ]
                   }
@@ -612,22 +640,22 @@
                 "recent": [
                   {
                     "key": "agent:main:habena-probe",
-                    "updatedAt": 1783317251340,
-                    "age": 459620
+                    "updatedAt": 1783317768553,
+                    "age": 4632
                   },
                   {
                     "key": "agent:main:cron:f3bf3006-1aea-4470-9231-25e79864a239",
                     "updatedAt": 1783245600104,
-                    "age": 72110856
+                    "age": 72173081
                   }
                 ]
               }
             },
             "stateVersion": {
-              "presence": 208,
-              "health": 15380
+              "presence": 212,
+              "health": 15383
             },
-            "uptimeMs": 916618701,
+            "uptimeMs": 916657351,
             "sessionDefaults": {
               "defaultAgentId": "main",
               "mainKey": "main",
@@ -645,10 +673,7 @@
           },
           "auth": {
             "role": "operator",
-            "scopes": [
-              "operator.read",
-              "operator.write"
-            ]
+            "scopes": []
           },
           "policy": {
             "maxPayload": 26214400,
@@ -660,36 +685,36 @@
     },
     {
       "dir": "out",
-      "at": "2026-07-06T06:02:48.527Z",
+      "at": "2026-07-06T06:03:27.180Z",
       "frame": {
         "type": "req",
-        "id": "ba6ba97b-0754-48a5-b306-d9ae43ba16a5",
+        "id": "09807637-ca97-42a7-927b-363bb2ea645d",
         "method": "chat.send",
         "params": {
           "sessionKey": "habena-probe",
           "message": "Reply with exactly: PROBE_OK",
-          "idempotencyKey": "f6d3b062-eaa2-45bc-9c33-2f7d37ba8ca1"
+          "idempotencyKey": "65661781-ab1f-4530-8acd-7ce0ebc8b408"
         }
       }
     },
     {
       "dir": "in",
-      "at": "2026-07-06T06:02:48.535Z",
+      "at": "2026-07-06T06:03:27.183Z",
       "frame": {
         "type": "event",
         "event": "health",
         "payload": {
           "ok": true,
-          "ts": 1783317768534,
-          "durationMs": 5,
+          "ts": 1783317807183,
+          "durationMs": 6,
           "eventLoop": {
             "degraded": false,
             "reasons": [],
-            "intervalMs": 57571,
-            "delayP99Ms": 30.2,
-            "delayMaxMs": 38.1,
-            "utilization": 0.023,
-            "cpuCoreRatio": 0.027
+            "intervalMs": 33992,
+            "delayP99Ms": 30.7,
+            "delayMaxMs": 37.7,
+            "utilization": 0.032,
+            "cpuCoreRatio": 0.039
           },
           "plugins": {
             "loaded": [
@@ -714,9 +739,9 @@
               "connected": true,
               "restartPending": false,
               "reconnectAttempts": 0,
-              "lastConnectedAt": 1783317751705,
-              "lastEventAt": 1783317751705,
-              "lastTransportActivityAt": 1783317751705,
+              "lastConnectedAt": 1783317782196,
+              "lastEventAt": 1783317782196,
+              "lastTransportActivityAt": 1783317782196,
               "lastInboundAt": null,
               "lastOutboundAt": null,
               "tokenSource": "config",
@@ -736,9 +761,9 @@
                   "connected": true,
                   "restartPending": false,
                   "reconnectAttempts": 0,
-                  "lastConnectedAt": 1783317751705,
-                  "lastEventAt": 1783317751705,
-                  "lastTransportActivityAt": 1783317751705,
+                  "lastConnectedAt": 1783317782196,
+                  "lastEventAt": 1783317782196,
+                  "lastTransportActivityAt": 1783317782196,
                   "lastInboundAt": null,
                   "lastOutboundAt": null,
                   "tokenSource": "config",
@@ -780,9 +805,9 @@
                   "connected": true,
                   "restartPending": false,
                   "reconnectAttempts": 2,
-                  "lastConnectedAt": 1783317757704,
-                  "lastEventAt": 1783317757704,
-                  "lastTransportActivityAt": 1783317757704,
+                  "lastConnectedAt": 1783317788192,
+                  "lastEventAt": 1783317788192,
+                  "lastTransportActivityAt": 1783317788192,
                   "lastInboundAt": null,
                   "lastOutboundAt": null,
                   "tokenSource": "config",
@@ -803,9 +828,9 @@
                   "connected": true,
                   "restartPending": false,
                   "reconnectAttempts": 0,
-                  "lastConnectedAt": 1783317751705,
-                  "lastEventAt": 1783317751705,
-                  "lastTransportActivityAt": 1783317751705,
+                  "lastConnectedAt": 1783317782197,
+                  "lastEventAt": 1783317782197,
+                  "lastTransportActivityAt": 1783317782197,
                   "lastInboundAt": null,
                   "lastOutboundAt": null,
                   "tokenSource": "config",
@@ -826,9 +851,9 @@
                   "connected": true,
                   "restartPending": false,
                   "reconnectAttempts": 3,
-                  "lastConnectedAt": 1783317751705,
-                  "lastEventAt": 1783317751705,
-                  "lastTransportActivityAt": 1783317751705,
+                  "lastConnectedAt": 1783317782511,
+                  "lastEventAt": 1783317782511,
+                  "lastTransportActivityAt": 1783317782511,
                   "lastInboundAt": null,
                   "lastOutboundAt": null,
                   "tokenSource": "config",
@@ -866,13 +891,13 @@
                 "recent": [
                   {
                     "key": "agent:main:habena-probe",
-                    "updatedAt": 1783317251340,
-                    "age": 517188
+                    "updatedAt": 1783317784716,
+                    "age": 22461
                   },
                   {
                     "key": "agent:main:cron:f3bf3006-1aea-4470-9231-25e79864a239",
                     "updatedAt": 1783245600104,
-                    "age": 72168424
+                    "age": 72207073
                   }
                 ]
               }
@@ -896,7 +921,7 @@
                   {
                     "key": "agent:str-marketer:main",
                     "updatedAt": 1782277649488,
-                    "age": 1040119040
+                    "age": 1040157689
                   }
                 ]
               }
@@ -920,7 +945,7 @@
                   {
                     "key": "agent:wp-editor:main",
                     "updatedAt": 1780447677740,
-                    "age": 2870090788
+                    "age": 2870129437
                   }
                 ]
               }
@@ -944,7 +969,7 @@
                   {
                     "key": "agent:vc-analyst:main",
                     "updatedAt": 1782279685136,
-                    "age": 1038083393
+                    "age": 1038122041
                   }
                 ]
               }
@@ -974,77 +999,67 @@
             "recent": [
               {
                 "key": "agent:main:habena-probe",
-                "updatedAt": 1783317251340,
-                "age": 517188
+                "updatedAt": 1783317784716,
+                "age": 22461
               },
               {
                 "key": "agent:main:cron:f3bf3006-1aea-4470-9231-25e79864a239",
                 "updatedAt": 1783245600104,
-                "age": 72168424
+                "age": 72207073
               }
             ]
           }
         },
         "seq": 1,
         "stateVersion": {
-          "presence": 208,
-          "health": 15381
+          "presence": 212,
+          "health": 15384
         }
       }
     },
     {
       "dir": "in",
-      "at": "2026-07-06T06:02:48.535Z",
+      "at": "2026-07-06T06:03:27.183Z",
       "frame": {
         "type": "res",
-        "id": "ba6ba97b-0754-48a5-b306-d9ae43ba16a5",
-        "ok": true,
-        "payload": {
-          "runId": "f6d3b062-eaa2-45bc-9c33-2f7d37ba8ca1",
-          "status": "started"
+        "id": "09807637-ca97-42a7-927b-363bb2ea645d",
+        "ok": false,
+        "error": {
+          "code": "INVALID_REQUEST",
+          "message": "missing scope: operator.write"
         }
       }
     },
     {
       "dir": "in",
-      "at": "2026-07-06T06:02:48.703Z",
+      "at": "2026-07-06T06:03:34.507Z",
       "frame": {
         "type": "event",
-        "event": "agent",
+        "event": "tick",
         "payload": {
-          "runId": "active-memory-mr8tcss8-d4ae2644",
-          "sessionKey": "agent:main:habena-probe:active-memory:fe6a1cdbdbb6",
-          "sessionId": "active-memory-mr8tcss8-d4ae2644",
-          "agentId": "main",
-          "stream": "lifecycle",
-          "data": {
-            "phase": "start",
-            "startedAt": 1783317768702
-          },
-          "seq": 1,
-          "ts": 1783317768702
+          "ts": 1783317814506
         },
         "seq": 2
       }
     },
     {
       "dir": "in",
-      "at": "2026-07-06T06:02:50.985Z",
+      "at": "2026-07-06T06:03:50.988Z",
       "frame": {
         "type": "event",
         "event": "health",
         "payload": {
           "ok": true,
-          "ts": 1783317770984,
-          "durationMs": 25,
+          "ts": 1783317830987,
+          "durationMs": 19,
           "eventLoop": {
             "degraded": false,
             "reasons": [],
-            "intervalMs": 2429,
-            "delayP99Ms": 45.3,
-            "delayMaxMs": 49,
-            "utilization": 0.12,
-            "cpuCoreRatio": 0.142
+            "intervalMs": 23785,
+            "delayP99Ms": 30.2,
+            "delayMaxMs": 36.5,
+            "utilization": 0.022,
+            "cpuCoreRatio": 0.028
           },
           "plugins": {
             "loaded": [
@@ -1069,9 +1084,9 @@
               "connected": true,
               "restartPending": false,
               "reconnectAttempts": 0,
-              "lastConnectedAt": 1783317751705,
-              "lastEventAt": 1783317751705,
-              "lastTransportActivityAt": 1783317751705,
+              "lastConnectedAt": 1783317812691,
+              "lastEventAt": 1783317812691,
+              "lastTransportActivityAt": 1783317812691,
               "lastInboundAt": null,
               "lastOutboundAt": null,
               "tokenSource": "config",
@@ -1091,9 +1106,9 @@
                   "connected": true,
                   "restartPending": false,
                   "reconnectAttempts": 0,
-                  "lastConnectedAt": 1783317751705,
-                  "lastEventAt": 1783317751705,
-                  "lastTransportActivityAt": 1783317751705,
+                  "lastConnectedAt": 1783317812691,
+                  "lastEventAt": 1783317812691,
+                  "lastTransportActivityAt": 1783317812691,
                   "lastInboundAt": null,
                   "lastOutboundAt": null,
                   "tokenSource": "config",
@@ -1135,9 +1150,9 @@
                   "connected": true,
                   "restartPending": false,
                   "reconnectAttempts": 2,
-                  "lastConnectedAt": 1783317757704,
-                  "lastEventAt": 1783317757704,
-                  "lastTransportActivityAt": 1783317757704,
+                  "lastConnectedAt": 1783317818690,
+                  "lastEventAt": 1783317818690,
+                  "lastTransportActivityAt": 1783317818690,
                   "lastInboundAt": null,
                   "lastOutboundAt": null,
                   "tokenSource": "config",
@@ -1158,9 +1173,9 @@
                   "connected": true,
                   "restartPending": false,
                   "reconnectAttempts": 0,
-                  "lastConnectedAt": 1783317751705,
-                  "lastEventAt": 1783317751705,
-                  "lastTransportActivityAt": 1783317751705,
+                  "lastConnectedAt": 1783317812694,
+                  "lastEventAt": 1783317812694,
+                  "lastTransportActivityAt": 1783317812694,
                   "lastInboundAt": null,
                   "lastOutboundAt": null,
                   "tokenSource": "config",
@@ -1181,9 +1196,9 @@
                   "connected": true,
                   "restartPending": false,
                   "reconnectAttempts": 3,
-                  "lastConnectedAt": 1783317751705,
-                  "lastEventAt": 1783317751705,
-                  "lastTransportActivityAt": 1783317751705,
+                  "lastConnectedAt": 1783317812998,
+                  "lastEventAt": 1783317812998,
+                  "lastTransportActivityAt": 1783317812998,
                   "lastInboundAt": null,
                   "lastOutboundAt": null,
                   "tokenSource": "config",
@@ -1221,13 +1236,13 @@
                 "recent": [
                   {
                     "key": "agent:main:habena-probe",
-                    "updatedAt": 1783317768553,
-                    "age": 2405
+                    "updatedAt": 1783317784716,
+                    "age": 46247
                   },
                   {
                     "key": "agent:main:cron:f3bf3006-1aea-4470-9231-25e79864a239",
                     "updatedAt": 1783245600104,
-                    "age": 72170854
+                    "age": 72230859
                   }
                 ]
               }
@@ -1251,7 +1266,7 @@
                   {
                     "key": "agent:str-marketer:main",
                     "updatedAt": 1782277649488,
-                    "age": 1040121471
+                    "age": 1040181477
                   }
                 ]
               }
@@ -1275,7 +1290,7 @@
                   {
                     "key": "agent:wp-editor:main",
                     "updatedAt": 1780447677740,
-                    "age": 2870093219
+                    "age": 2870153227
                   }
                 ]
               }
@@ -1299,7 +1314,7 @@
                   {
                     "key": "agent:vc-analyst:main",
                     "updatedAt": 1782279685136,
-                    "age": 1038085823
+                    "age": 1038145832
                   }
                 ]
               }
@@ -1329,709 +1344,22 @@
             "recent": [
               {
                 "key": "agent:main:habena-probe",
-                "updatedAt": 1783317768553,
-                "age": 2405
+                "updatedAt": 1783317784716,
+                "age": 46247
               },
               {
                 "key": "agent:main:cron:f3bf3006-1aea-4470-9231-25e79864a239",
                 "updatedAt": 1783245600104,
-                "age": 72170854
+                "age": 72230859
               }
             ]
           }
         },
         "seq": 3,
         "stateVersion": {
-          "presence": 208,
-          "health": 15382
+          "presence": 212,
+          "health": 15385
         }
-      }
-    },
-    {
-      "dir": "in",
-      "at": "2026-07-06T06:02:51.222Z",
-      "frame": {
-        "type": "event",
-        "event": "agent",
-        "payload": {
-          "runId": "active-memory-mr8tcss8-d4ae2644",
-          "stream": "item",
-          "data": {
-            "itemId": "tool:call_iqtiJhRgUI0jIYQ46kSytpJL|fc_034808b05dbee2b5006a4b450ad2bc819a8c5402a383557557",
-            "phase": "start",
-            "kind": "tool",
-            "title": "memory_search PROBE_OK",
-            "status": "running",
-            "name": "memory_search",
-            "meta": "PROBE_OK",
-            "toolCallId": "call_iqtiJhRgUI0jIYQ46kSytpJL|fc_034808b05dbee2b5006a4b450ad2bc819a8c5402a383557557",
-            "startedAt": 1783317771217
-          },
-          "sessionKey": "agent:main:habena-probe:active-memory:fe6a1cdbdbb6",
-          "seq": 3,
-          "ts": 1783317771220
-        },
-        "seq": 4
-      }
-    },
-    {
-      "dir": "in",
-      "at": "2026-07-06T06:02:53.201Z",
-      "frame": {
-        "type": "event",
-        "event": "health",
-        "payload": {
-          "ok": true,
-          "ts": 1783317773200,
-          "durationMs": 14,
-          "eventLoop": {
-            "degraded": false,
-            "reasons": [],
-            "intervalMs": 2228,
-            "delayP99Ms": 185.1,
-            "delayMaxMs": 261.2,
-            "utilization": 0.605,
-            "cpuCoreRatio": 0.434
-          },
-          "plugins": {
-            "loaded": [
-              "memory-core",
-              "openai"
-            ],
-            "errors": []
-          },
-          "modelPricing": {
-            "state": "ok",
-            "sources": []
-          },
-          "channels": {
-            "telegram": {
-              "accountId": "default",
-              "enabled": true,
-              "configured": true,
-              "running": true,
-              "lastStartAt": 1783193761817,
-              "lastStopAt": 1783193761816,
-              "lastError": null,
-              "connected": true,
-              "restartPending": false,
-              "reconnectAttempts": 0,
-              "lastConnectedAt": 1783317751705,
-              "lastEventAt": 1783317751705,
-              "lastTransportActivityAt": 1783317751705,
-              "lastInboundAt": null,
-              "lastOutboundAt": null,
-              "tokenSource": "config",
-              "tokenStatus": "available",
-              "mode": "polling",
-              "allowUnmentionedGroups": false,
-              "lastProbeAt": null,
-              "accounts": {
-                "default": {
-                  "accountId": "default",
-                  "enabled": true,
-                  "configured": true,
-                  "running": true,
-                  "lastStartAt": 1783193761817,
-                  "lastStopAt": 1783193761816,
-                  "lastError": null,
-                  "connected": true,
-                  "restartPending": false,
-                  "reconnectAttempts": 0,
-                  "lastConnectedAt": 1783317751705,
-                  "lastEventAt": 1783317751705,
-                  "lastTransportActivityAt": 1783317751705,
-                  "lastInboundAt": null,
-                  "lastOutboundAt": null,
-                  "tokenSource": "config",
-                  "tokenStatus": "available",
-                  "mode": "polling",
-                  "allowUnmentionedGroups": false,
-                  "lastProbeAt": null
-                },
-                "re": {
-                  "accountId": "re",
-                  "name": "re",
-                  "enabled": true,
-                  "configured": true,
-                  "running": false,
-                  "lastStartAt": 1783300394016,
-                  "lastStopAt": 1783300383895,
-                  "lastError": "channel stop timed out after 5000ms",
-                  "connected": false,
-                  "restartPending": true,
-                  "reconnectAttempts": 2,
-                  "lastInboundAt": null,
-                  "lastOutboundAt": null,
-                  "tokenSource": "config",
-                  "tokenStatus": "available",
-                  "mode": "polling",
-                  "allowUnmentionedGroups": false,
-                  "healthState": "not-running",
-                  "lastProbeAt": null
-                },
-                "scribe": {
-                  "accountId": "scribe",
-                  "name": "scribe",
-                  "enabled": true,
-                  "configured": true,
-                  "running": true,
-                  "lastStartAt": 1782522715958,
-                  "lastStopAt": 1782522705603,
-                  "lastError": null,
-                  "connected": true,
-                  "restartPending": false,
-                  "reconnectAttempts": 2,
-                  "lastConnectedAt": 1783317757704,
-                  "lastEventAt": 1783317757704,
-                  "lastTransportActivityAt": 1783317757704,
-                  "lastInboundAt": null,
-                  "lastOutboundAt": null,
-                  "tokenSource": "config",
-                  "tokenStatus": "available",
-                  "mode": "polling",
-                  "allowUnmentionedGroups": false,
-                  "lastProbeAt": null
-                },
-                "strconch": {
-                  "accountId": "strconch",
-                  "name": "strconch",
-                  "enabled": true,
-                  "configured": true,
-                  "running": true,
-                  "lastStartAt": 1782401155313,
-                  "lastStopAt": null,
-                  "lastError": null,
-                  "connected": true,
-                  "restartPending": false,
-                  "reconnectAttempts": 0,
-                  "lastConnectedAt": 1783317751705,
-                  "lastEventAt": 1783317751705,
-                  "lastTransportActivityAt": 1783317751705,
-                  "lastInboundAt": null,
-                  "lastOutboundAt": null,
-                  "tokenSource": "config",
-                  "tokenStatus": "available",
-                  "mode": "polling",
-                  "allowUnmentionedGroups": false,
-                  "lastProbeAt": null
-                },
-                "vc": {
-                  "accountId": "vc",
-                  "name": "vc",
-                  "enabled": true,
-                  "configured": true,
-                  "running": true,
-                  "lastStartAt": 1782868303672,
-                  "lastStopAt": 1782868282036,
-                  "lastError": null,
-                  "connected": true,
-                  "restartPending": false,
-                  "reconnectAttempts": 3,
-                  "lastConnectedAt": 1783317751705,
-                  "lastEventAt": 1783317751705,
-                  "lastTransportActivityAt": 1783317751705,
-                  "lastInboundAt": null,
-                  "lastOutboundAt": null,
-                  "tokenSource": "config",
-                  "tokenStatus": "available",
-                  "mode": "polling",
-                  "allowUnmentionedGroups": false,
-                  "lastProbeAt": null
-                }
-              }
-            }
-          },
-          "channelOrder": [
-            "telegram"
-          ],
-          "channelLabels": {
-            "telegram": "Telegram"
-          },
-          "heartbeatSeconds": 1800,
-          "defaultAgentId": "main",
-          "agents": [
-            {
-              "agentId": "main",
-              "isDefault": true,
-              "heartbeat": {
-                "enabled": true,
-                "every": "30m",
-                "everyMs": 1800000,
-                "prompt": "Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.",
-                "target": "none",
-                "ackMaxChars": 300
-              },
-              "sessions": {
-                "path": "/home/<user>/.openclaw/agents/main/sessions/sessions.json",
-                "count": 2,
-                "recent": [
-                  {
-                    "key": "agent:main:habena-probe",
-                    "updatedAt": 1783317768553,
-                    "age": 4632
-                  },
-                  {
-                    "key": "agent:main:cron:f3bf3006-1aea-4470-9231-25e79864a239",
-                    "updatedAt": 1783245600104,
-                    "age": 72173081
-                  }
-                ]
-              }
-            },
-            {
-              "agentId": "str-marketer",
-              "name": "str-marketer",
-              "isDefault": false,
-              "heartbeat": {
-                "enabled": false,
-                "every": "disabled",
-                "everyMs": null,
-                "prompt": "Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.",
-                "target": "none",
-                "ackMaxChars": 300
-              },
-              "sessions": {
-                "path": "/home/<user>/.openclaw/agents/str-marketer/sessions/sessions.json",
-                "count": 1,
-                "recent": [
-                  {
-                    "key": "agent:str-marketer:main",
-                    "updatedAt": 1782277649488,
-                    "age": 1040123698
-                  }
-                ]
-              }
-            },
-            {
-              "agentId": "wp-editor",
-              "name": "wp-editor",
-              "isDefault": false,
-              "heartbeat": {
-                "enabled": false,
-                "every": "disabled",
-                "everyMs": null,
-                "prompt": "Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.",
-                "target": "none",
-                "ackMaxChars": 300
-              },
-              "sessions": {
-                "path": "/home/<user>/.openclaw/agents/wp-editor/sessions/sessions.json",
-                "count": 1,
-                "recent": [
-                  {
-                    "key": "agent:wp-editor:main",
-                    "updatedAt": 1780447677740,
-                    "age": 2870095446
-                  }
-                ]
-              }
-            },
-            {
-              "agentId": "vc-analyst",
-              "name": "vc-analyst",
-              "isDefault": false,
-              "heartbeat": {
-                "enabled": false,
-                "every": "disabled",
-                "everyMs": null,
-                "prompt": "Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.",
-                "target": "none",
-                "ackMaxChars": 300
-              },
-              "sessions": {
-                "path": "/home/<user>/.openclaw/agents/vc-analyst/sessions/sessions.json",
-                "count": 1,
-                "recent": [
-                  {
-                    "key": "agent:vc-analyst:main",
-                    "updatedAt": 1782279685136,
-                    "age": 1038088050
-                  }
-                ]
-              }
-            },
-            {
-              "agentId": "re-analyst",
-              "name": "re-analyst",
-              "isDefault": false,
-              "heartbeat": {
-                "enabled": false,
-                "every": "disabled",
-                "everyMs": null,
-                "prompt": "Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.",
-                "target": "none",
-                "ackMaxChars": 300
-              },
-              "sessions": {
-                "path": "/home/<user>/.openclaw/agents/re-analyst/sessions/sessions.json",
-                "count": 0,
-                "recent": []
-              }
-            }
-          ],
-          "sessions": {
-            "path": "/home/<user>/.openclaw/agents/main/sessions/sessions.json",
-            "count": 2,
-            "recent": [
-              {
-                "key": "agent:main:habena-probe",
-                "updatedAt": 1783317768553,
-                "age": 4632
-              },
-              {
-                "key": "agent:main:cron:f3bf3006-1aea-4470-9231-25e79864a239",
-                "updatedAt": 1783245600104,
-                "age": 72173081
-              }
-            ]
-          }
-        },
-        "seq": 5,
-        "stateVersion": {
-          "presence": 209,
-          "health": 15383
-        }
-      }
-    },
-    {
-      "dir": "in",
-      "at": "2026-07-06T06:02:53.207Z",
-      "frame": {
-        "type": "event",
-        "event": "presence",
-        "payload": {
-          "presence": [
-            {
-              "host": "jarvis-vm",
-              "ip": "<lan-ip>",
-              "version": "2026.6.10",
-              "platform": "linux 7.0.11-orbstack-00360-gc9bc4d96ac70",
-              "deviceFamily": "Linux",
-              "modelIdentifier": "arm64",
-              "mode": "gateway",
-              "reason": "self",
-              "instanceId": "b791c482-7ae1-479d-aa2d-ee16d08e0793",
-              "text": "Gateway: jarvis-vm (<lan-ip>) · app 2026.6.10 · mode gateway · reason self",
-              "ts": 1783317773206
-            },
-            {
-              "host": "gateway:sessions.list",
-              "version": "2026.6.10",
-              "platform": "linux",
-              "mode": "backend",
-              "roles": [
-                "operator"
-              ],
-              "scopes": [
-                "operator.read"
-              ],
-              "instanceId": "7c6ce6ef-d2c5-4d46-b37d-f3768ad93232",
-              "reason": "disconnect",
-              "ts": 1783317773206,
-              "text": "Node: gateway:sessions.list · mode backend"
-            },
-            {
-              "host": "gateway-client",
-              "version": "0.0.1",
-              "platform": "linux",
-              "mode": "backend",
-              "roles": [
-                "operator"
-              ],
-              "scopes": [
-                "operator.read",
-                "operator.write"
-              ],
-              "reason": "connect",
-              "ts": 1783317768527,
-              "text": "Node: gateway-client · mode backend"
-            }
-          ]
-        },
-        "seq": 6,
-        "stateVersion": {
-          "presence": 210,
-          "health": 15383
-        }
-      }
-    },
-    {
-      "dir": "in",
-      "at": "2026-07-06T06:02:53.220Z",
-      "frame": {
-        "type": "event",
-        "event": "agent",
-        "payload": {
-          "runId": "active-memory-mr8tcss8-d4ae2644",
-          "stream": "item",
-          "data": {
-            "itemId": "tool:call_iqtiJhRgUI0jIYQ46kSytpJL|fc_034808b05dbee2b5006a4b450ad2bc819a8c5402a383557557",
-            "phase": "end",
-            "kind": "tool",
-            "title": "memory_search PROBE_OK",
-            "status": "completed",
-            "name": "memory_search",
-            "meta": "PROBE_OK",
-            "toolCallId": "call_iqtiJhRgUI0jIYQ46kSytpJL|fc_034808b05dbee2b5006a4b450ad2bc819a8c5402a383557557",
-            "startedAt": 1783317771217,
-            "endedAt": 1783317773220
-          },
-          "sessionKey": "agent:main:habena-probe:active-memory:fe6a1cdbdbb6",
-          "seq": 5,
-          "ts": 1783317773220
-        },
-        "seq": 7
-      }
-    },
-    {
-      "dir": "in",
-      "at": "2026-07-06T06:02:54.766Z",
-      "frame": {
-        "type": "event",
-        "event": "agent",
-        "payload": {
-          "runId": "active-memory-mr8tcss8-d4ae2644",
-          "sessionKey": "agent:main:habena-probe:active-memory:fe6a1cdbdbb6",
-          "sessionId": "active-memory-mr8tcss8-d4ae2644",
-          "agentId": "main",
-          "stream": "lifecycle",
-          "data": {
-            "phase": "end",
-            "stopReason": "stop",
-            "aborted": false,
-            "livenessState": "abandoned",
-            "replayInvalid": true,
-            "endedAt": 1783317774765
-          },
-          "seq": 6,
-          "ts": 1783317774765
-        },
-        "seq": 8
-      }
-    },
-    {
-      "dir": "in",
-      "at": "2026-07-06T06:02:54.766Z",
-      "frame": {
-        "type": "event",
-        "event": "chat",
-        "payload": {
-          "runId": "active-memory-mr8tcss8-d4ae2644",
-          "sessionKey": "agent:main:habena-probe:active-memory:fe6a1cdbdbb6",
-          "agentId": "main",
-          "seq": 6,
-          "state": "final",
-          "stopReason": "stop"
-        },
-        "seq": 9
-      }
-    },
-    {
-      "dir": "in",
-      "at": "2026-07-06T06:02:54.822Z",
-      "frame": {
-        "type": "event",
-        "event": "agent",
-        "payload": {
-          "runId": "f6d3b062-eaa2-45bc-9c33-2f7d37ba8ca1",
-          "sessionKey": "agent:main:habena-probe",
-          "sessionId": "5b0f029a-4159-49c8-903e-f90c562e9f8d",
-          "agentId": "main",
-          "stream": "lifecycle",
-          "data": {
-            "phase": "start",
-            "startedAt": 1783317774821
-          },
-          "seq": 1,
-          "ts": 1783317774821,
-          "isHeartbeat": false
-        },
-        "seq": 10
-      }
-    },
-    {
-      "dir": "in",
-      "at": "2026-07-06T06:03:04.285Z",
-      "frame": {
-        "type": "event",
-        "event": "agent",
-        "payload": {
-          "runId": "f6d3b062-eaa2-45bc-9c33-2f7d37ba8ca1",
-          "stream": "assistant",
-          "data": {
-            "text": "PRO",
-            "delta": "PRO"
-          },
-          "sessionKey": "agent:main:habena-probe",
-          "seq": 2,
-          "ts": 1783317784283,
-          "isHeartbeat": false
-        },
-        "seq": 11
-      }
-    },
-    {
-      "dir": "in",
-      "at": "2026-07-06T06:03:04.287Z",
-      "frame": {
-        "type": "event",
-        "event": "chat",
-        "payload": {
-          "runId": "f6d3b062-eaa2-45bc-9c33-2f7d37ba8ca1",
-          "sessionKey": "agent:main:habena-probe",
-          "seq": 2,
-          "state": "delta",
-          "deltaText": "PRO",
-          "message": {
-            "role": "assistant",
-            "content": [
-              {
-                "type": "text",
-                "text": "PRO"
-              }
-            ],
-            "timestamp": 1783317784284
-          }
-        },
-        "seq": 12
-      }
-    },
-    {
-      "dir": "in",
-      "at": "2026-07-06T06:03:04.500Z",
-      "frame": {
-        "type": "event",
-        "event": "tick",
-        "payload": {
-          "ts": 1783317784499
-        },
-        "seq": 13
-      }
-    },
-    {
-      "dir": "in",
-      "at": "2026-07-06T06:03:04.673Z",
-      "frame": {
-        "type": "event",
-        "event": "agent",
-        "payload": {
-          "runId": "f6d3b062-eaa2-45bc-9c33-2f7d37ba8ca1",
-          "stream": "assistant",
-          "data": {
-            "text": "PROBE_OK",
-            "delta": "BE_OK"
-          },
-          "sessionKey": "agent:main:habena-probe",
-          "seq": 4,
-          "ts": 1783317784288,
-          "isHeartbeat": false
-        },
-        "seq": 14
-      }
-    },
-    {
-      "dir": "in",
-      "at": "2026-07-06T06:03:04.673Z",
-      "frame": {
-        "type": "event",
-        "event": "agent",
-        "payload": {
-          "runId": "f6d3b062-eaa2-45bc-9c33-2f7d37ba8ca1",
-          "sessionKey": "agent:main:habena-probe",
-          "sessionId": "5b0f029a-4159-49c8-903e-f90c562e9f8d",
-          "agentId": "main",
-          "stream": "lifecycle",
-          "data": {
-            "phase": "finishing",
-            "stopReason": "stop",
-            "aborted": false,
-            "livenessState": "working",
-            "endedAt": 1783317784672
-          },
-          "seq": 5,
-          "ts": 1783317784672,
-          "isHeartbeat": false
-        },
-        "seq": 15
-      }
-    },
-    {
-      "dir": "in",
-      "at": "2026-07-06T06:03:04.702Z",
-      "frame": {
-        "type": "event",
-        "event": "agent",
-        "payload": {
-          "runId": "f6d3b062-eaa2-45bc-9c33-2f7d37ba8ca1",
-          "sessionKey": "agent:main:habena-probe",
-          "stream": "lifecycle",
-          "data": {
-            "stopReason": "stop",
-            "aborted": false,
-            "livenessState": "working",
-            "phase": "end",
-            "endedAt": 1783317784700,
-            "replayInvalid": false
-          },
-          "sessionId": "5b0f029a-4159-49c8-903e-f90c562e9f8d",
-          "seq": 6,
-          "ts": 1783317784700,
-          "isHeartbeat": false
-        },
-        "seq": 16
-      }
-    },
-    {
-      "dir": "in",
-      "at": "2026-07-06T06:03:04.702Z",
-      "frame": {
-        "type": "event",
-        "event": "chat",
-        "payload": {
-          "runId": "f6d3b062-eaa2-45bc-9c33-2f7d37ba8ca1",
-          "sessionKey": "agent:main:habena-probe",
-          "seq": 6,
-          "state": "delta",
-          "deltaText": "BE_OK",
-          "message": {
-            "role": "assistant",
-            "content": [
-              {
-                "type": "text",
-                "text": "PROBE_OK"
-              }
-            ],
-            "timestamp": 1783317784700
-          }
-        },
-        "seq": 17
-      }
-    },
-    {
-      "dir": "in",
-      "at": "2026-07-06T06:03:04.702Z",
-      "frame": {
-        "type": "event",
-        "event": "chat",
-        "payload": {
-          "runId": "f6d3b062-eaa2-45bc-9c33-2f7d37ba8ca1",
-          "sessionKey": "agent:main:habena-probe",
-          "seq": 6,
-          "state": "final",
-          "stopReason": "stop",
-          "message": {
-            "role": "assistant",
-            "content": [
-              {
-                "type": "text",
-                "text": "PROBE_OK"
-              }
-            ],
-            "timestamp": 1783317784700
-          }
-        },
-        "seq": 18
       }
     }
   ]

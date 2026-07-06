@@ -4,6 +4,12 @@
 // 30s, writes tests/chat/fixtures/gateway-frames.json (secrets redacted).
 // Usage: OPENCLAW_GATEWAY_TOKEN=... node scripts/probe-gateway.mjs [ws://127.0.0.1:18789]
 //
+// Set PROBE_IDENTITY=probe to connect with a valid-but-non-backend client
+// identity (openclaw-probe/probe). That variant passes connect but the
+// gateway clears the requested scopes to [], so chat.send fails with
+// "missing scope: operator.write" -- the negative case is written to
+// tests/chat/fixtures/gateway-frames-scope-fail.json instead.
+//
 // Adjustments forced by the live gateway (protocol.md's examples didn't match
 // the running v4 gateway's actual TypeBox schema enums/params):
 //   - client.id/client.mode are validated against closed enums. The doc's
@@ -13,15 +19,14 @@
 //     same-process backend clients ... may omit device on direct loopback
 //     connections" carve-out, so it's what this probe uses to exercise the
 //     no-device-identity path end to end. Non-"gateway-client" client ids
-//     (e.g. "openclaw-probe"/"probe", tried first) *do* pass connect and get
-//     `ok:true` hello-ok, but the gateway silently clears requested scopes to
-//     `[]`, which then fails every scoped RPC ("missing scope:
-//     operator.write" on chat.send) -- functionally the same
+//     (e.g. "openclaw-probe"/"probe" -- see PROBE_IDENTITY above) *do* pass
+//     connect and get `ok:true` hello-ok, but the gateway silently clears
+//     requested scopes to `[]`, which then fails every scoped RPC ("missing
+//     scope: operator.write" on chat.send) -- functionally the same
 //     device-signature-block requirement Step 4 asks us to capture if hit,
 //     just surfaced as a post-connect scope error instead of a connect-time
-//     rejection. That earlier no-scopes run is not re-derivable from this
-//     script's single code path, so it's summarized in the task report
-//     instead of re-captured in the fixture.
+//     rejection. That negative case is captured in
+//     gateway-frames-scope-fail.json.
 //   - chat.send params use `message`, not `text` (`text` isn't in
 //     ChatSendParamsSchema at all -- confirmed against
 //     packages/gateway-protocol/src/schema/logs-chat.d.ts in the openclaw
@@ -32,10 +37,24 @@ import { randomUUID } from "node:crypto";
 
 const url = process.argv[2] ?? "ws://127.0.0.1:18789";
 const token = process.env.OPENCLAW_GATEWAY_TOKEN;
+const scopeFailVariant = process.env.PROBE_IDENTITY === "probe";
+const outName = scopeFailVariant ? "gateway-frames-scope-fail.json" : "gateway-frames.json";
 const frames = [];
 const record = (dir, frame) => frames.push({ dir, at: new Date().toISOString(), frame });
 
-const redact = (s) => token ? s.replaceAll(token, "<REDACTED>") : s;
+// Pattern-based scrubbing, not just the known token literal:
+//  - the shared gateway token itself, wherever it appears
+//  - any capability-URL bearer segment (/cap/<random> grants access by itself)
+//  - the value of any JSON field literally named token/accessToken/secret
+//  - the operator's home-dir username and LAN IPs (fixture hygiene, not secrets)
+const redact = (s) => {
+  let out = token ? s.replaceAll(token, "<REDACTED>") : s;
+  out = out.replace(/\/cap\/[A-Za-z0-9_-]+/g, "/cap/<REDACTED>");
+  out = out.replace(/"(token|accessToken|secret)"\s*:\s*"(?:[^"\\]|\\.)*"/g, '"$1": "<REDACTED>"');
+  out = out.replace(/\/home\/[A-Za-z0-9._-]+/g, "/home/<user>");
+  out = out.replace(/\b192\.168\.\d{1,3}\.\d{1,3}\b/g, "<lan-ip>");
+  return out;
+};
 const ws = new WebSocket(url);
 const send = (obj) => { const s = JSON.stringify(obj); record("out", JSON.parse(redact(s))); ws.send(s); };
 
@@ -48,7 +67,9 @@ ws.on("message", (data) => {
       type: "req", id: randomUUID(), method: "connect",
       params: {
         minProtocol: 3, maxProtocol: 4,
-        client: { id: "gateway-client", version: "0.0.1", platform: "linux", mode: "backend" },
+        client: scopeFailVariant
+          ? { id: "openclaw-probe", version: "0.0.1", platform: "linux", mode: "probe" }
+          : { id: "gateway-client", version: "0.0.1", platform: "linux", mode: "backend" },
         role: "operator", scopes: ["operator.read", "operator.write"],
         caps: [], commands: [], permissions: {},
         auth: token ? { token } : undefined,
@@ -64,8 +85,8 @@ ws.on("message", (data) => {
 });
 ws.on("error", (err) => record("in", { probeError: String(err?.message ?? err) }));
 setTimeout(() => {
-  writeFileSync(new URL("../tests/chat/fixtures/gateway-frames.json", import.meta.url),
+  writeFileSync(new URL(`../tests/chat/fixtures/${outName}`, import.meta.url),
     JSON.stringify({ url, capturedAt: new Date().toISOString(), frames }, null, 2));
-  console.log(`wrote ${frames.length} frames`);
+  console.log(`wrote ${frames.length} frames to ${outName}`);
   ws.close(); process.exit(0);
 }, 30_000);
