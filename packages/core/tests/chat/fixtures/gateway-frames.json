@@ -1,0 +1,1406 @@
+{
+  "url": "ws://127.0.0.1:18789",
+  "capturedAt": "2026-07-06T05:54:24.164Z",
+  "frames": [
+    {
+      "dir": "in",
+      "at": "2026-07-06T05:53:54.157Z",
+      "frame": {
+        "type": "event",
+        "event": "connect.challenge",
+        "payload": {
+          "nonce": "e3faf41a-d8d4-4e28-abf6-c5f39aa0d82d",
+          "ts": 1783317234156
+        }
+      }
+    },
+    {
+      "dir": "out",
+      "at": "2026-07-06T05:53:54.158Z",
+      "frame": {
+        "type": "req",
+        "id": "1df0bb1a-04fc-4976-a90f-5841775409b2",
+        "method": "connect",
+        "params": {
+          "minProtocol": 3,
+          "maxProtocol": 4,
+          "client": {
+            "id": "gateway-client",
+            "version": "0.0.1",
+            "platform": "linux",
+            "mode": "backend"
+          },
+          "role": "operator",
+          "scopes": [
+            "operator.read",
+            "operator.write"
+          ],
+          "caps": [],
+          "commands": [],
+          "permissions": {},
+          "auth": {
+            "token": "<REDACTED>"
+          },
+          "locale": "en-US",
+          "userAgent": "habena-probe/0.0.1"
+        }
+      }
+    },
+    {
+      "dir": "in",
+      "at": "2026-07-06T05:53:54.161Z",
+      "frame": {
+        "type": "res",
+        "id": "1df0bb1a-04fc-4976-a90f-5841775409b2",
+        "ok": true,
+        "payload": {
+          "type": "hello-ok",
+          "protocol": 4,
+          "server": {
+            "version": "2026.6.10",
+            "connId": "dce36a0a-1a5c-44ac-b11a-eb5ecd97be97"
+          },
+          "features": {
+            "methods": [
+              "health",
+              "diagnostics.stability",
+              "doctor.memory.status",
+              "doctor.memory.dreamDiary",
+              "doctor.memory.backfillDreamDiary",
+              "doctor.memory.resetDreamDiary",
+              "doctor.memory.resetGroundedShortTerm",
+              "doctor.memory.repairDreamingArtifacts",
+              "doctor.memory.dedupeDreamDiary",
+              "doctor.memory.remHarness",
+              "logs.tail",
+              "channels.status",
+              "channels.start",
+              "channels.stop",
+              "channels.logout",
+              "status",
+              "usage.status",
+              "usage.cost",
+              "tts.status",
+              "tts.providers",
+              "tts.personas",
+              "tts.enable",
+              "tts.disable",
+              "tts.convert",
+              "tts.setProvider",
+              "tts.setPersona",
+              "config.get",
+              "config.set",
+              "config.apply",
+              "config.patch",
+              "config.schema",
+              "config.schema.lookup",
+              "exec.approvals.get",
+              "exec.approvals.set",
+              "exec.approvals.node.get",
+              "exec.approvals.node.set",
+              "exec.approval.get",
+              "exec.approval.list",
+              "exec.approval.request",
+              "exec.approval.waitDecision",
+              "exec.approval.resolve",
+              "plugin.approval.list",
+              "plugin.approval.request",
+              "plugin.approval.waitDecision",
+              "plugin.approval.resolve",
+              "plugins.uiDescriptors",
+              "plugins.sessionAction",
+              "wizard.start",
+              "wizard.next",
+              "wizard.cancel",
+              "wizard.status",
+              "talk.catalog",
+              "talk.config",
+              "talk.client.create",
+              "talk.client.toolCall",
+              "talk.client.steer",
+              "talk.session.create",
+              "talk.session.join",
+              "talk.session.appendAudio",
+              "talk.session.startTurn",
+              "talk.session.endTurn",
+              "talk.session.cancelTurn",
+              "talk.session.cancelOutput",
+              "talk.session.submitToolResult",
+              "talk.session.steer",
+              "talk.session.close",
+              "talk.speak",
+              "talk.mode",
+              "commands.list",
+              "models.list",
+              "models.authStatus",
+              "models.authLogout",
+              "tools.catalog",
+              "tools.effective",
+              "tools.invoke",
+              "tasks.list",
+              "tasks.get",
+              "tasks.cancel",
+              "environments.list",
+              "environments.status",
+              "agents.list",
+              "agents.create",
+              "agents.update",
+              "agents.delete",
+              "agents.files.list",
+              "agents.files.get",
+              "agents.files.set",
+              "sessions.files.list",
+              "sessions.files.get",
+              "artifacts.list",
+              "artifacts.get",
+              "artifacts.download",
+              "skills.status",
+              "skills.search",
+              "skills.detail",
+              "skills.securityVerdicts",
+              "skills.skillCard",
+              "skills.bins",
+              "skills.upload.begin",
+              "skills.upload.chunk",
+              "skills.upload.commit",
+              "skills.install",
+              "skills.update",
+              "skills.proposals.list",
+              "skills.proposals.inspect",
+              "skills.proposals.create",
+              "skills.proposals.update",
+              "skills.proposals.revise",
+              "skills.proposals.requestRevision",
+              "skills.proposals.apply",
+              "skills.proposals.reject",
+              "skills.proposals.quarantine",
+              "update.status",
+              "update.run",
+              "voicewake.get",
+              "voicewake.set",
+              "secrets.reload",
+              "secrets.resolve",
+              "voicewake.routing.get",
+              "voicewake.routing.set",
+              "sessions.list",
+              "sessions.subscribe",
+              "sessions.unsubscribe",
+              "sessions.messages.subscribe",
+              "sessions.messages.unsubscribe",
+              "sessions.preview",
+              "sessions.describe",
+              "sessions.compaction.list",
+              "sessions.compaction.get",
+              "sessions.compaction.branch",
+              "sessions.compaction.restore",
+              "sessions.create",
+              "sessions.send",
+              "sessions.abort",
+              "sessions.patch",
+              "sessions.pluginPatch",
+              "sessions.cleanup",
+              "sessions.reset",
+              "sessions.delete",
+              "sessions.compact",
+              "last-heartbeat",
+              "set-heartbeats",
+              "wake",
+              "node.pair.request",
+              "node.pair.list",
+              "node.pair.approve",
+              "node.pair.reject",
+              "node.pair.remove",
+              "node.pair.verify",
+              "device.pair.list",
+              "device.pair.approve",
+              "device.pair.reject",
+              "device.pair.remove",
+              "device.token.rotate",
+              "device.token.revoke",
+              "node.rename",
+              "node.list",
+              "node.describe",
+              "node.pluginSurface.refresh",
+              "node.pending.drain",
+              "node.pending.enqueue",
+              "node.invoke",
+              "node.pending.pull",
+              "node.pending.ack",
+              "node.invoke.result",
+              "node.event",
+              "cron.get",
+              "cron.list",
+              "cron.status",
+              "cron.add",
+              "cron.update",
+              "cron.remove",
+              "cron.run",
+              "cron.runs",
+              "gateway.identity.get",
+              "gateway.restart.preflight",
+              "gateway.restart.request",
+              "system-presence",
+              "system-event",
+              "message.action",
+              "send",
+              "agent",
+              "agent.identity.get",
+              "agent.wait",
+              "chat.history",
+              "chat.startup",
+              "chat.metadata",
+              "chat.message.get",
+              "chat.abort",
+              "chat.send",
+              "browser.request"
+            ],
+            "events": [
+              "connect.challenge",
+              "agent",
+              "chat",
+              "session.message",
+              "session.operation",
+              "session.tool",
+              "sessions.changed",
+              "presence",
+              "tick",
+              "talk.mode",
+              "talk.event",
+              "shutdown",
+              "health",
+              "heartbeat",
+              "cron",
+              "node.pair.requested",
+              "node.pair.resolved",
+              "node.invoke.request",
+              "device.pair.requested",
+              "device.pair.resolved",
+              "voicewake.changed",
+              "voicewake.routing.changed",
+              "exec.approval.requested",
+              "exec.approval.resolved",
+              "plugin.approval.requested",
+              "plugin.approval.resolved",
+              "update.available"
+            ]
+          },
+          "snapshot": {
+            "presence": [
+              {
+                "host": "jarvis-vm",
+                "ip": "192.168.139.125",
+                "version": "2026.6.10",
+                "platform": "linux 7.0.11-orbstack-00360-gc9bc4d96ac70",
+                "deviceFamily": "Linux",
+                "modelIdentifier": "arm64",
+                "mode": "gateway",
+                "reason": "self",
+                "instanceId": "b791c482-7ae1-479d-aa2d-ee16d08e0793",
+                "text": "Gateway: jarvis-vm (192.168.139.125) · app 2026.6.10 · mode gateway · reason self",
+                "ts": 1783317234158
+              },
+              {
+                "host": "gateway-client",
+                "version": "0.0.1",
+                "platform": "linux",
+                "mode": "backend",
+                "roles": [
+                  "operator"
+                ],
+                "scopes": [
+                  "operator.read",
+                  "operator.write"
+                ],
+                "reason": "connect",
+                "ts": 1783317234158,
+                "text": "Node: gateway-client · mode backend"
+              },
+              {
+                "host": "gateway-client",
+                "version": "0.0.1",
+                "platform": "linux",
+                "mode": "backend",
+                "roles": [
+                  "operator"
+                ],
+                "scopes": [
+                  "operator.read",
+                  "operator.write"
+                ],
+                "reason": "disconnect",
+                "ts": 1783317107439,
+                "text": "Node: gateway-client · mode backend"
+              },
+              {
+                "host": "openclaw-probe",
+                "version": "0.0.1",
+                "platform": "linux",
+                "mode": "probe",
+                "roles": [
+                  "operator"
+                ],
+                "reason": "disconnect",
+                "ts": 1783317008328,
+                "text": "Node: openclaw-probe · mode probe"
+              }
+            ],
+            "health": {
+              "ok": true,
+              "ts": 1783317230979,
+              "durationMs": 22,
+              "eventLoop": {
+                "degraded": false,
+                "reasons": [],
+                "intervalMs": 60006,
+                "delayP99Ms": 30.1,
+                "delayMaxMs": 39,
+                "utilization": 0.023,
+                "cpuCoreRatio": 0.028
+              },
+              "plugins": {
+                "loaded": [
+                  "active-memory",
+                  "alibaba",
+                  "anthropic",
+                  "azure-speech",
+                  "browser",
+                  "byteplus",
+                  "canvas",
+                  "cohere",
+                  "comfy",
+                  "copilot-proxy",
+                  "deepgram",
+                  "device-pair",
+                  "document-extract",
+                  "elevenlabs",
+                  "fal",
+                  "file-transfer",
+                  "fireworks",
+                  "github-copilot",
+                  "google",
+                  "huggingface",
+                  "litellm",
+                  "lmstudio",
+                  "memory-core",
+                  "microsoft",
+                  "microsoft-foundry",
+                  "minimax",
+                  "mistral",
+                  "moonshot",
+                  "novita",
+                  "nvidia",
+                  "ollama",
+                  "openai",
+                  "opencode",
+                  "opencode-go",
+                  "openrouter",
+                  "phone-control",
+                  "runway",
+                  "senseaudio",
+                  "sglang",
+                  "synthetic",
+                  "talk-voice",
+                  "tavily",
+                  "telegram",
+                  "tencent",
+                  "together",
+                  "tts-local-cli",
+                  "venice",
+                  "vercel-ai-gateway",
+                  "vllm",
+                  "volcengine",
+                  "voyage",
+                  "vydra",
+                  "web-readability",
+                  "xai",
+                  "xiaomi",
+                  "zai"
+                ],
+                "errors": []
+              },
+              "modelPricing": {
+                "state": "ok",
+                "sources": []
+              },
+              "channels": {
+                "telegram": {
+                  "accountId": "default",
+                  "enabled": true,
+                  "configured": true,
+                  "running": true,
+                  "lastStartAt": 1783193761817,
+                  "lastStopAt": 1783193761816,
+                  "lastError": null,
+                  "connected": true,
+                  "restartPending": false,
+                  "reconnectAttempts": 0,
+                  "lastConnectedAt": 1783317202208,
+                  "lastEventAt": 1783317202208,
+                  "lastTransportActivityAt": 1783317202208,
+                  "lastInboundAt": null,
+                  "lastOutboundAt": null,
+                  "tokenSource": "config",
+                  "tokenStatus": "available",
+                  "mode": "polling",
+                  "allowUnmentionedGroups": false,
+                  "lastProbeAt": null,
+                  "accounts": {
+                    "default": {
+                      "accountId": "default",
+                      "enabled": true,
+                      "configured": true,
+                      "running": true,
+                      "lastStartAt": 1783193761817,
+                      "lastStopAt": 1783193761816,
+                      "lastError": null,
+                      "connected": true,
+                      "restartPending": false,
+                      "reconnectAttempts": 0,
+                      "lastConnectedAt": 1783317202208,
+                      "lastEventAt": 1783317202208,
+                      "lastTransportActivityAt": 1783317202208,
+                      "lastInboundAt": null,
+                      "lastOutboundAt": null,
+                      "tokenSource": "config",
+                      "tokenStatus": "available",
+                      "mode": "polling",
+                      "allowUnmentionedGroups": false,
+                      "lastProbeAt": null
+                    },
+                    "re": {
+                      "accountId": "re",
+                      "name": "re",
+                      "enabled": true,
+                      "configured": true,
+                      "running": false,
+                      "lastStartAt": 1783300394016,
+                      "lastStopAt": 1783300383895,
+                      "lastError": "channel stop timed out after 5000ms",
+                      "connected": false,
+                      "restartPending": true,
+                      "reconnectAttempts": 2,
+                      "lastInboundAt": null,
+                      "lastOutboundAt": null,
+                      "tokenSource": "config",
+                      "tokenStatus": "available",
+                      "mode": "polling",
+                      "allowUnmentionedGroups": false,
+                      "healthState": "not-running",
+                      "lastProbeAt": null
+                    },
+                    "scribe": {
+                      "accountId": "scribe",
+                      "name": "scribe",
+                      "enabled": true,
+                      "configured": true,
+                      "running": true,
+                      "lastStartAt": 1782522715958,
+                      "lastStopAt": 1782522705603,
+                      "lastError": null,
+                      "connected": true,
+                      "restartPending": false,
+                      "reconnectAttempts": 2,
+                      "lastConnectedAt": 1783317208849,
+                      "lastEventAt": 1783317208849,
+                      "lastTransportActivityAt": 1783317208849,
+                      "lastInboundAt": null,
+                      "lastOutboundAt": null,
+                      "tokenSource": "config",
+                      "tokenStatus": "available",
+                      "mode": "polling",
+                      "allowUnmentionedGroups": false,
+                      "lastProbeAt": null
+                    },
+                    "strconch": {
+                      "accountId": "strconch",
+                      "name": "strconch",
+                      "enabled": true,
+                      "configured": true,
+                      "running": true,
+                      "lastStartAt": 1782401155313,
+                      "lastStopAt": null,
+                      "lastError": null,
+                      "connected": true,
+                      "restartPending": false,
+                      "reconnectAttempts": 0,
+                      "lastConnectedAt": 1783317202208,
+                      "lastEventAt": 1783317202208,
+                      "lastTransportActivityAt": 1783317202208,
+                      "lastInboundAt": null,
+                      "lastOutboundAt": null,
+                      "tokenSource": "config",
+                      "tokenStatus": "available",
+                      "mode": "polling",
+                      "allowUnmentionedGroups": false,
+                      "lastProbeAt": null
+                    },
+                    "vc": {
+                      "accountId": "vc",
+                      "name": "vc",
+                      "enabled": true,
+                      "configured": true,
+                      "running": true,
+                      "lastStartAt": 1782868303672,
+                      "lastStopAt": 1782868282036,
+                      "lastError": null,
+                      "connected": true,
+                      "restartPending": false,
+                      "reconnectAttempts": 3,
+                      "lastConnectedAt": 1783317202206,
+                      "lastEventAt": 1783317202206,
+                      "lastTransportActivityAt": 1783317202206,
+                      "lastInboundAt": null,
+                      "lastOutboundAt": null,
+                      "tokenSource": "config",
+                      "tokenStatus": "available",
+                      "mode": "polling",
+                      "allowUnmentionedGroups": false,
+                      "lastProbeAt": null
+                    }
+                  }
+                }
+              },
+              "channelOrder": [
+                "telegram"
+              ],
+              "channelLabels": {
+                "telegram": "Telegram"
+              },
+              "heartbeatSeconds": 1800,
+              "defaultAgentId": "main",
+              "agents": [
+                {
+                  "agentId": "main",
+                  "isDefault": true,
+                  "heartbeat": {
+                    "enabled": true,
+                    "every": "30m",
+                    "everyMs": 1800000,
+                    "prompt": "Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.",
+                    "target": "none",
+                    "ackMaxChars": 300
+                  },
+                  "sessions": {
+                    "path": "/home/vhoang/.openclaw/agents/main/sessions/sessions.json",
+                    "count": 1,
+                    "recent": [
+                      {
+                        "key": "agent:main:cron:f3bf3006-1aea-4470-9231-25e79864a239",
+                        "updatedAt": 1783245600104,
+                        "age": 71630848
+                      }
+                    ]
+                  }
+                },
+                {
+                  "agentId": "str-marketer",
+                  "name": "str-marketer",
+                  "isDefault": false,
+                  "heartbeat": {
+                    "enabled": false,
+                    "every": "disabled",
+                    "everyMs": null,
+                    "prompt": "Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.",
+                    "target": "none",
+                    "ackMaxChars": 300
+                  },
+                  "sessions": {
+                    "path": "/home/vhoang/.openclaw/agents/str-marketer/sessions/sessions.json",
+                    "count": 1,
+                    "recent": [
+                      {
+                        "key": "agent:str-marketer:main",
+                        "updatedAt": 1782277649488,
+                        "age": 1039581466
+                      }
+                    ]
+                  }
+                },
+                {
+                  "agentId": "wp-editor",
+                  "name": "wp-editor",
+                  "isDefault": false,
+                  "heartbeat": {
+                    "enabled": false,
+                    "every": "disabled",
+                    "everyMs": null,
+                    "prompt": "Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.",
+                    "target": "none",
+                    "ackMaxChars": 300
+                  },
+                  "sessions": {
+                    "path": "/home/vhoang/.openclaw/agents/wp-editor/sessions/sessions.json",
+                    "count": 1,
+                    "recent": [
+                      {
+                        "key": "agent:wp-editor:main",
+                        "updatedAt": 1780447677740,
+                        "age": 2869553215
+                      }
+                    ]
+                  }
+                },
+                {
+                  "agentId": "vc-analyst",
+                  "name": "vc-analyst",
+                  "isDefault": false,
+                  "heartbeat": {
+                    "enabled": false,
+                    "every": "disabled",
+                    "everyMs": null,
+                    "prompt": "Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.",
+                    "target": "none",
+                    "ackMaxChars": 300
+                  },
+                  "sessions": {
+                    "path": "/home/vhoang/.openclaw/agents/vc-analyst/sessions/sessions.json",
+                    "count": 1,
+                    "recent": [
+                      {
+                        "key": "agent:vc-analyst:main",
+                        "updatedAt": 1782279685136,
+                        "age": 1037545820
+                      }
+                    ]
+                  }
+                },
+                {
+                  "agentId": "re-analyst",
+                  "name": "re-analyst",
+                  "isDefault": false,
+                  "heartbeat": {
+                    "enabled": false,
+                    "every": "disabled",
+                    "everyMs": null,
+                    "prompt": "Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.",
+                    "target": "none",
+                    "ackMaxChars": 300
+                  },
+                  "sessions": {
+                    "path": "/home/vhoang/.openclaw/agents/re-analyst/sessions/sessions.json",
+                    "count": 0,
+                    "recent": []
+                  }
+                }
+              ],
+              "sessions": {
+                "path": "/home/vhoang/.openclaw/agents/main/sessions/sessions.json",
+                "count": 1,
+                "recent": [
+                  {
+                    "key": "agent:main:cron:f3bf3006-1aea-4470-9231-25e79864a239",
+                    "updatedAt": 1783245600104,
+                    "age": 71630848
+                  }
+                ]
+              }
+            },
+            "stateVersion": {
+              "presence": 206,
+              "health": 15371
+            },
+            "uptimeMs": 916084332,
+            "sessionDefaults": {
+              "defaultAgentId": "main",
+              "mainKey": "main",
+              "mainSessionKey": "agent:main:main",
+              "scope": "per-sender"
+            },
+            "updateAvailable": {
+              "currentVersion": "2026.6.10",
+              "latestVersion": "2026.6.11",
+              "channel": "latest"
+            }
+          },
+          "pluginSurfaceUrls": {
+            "canvas": "http://127.0.0.1:18789/__openclaw__/cap/zc-5z-hZs4kuOXr6HBSNCBt-"
+          },
+          "auth": {
+            "role": "operator",
+            "scopes": [
+              "operator.read",
+              "operator.write"
+            ]
+          },
+          "policy": {
+            "maxPayload": 26214400,
+            "maxBufferedBytes": 52428800,
+            "tickIntervalMs": 30000
+          }
+        }
+      }
+    },
+    {
+      "dir": "out",
+      "at": "2026-07-06T05:53:54.161Z",
+      "frame": {
+        "type": "req",
+        "id": "ee2a875f-fb9f-424d-ba2b-28cc8875cfa9",
+        "method": "chat.send",
+        "params": {
+          "sessionKey": "habena-probe",
+          "message": "Reply with exactly: PROBE_OK",
+          "idempotencyKey": "9b89257c-56a2-41e9-a42c-f69bf42a41f6"
+        }
+      }
+    },
+    {
+      "dir": "in",
+      "at": "2026-07-06T05:53:54.164Z",
+      "frame": {
+        "type": "event",
+        "event": "health",
+        "payload": {
+          "ok": true,
+          "ts": 1783317234164,
+          "durationMs": 5,
+          "eventLoop": {
+            "degraded": false,
+            "reasons": [],
+            "intervalMs": 3208,
+            "delayP99Ms": 30.1,
+            "delayMaxMs": 30.1,
+            "utilization": 0.033,
+            "cpuCoreRatio": 0.06
+          },
+          "plugins": {
+            "loaded": [
+              "active-memory",
+              "alibaba",
+              "anthropic",
+              "azure-speech",
+              "browser",
+              "byteplus",
+              "canvas",
+              "cohere",
+              "comfy",
+              "copilot-proxy",
+              "deepgram",
+              "device-pair",
+              "document-extract",
+              "elevenlabs",
+              "fal",
+              "file-transfer",
+              "fireworks",
+              "github-copilot",
+              "google",
+              "huggingface",
+              "litellm",
+              "lmstudio",
+              "memory-core",
+              "microsoft",
+              "microsoft-foundry",
+              "minimax",
+              "mistral",
+              "moonshot",
+              "novita",
+              "nvidia",
+              "ollama",
+              "openai",
+              "opencode",
+              "opencode-go",
+              "openrouter",
+              "phone-control",
+              "runway",
+              "senseaudio",
+              "sglang",
+              "synthetic",
+              "talk-voice",
+              "tavily",
+              "telegram",
+              "tencent",
+              "together",
+              "tts-local-cli",
+              "venice",
+              "vercel-ai-gateway",
+              "vllm",
+              "volcengine",
+              "voyage",
+              "vydra",
+              "web-readability",
+              "xai",
+              "xiaomi",
+              "zai"
+            ],
+            "errors": []
+          },
+          "modelPricing": {
+            "state": "ok",
+            "sources": []
+          },
+          "channels": {
+            "telegram": {
+              "accountId": "default",
+              "enabled": true,
+              "configured": true,
+              "running": true,
+              "lastStartAt": 1783193761817,
+              "lastStopAt": 1783193761816,
+              "lastError": null,
+              "connected": true,
+              "restartPending": false,
+              "reconnectAttempts": 0,
+              "lastConnectedAt": 1783317232779,
+              "lastEventAt": 1783317232779,
+              "lastTransportActivityAt": 1783317232779,
+              "lastInboundAt": null,
+              "lastOutboundAt": null,
+              "tokenSource": "config",
+              "tokenStatus": "available",
+              "mode": "polling",
+              "allowUnmentionedGroups": false,
+              "lastProbeAt": null,
+              "accounts": {
+                "default": {
+                  "accountId": "default",
+                  "enabled": true,
+                  "configured": true,
+                  "running": true,
+                  "lastStartAt": 1783193761817,
+                  "lastStopAt": 1783193761816,
+                  "lastError": null,
+                  "connected": true,
+                  "restartPending": false,
+                  "reconnectAttempts": 0,
+                  "lastConnectedAt": 1783317232779,
+                  "lastEventAt": 1783317232779,
+                  "lastTransportActivityAt": 1783317232779,
+                  "lastInboundAt": null,
+                  "lastOutboundAt": null,
+                  "tokenSource": "config",
+                  "tokenStatus": "available",
+                  "mode": "polling",
+                  "allowUnmentionedGroups": false,
+                  "lastProbeAt": null
+                },
+                "re": {
+                  "accountId": "re",
+                  "name": "re",
+                  "enabled": true,
+                  "configured": true,
+                  "running": false,
+                  "lastStartAt": 1783300394016,
+                  "lastStopAt": 1783300383895,
+                  "lastError": "channel stop timed out after 5000ms",
+                  "connected": false,
+                  "restartPending": true,
+                  "reconnectAttempts": 2,
+                  "lastInboundAt": null,
+                  "lastOutboundAt": null,
+                  "tokenSource": "config",
+                  "tokenStatus": "available",
+                  "mode": "polling",
+                  "allowUnmentionedGroups": false,
+                  "healthState": "not-running",
+                  "lastProbeAt": null
+                },
+                "scribe": {
+                  "accountId": "scribe",
+                  "name": "scribe",
+                  "enabled": true,
+                  "configured": true,
+                  "running": true,
+                  "lastStartAt": 1782522715958,
+                  "lastStopAt": 1782522705603,
+                  "lastError": null,
+                  "connected": true,
+                  "restartPending": false,
+                  "reconnectAttempts": 2,
+                  "lastConnectedAt": 1783317208849,
+                  "lastEventAt": 1783317208849,
+                  "lastTransportActivityAt": 1783317208849,
+                  "lastInboundAt": null,
+                  "lastOutboundAt": null,
+                  "tokenSource": "config",
+                  "tokenStatus": "available",
+                  "mode": "polling",
+                  "allowUnmentionedGroups": false,
+                  "lastProbeAt": null
+                },
+                "strconch": {
+                  "accountId": "strconch",
+                  "name": "strconch",
+                  "enabled": true,
+                  "configured": true,
+                  "running": true,
+                  "lastStartAt": 1782401155313,
+                  "lastStopAt": null,
+                  "lastError": null,
+                  "connected": true,
+                  "restartPending": false,
+                  "reconnectAttempts": 0,
+                  "lastConnectedAt": 1783317232774,
+                  "lastEventAt": 1783317232774,
+                  "lastTransportActivityAt": 1783317232774,
+                  "lastInboundAt": null,
+                  "lastOutboundAt": null,
+                  "tokenSource": "config",
+                  "tokenStatus": "available",
+                  "mode": "polling",
+                  "allowUnmentionedGroups": false,
+                  "lastProbeAt": null
+                },
+                "vc": {
+                  "accountId": "vc",
+                  "name": "vc",
+                  "enabled": true,
+                  "configured": true,
+                  "running": true,
+                  "lastStartAt": 1782868303672,
+                  "lastStopAt": 1782868282036,
+                  "lastError": null,
+                  "connected": true,
+                  "restartPending": false,
+                  "reconnectAttempts": 3,
+                  "lastConnectedAt": 1783317232779,
+                  "lastEventAt": 1783317232779,
+                  "lastTransportActivityAt": 1783317232779,
+                  "lastInboundAt": null,
+                  "lastOutboundAt": null,
+                  "tokenSource": "config",
+                  "tokenStatus": "available",
+                  "mode": "polling",
+                  "allowUnmentionedGroups": false,
+                  "lastProbeAt": null
+                }
+              }
+            }
+          },
+          "channelOrder": [
+            "telegram"
+          ],
+          "channelLabels": {
+            "telegram": "Telegram"
+          },
+          "heartbeatSeconds": 1800,
+          "defaultAgentId": "main",
+          "agents": [
+            {
+              "agentId": "main",
+              "isDefault": true,
+              "heartbeat": {
+                "enabled": true,
+                "every": "30m",
+                "everyMs": 1800000,
+                "prompt": "Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.",
+                "target": "none",
+                "ackMaxChars": 300
+              },
+              "sessions": {
+                "path": "/home/vhoang/.openclaw/agents/main/sessions/sessions.json",
+                "count": 1,
+                "recent": [
+                  {
+                    "key": "agent:main:cron:f3bf3006-1aea-4470-9231-25e79864a239",
+                    "updatedAt": 1783245600104,
+                    "age": 71634054
+                  }
+                ]
+              }
+            },
+            {
+              "agentId": "str-marketer",
+              "name": "str-marketer",
+              "isDefault": false,
+              "heartbeat": {
+                "enabled": false,
+                "every": "disabled",
+                "everyMs": null,
+                "prompt": "Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.",
+                "target": "none",
+                "ackMaxChars": 300
+              },
+              "sessions": {
+                "path": "/home/vhoang/.openclaw/agents/str-marketer/sessions/sessions.json",
+                "count": 1,
+                "recent": [
+                  {
+                    "key": "agent:str-marketer:main",
+                    "updatedAt": 1782277649488,
+                    "age": 1039584671
+                  }
+                ]
+              }
+            },
+            {
+              "agentId": "wp-editor",
+              "name": "wp-editor",
+              "isDefault": false,
+              "heartbeat": {
+                "enabled": false,
+                "every": "disabled",
+                "everyMs": null,
+                "prompt": "Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.",
+                "target": "none",
+                "ackMaxChars": 300
+              },
+              "sessions": {
+                "path": "/home/vhoang/.openclaw/agents/wp-editor/sessions/sessions.json",
+                "count": 1,
+                "recent": [
+                  {
+                    "key": "agent:wp-editor:main",
+                    "updatedAt": 1780447677740,
+                    "age": 2869556419
+                  }
+                ]
+              }
+            },
+            {
+              "agentId": "vc-analyst",
+              "name": "vc-analyst",
+              "isDefault": false,
+              "heartbeat": {
+                "enabled": false,
+                "every": "disabled",
+                "everyMs": null,
+                "prompt": "Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.",
+                "target": "none",
+                "ackMaxChars": 300
+              },
+              "sessions": {
+                "path": "/home/vhoang/.openclaw/agents/vc-analyst/sessions/sessions.json",
+                "count": 1,
+                "recent": [
+                  {
+                    "key": "agent:vc-analyst:main",
+                    "updatedAt": 1782279685136,
+                    "age": 1037549023
+                  }
+                ]
+              }
+            },
+            {
+              "agentId": "re-analyst",
+              "name": "re-analyst",
+              "isDefault": false,
+              "heartbeat": {
+                "enabled": false,
+                "every": "disabled",
+                "everyMs": null,
+                "prompt": "Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.",
+                "target": "none",
+                "ackMaxChars": 300
+              },
+              "sessions": {
+                "path": "/home/vhoang/.openclaw/agents/re-analyst/sessions/sessions.json",
+                "count": 0,
+                "recent": []
+              }
+            }
+          ],
+          "sessions": {
+            "path": "/home/vhoang/.openclaw/agents/main/sessions/sessions.json",
+            "count": 1,
+            "recent": [
+              {
+                "key": "agent:main:cron:f3bf3006-1aea-4470-9231-25e79864a239",
+                "updatedAt": 1783245600104,
+                "age": 71634054
+              }
+            ]
+          }
+        },
+        "seq": 1,
+        "stateVersion": {
+          "presence": 206,
+          "health": 15372
+        }
+      }
+    },
+    {
+      "dir": "in",
+      "at": "2026-07-06T05:53:54.167Z",
+      "frame": {
+        "type": "res",
+        "id": "ee2a875f-fb9f-424d-ba2b-28cc8875cfa9",
+        "ok": true,
+        "payload": {
+          "runId": "9b89257c-56a2-41e9-a42c-f69bf42a41f6",
+          "status": "started"
+        }
+      }
+    },
+    {
+      "dir": "in",
+      "at": "2026-07-06T05:53:55.176Z",
+      "frame": {
+        "type": "event",
+        "event": "agent",
+        "payload": {
+          "runId": "active-memory-mr8t1d2x-fb7e3361",
+          "sessionKey": "agent:main:habena-probe:active-memory:5dbfbf77612b",
+          "sessionId": "active-memory-mr8t1d2x-fb7e3361",
+          "agentId": "main",
+          "stream": "lifecycle",
+          "data": {
+            "phase": "start",
+            "startedAt": 1783317235175
+          },
+          "seq": 1,
+          "ts": 1783317235175
+        },
+        "seq": 2
+      }
+    },
+    {
+      "dir": "in",
+      "at": "2026-07-06T05:54:01.378Z",
+      "frame": {
+        "type": "event",
+        "event": "agent",
+        "payload": {
+          "runId": "active-memory-mr8t1d2x-fb7e3361",
+          "sessionKey": "agent:main:habena-probe:active-memory:5dbfbf77612b",
+          "sessionId": "active-memory-mr8t1d2x-fb7e3361",
+          "agentId": "main",
+          "stream": "lifecycle",
+          "data": {
+            "phase": "error",
+            "error": "The AI service returned an internal error. Please try again in a moment.",
+            "aborted": false,
+            "livenessState": "blocked",
+            "endedAt": 1783317241377
+          },
+          "seq": 2,
+          "ts": 1783317241377
+        },
+        "seq": 3
+      }
+    },
+    {
+      "dir": "in",
+      "at": "2026-07-06T05:54:01.430Z",
+      "frame": {
+        "type": "event",
+        "event": "agent",
+        "payload": {
+          "runId": "9b89257c-56a2-41e9-a42c-f69bf42a41f6",
+          "sessionKey": "agent:main:habena-probe",
+          "sessionId": "5b0f029a-4159-49c8-903e-f90c562e9f8d",
+          "agentId": "main",
+          "stream": "lifecycle",
+          "data": {
+            "phase": "start",
+            "startedAt": 1783317241430
+          },
+          "seq": 1,
+          "ts": 1783317241430,
+          "isHeartbeat": false
+        },
+        "seq": 4
+      }
+    },
+    {
+      "dir": "in",
+      "at": "2026-07-06T05:54:04.422Z",
+      "frame": {
+        "type": "event",
+        "event": "tick",
+        "payload": {
+          "ts": 1783317244421
+        },
+        "seq": 5
+      }
+    },
+    {
+      "dir": "in",
+      "at": "2026-07-06T05:54:11.062Z",
+      "frame": {
+        "type": "event",
+        "event": "agent",
+        "payload": {
+          "runId": "9b89257c-56a2-41e9-a42c-f69bf42a41f6",
+          "stream": "assistant",
+          "data": {
+            "text": "PRO",
+            "delta": "PRO"
+          },
+          "sessionKey": "agent:main:habena-probe",
+          "seq": 2,
+          "ts": 1783317251057,
+          "isHeartbeat": false
+        },
+        "seq": 6
+      }
+    },
+    {
+      "dir": "in",
+      "at": "2026-07-06T05:54:11.063Z",
+      "frame": {
+        "type": "event",
+        "event": "chat",
+        "payload": {
+          "runId": "9b89257c-56a2-41e9-a42c-f69bf42a41f6",
+          "sessionKey": "agent:main:habena-probe",
+          "seq": 2,
+          "state": "delta",
+          "deltaText": "PRO",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "text",
+                "text": "PRO"
+              }
+            ],
+            "timestamp": 1783317251061
+          }
+        },
+        "seq": 7
+      }
+    },
+    {
+      "dir": "in",
+      "at": "2026-07-06T05:54:11.302Z",
+      "frame": {
+        "type": "event",
+        "event": "agent",
+        "payload": {
+          "runId": "9b89257c-56a2-41e9-a42c-f69bf42a41f6",
+          "stream": "assistant",
+          "data": {
+            "text": "PROBE_OK",
+            "delta": "BE_OK"
+          },
+          "sessionKey": "agent:main:habena-probe",
+          "seq": 4,
+          "ts": 1783317251066,
+          "isHeartbeat": false
+        },
+        "seq": 8
+      }
+    },
+    {
+      "dir": "in",
+      "at": "2026-07-06T05:54:11.302Z",
+      "frame": {
+        "type": "event",
+        "event": "agent",
+        "payload": {
+          "runId": "9b89257c-56a2-41e9-a42c-f69bf42a41f6",
+          "sessionKey": "agent:main:habena-probe",
+          "sessionId": "5b0f029a-4159-49c8-903e-f90c562e9f8d",
+          "agentId": "main",
+          "stream": "lifecycle",
+          "data": {
+            "phase": "finishing",
+            "stopReason": "stop",
+            "aborted": false,
+            "livenessState": "working",
+            "endedAt": 1783317251301
+          },
+          "seq": 5,
+          "ts": 1783317251301,
+          "isHeartbeat": false
+        },
+        "seq": 9
+      }
+    },
+    {
+      "dir": "in",
+      "at": "2026-07-06T05:54:11.327Z",
+      "frame": {
+        "type": "event",
+        "event": "agent",
+        "payload": {
+          "runId": "9b89257c-56a2-41e9-a42c-f69bf42a41f6",
+          "sessionKey": "agent:main:habena-probe",
+          "stream": "lifecycle",
+          "data": {
+            "stopReason": "stop",
+            "aborted": false,
+            "livenessState": "working",
+            "phase": "end",
+            "endedAt": 1783317251324,
+            "replayInvalid": false
+          },
+          "sessionId": "5b0f029a-4159-49c8-903e-f90c562e9f8d",
+          "seq": 6,
+          "ts": 1783317251324,
+          "isHeartbeat": false
+        },
+        "seq": 10
+      }
+    },
+    {
+      "dir": "in",
+      "at": "2026-07-06T05:54:11.327Z",
+      "frame": {
+        "type": "event",
+        "event": "chat",
+        "payload": {
+          "runId": "9b89257c-56a2-41e9-a42c-f69bf42a41f6",
+          "sessionKey": "agent:main:habena-probe",
+          "seq": 6,
+          "state": "delta",
+          "deltaText": "BE_OK",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "text",
+                "text": "PROBE_OK"
+              }
+            ],
+            "timestamp": 1783317251325
+          }
+        },
+        "seq": 11
+      }
+    },
+    {
+      "dir": "in",
+      "at": "2026-07-06T05:54:11.327Z",
+      "frame": {
+        "type": "event",
+        "event": "chat",
+        "payload": {
+          "runId": "9b89257c-56a2-41e9-a42c-f69bf42a41f6",
+          "sessionKey": "agent:main:habena-probe",
+          "seq": 6,
+          "state": "final",
+          "stopReason": "stop",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "text",
+                "text": "PROBE_OK"
+              }
+            ],
+            "timestamp": 1783317251325
+          }
+        },
+        "seq": 12
+      }
+    },
+    {
+      "dir": "in",
+      "at": "2026-07-06T05:54:16.390Z",
+      "frame": {
+        "type": "event",
+        "event": "chat",
+        "payload": {
+          "runId": "active-memory-mr8t1d2x-fb7e3361",
+          "sessionKey": "agent:main:habena-probe:active-memory:5dbfbf77612b",
+          "agentId": "main",
+          "seq": 2,
+          "state": "error",
+          "errorMessage": "The AI service returned an internal error. Please try again in a moment.",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "text",
+                "text": "Error: The AI service returned an internal error. Please try again in a moment."
+              }
+            ],
+            "timestamp": 1783317256389
+          }
+        },
+        "seq": 13
+      }
+    }
+  ]
+}
