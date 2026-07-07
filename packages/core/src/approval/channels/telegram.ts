@@ -16,6 +16,16 @@
  *    nothing and is a no-op. No approval can be resolved twice from here.
  *  - The bot token is a secret and is NEVER logged or placed in any error/output
  *    by this channel (the TelegramApi client enforces the same).
+ *  - TWO-CHANNEL CONFIRMATION (Task 8): an approval whose `origin` is
+ *    "telegram" (the run itself was commanded from the phone) can NEVER be
+ *    allowed from here — only denied. This is enforced twice: `buildKeyboard`
+ *    (telegram-format.ts) never renders an Allow button for such a prompt,
+ *    and — defense in depth, in case a client fabricates callback_data for a
+ *    button that was never shown — `handleUpdate` below refuses to act on an
+ *    `allow_once` tap for a telegram-origin prompt even though it parses and
+ *    passes owner auth. The token is NOT consumed in that case, so the still-
+ *    live prompt's Deny path keeps working. A phone commands; only the Mac
+ *    dashboard (web origin, or no origin) can allow.
  */
 import { randomUUID } from "node:crypto";
 import type { ApprovalChannel } from "../channel.js";
@@ -23,12 +33,18 @@ import type { ApprovalQueue } from "../queue.js";
 import type { PendingApproval, ApprovalResponse } from "../types.js";
 import { serializePending } from "../../ipc/protocol.js";
 import type { TelegramApi } from "./telegram-api.js";
-import { parseCallback, promptText } from "./telegram-format.js";
+import { parseCallback, promptText, buildKeyboard } from "./telegram-format.js";
 
 interface TrackedPrompt {
   approvalId: string;
   chatId: string | number;
   messageId: number;
+  /**
+   * Which channel's run produced this approval ("web" | "telegram" |
+   * undefined). SECURITY (Task 8): when "telegram", `handleUpdate` refuses to
+   * resolve an allow_once tap for this prompt — see the header note above.
+   */
+  origin?: string;
   /**
    * One-time "expiring soon" warning timer (D5). Cleared in EVERY consume path
    * and in stop(), so a consumed/stopped prompt never edits the message later.
@@ -150,18 +166,19 @@ export class TelegramApprovalChannel implements ApprovalChannel {
   private async handleRequest(p: PendingApproval): Promise<void> {
     const token = randomUUID();
     try {
-      const text = promptText(serializePending(p));
-      const sent = await this.api.sendMessage(this.ownerId, text, [
-        [
-          { text: "✅ Allow once", callback_data: `ag:allow_once:${token}` },
-          { text: "⛔ Deny", callback_data: `ag:deny:${token}` },
-        ],
-      ]);
+      const serialized = serializePending(p);
+      const text = promptText(serialized);
+      const sent = await this.api.sendMessage(
+        this.ownerId,
+        text,
+        buildKeyboard(serialized, token)
+      );
       // Only track once we actually have a message to edit later.
       const tracked: TrackedPrompt = {
         approvalId: p.id,
         chatId: this.ownerId,
         messageId: sent.message_id,
+        origin: serialized.origin,
       };
       this.prompts.set(token, tracked);
       this.tokenByApprovalId.set(p.id, token);
@@ -276,6 +293,18 @@ export class TelegramApprovalChannel implements ApprovalChannel {
     if (!prompt) {
       // Unknown or already-consumed token (one-shot): nothing to resolve.
       await this.api.answerCallbackQuery(cq.id, "Already handled").catch(() => {});
+      return;
+    }
+
+    // SECURITY (Task 8, defense in depth): buildKeyboard() never renders an
+    // Allow button for a telegram-origin prompt, but this guard covers a
+    // forged/replayed callback_data that names allow_once anyway. Answer and
+    // return WITHOUT consuming the token or calling queue.respond() — the
+    // prompt stays live so a genuine Deny tap on the same token still works.
+    if (prompt.origin === "telegram" && parsed.choice === "allow_once") {
+      await this.api
+        .answerCallbackQuery(cq.id, "Approve from your Mac dashboard")
+        .catch(() => {});
       return;
     }
 

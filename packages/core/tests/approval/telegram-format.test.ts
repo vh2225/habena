@@ -3,6 +3,7 @@ import {
   parseCallback,
   truncateArgs,
   promptText,
+  buildKeyboard,
 } from "../../src/approval/channels/telegram-format.js";
 import type { SerializedPendingApproval } from "../../src/ipc/protocol.js";
 
@@ -138,5 +139,47 @@ describe("promptText", () => {
   it("includes an expiry hint", () => {
     const text = promptText(makePending());
     expect(text.toLowerCase()).toContain("expire");
+  });
+
+  // SECURITY (Task 8): two-channel confirmation — a run commanded from the
+  // phone must be approved from the Mac, never from the phone itself.
+  it("does not add a Mac notice for non-telegram-origin approvals", () => {
+    const text = promptText(makePending({ origin: "web" }));
+    expect(text).not.toMatch(/approve from your Mac/i);
+  });
+
+  it("appends a Mac-approval notice for telegram-origin approvals", () => {
+    const text = promptText(makePending({ origin: "telegram" }));
+    expect(text).toMatch(/approve from your Mac/i);
+  });
+});
+
+describe("buildKeyboard", () => {
+  it("renders allow + deny buttons sharing one token for non-telegram-origin approvals", () => {
+    const kb = buildKeyboard(makePending({ origin: "web" }), "token1");
+    const labels = kb.flat().map((b) => b.text);
+    expect(labels.join(" ")).toMatch(/allow/i);
+    expect(labels.join(" ")).toMatch(/deny/i);
+    const data = kb.flat().map((b) => b.callback_data);
+    expect(data).toContain("ag:allow_once:token1");
+    expect(data).toContain("ag:deny:token1");
+  });
+
+  it("also renders allow + deny buttons when origin is unset (undefined != telegram)", () => {
+    const kb = buildKeyboard(makePending(), "token1");
+    const labels = kb.flat().map((b) => b.text);
+    expect(labels.join(" ")).toMatch(/allow/i);
+  });
+
+  // SECURITY (Task 8): a stolen phone can command a run but must not be able
+  // to also allow its own approval — deny-only keyboard for telegram origin.
+  it("renders a deny-only keyboard for telegram-origin approvals", () => {
+    const kb = buildKeyboard(makePending({ origin: "telegram" }), "token1");
+    const labels = kb.flat().map((b) => b.text);
+    expect(labels.join(" ")).not.toMatch(/allow/i);
+    expect(labels.join(" ")).toMatch(/deny/i);
+    const data = kb.flat().map((b) => b.callback_data);
+    expect(data).not.toContain("ag:allow_once:token1");
+    expect(data).toContain("ag:deny:token1");
   });
 });

@@ -26,6 +26,11 @@ function sampleRequest(): ToolCallRequest {
   };
 }
 
+/** Same as sampleRequest but tagged as a Telegram-originated run (Task 8). */
+function telegramOriginRequest(): ToolCallRequest & { origin: "telegram" } {
+  return { ...sampleRequest(), origin: "telegram" };
+}
+
 interface SentMessage {
   chatId: string | number;
   text: string;
@@ -343,6 +348,53 @@ describe("TelegramApprovalChannel", () => {
     expect(pollCount).toBeGreaterThan(0);
 
     await c.stop(); // must settle cleanly, not hang
+  });
+
+  describe("Task 8: two-channel confirmation (telegram-origin approvals)", () => {
+    it("still shows allow buttons for non-telegram-origin approvals (no regression)", async () => {
+      await channel.start();
+      void queue.request(sampleDecision(), sampleRequest(), 60000);
+      const kb = api.sent[0].inlineKeyboard!;
+      const labels = kb.flat().map((b) => b.text);
+      expect(labels.join(" ")).toMatch(/allow/i);
+    });
+
+    it("SECURITY: refuses a forged allow_once callback for a telegram-origin approval, and a later deny on the same token still resolves", async () => {
+      await channel.start();
+      const p = queue.request(sampleDecision(), telegramOriginRequest(), 60000);
+
+      // The prompt for a telegram-origin approval is deny-only — an
+      // allow_once callback_data is a forged/replayed tap, not a real button.
+      const kb = api.sent[0].inlineKeyboard!;
+      const labels = kb.flat().map((b) => b.text);
+      expect(labels.join(" ")).not.toMatch(/allow/i);
+      // Pull the token from the (only) Deny button since tokenFromKeyboard
+      // assumes an allow_once button is present, which this prompt lacks.
+      const denyData = kb.flat()[0].callback_data;
+      const token = /^ag:deny:(.+)$/.exec(denyData)![1];
+
+      let resolved: string | undefined;
+      void p.then((res) => {
+        resolved = res.choice;
+      });
+
+      api.inject([callbackUpdate(1, OWNER_ID, `ag:allow_once:${token}`)]);
+      await channel.pollOnce();
+      await Promise.resolve();
+
+      // Answered with the Mac-dashboard notice, queue never touched.
+      const ans = api.answered.find((a) => a.cqId === "cq-1");
+      expect(ans).toBeDefined();
+      expect((ans!.text ?? "").toLowerCase()).toContain("mac");
+      expect(resolved).toBeUndefined();
+      expect(queue.list()).toHaveLength(1); // still pending
+
+      // Token was NOT consumed — a subsequent deny tap still resolves.
+      api.inject([callbackUpdate(2, OWNER_ID, `ag:deny:${token}`)]);
+      await channel.pollOnce();
+      const res = await p;
+      expect(res.choice).toBe("deny");
+    });
   });
 
   describe("D5: expiring-soon warning", () => {
