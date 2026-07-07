@@ -229,7 +229,11 @@ export class IpcServer {
       // a second subscription for the same socket.
       this.chatUnsubscribes.get(socket)?.();
       const unsubscribe = chat.subscribe((event) => {
-        socket.write(encode({ type: "chat_event", event }));
+        try {
+          socket.write(encode({ type: "chat_event", event }));
+        } catch {
+          // client may be disconnecting; drop
+        }
       });
       this.chatUnsubscribes.set(socket, unsubscribe);
     } else if (msg.type === "chat_history") {

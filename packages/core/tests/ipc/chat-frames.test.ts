@@ -124,6 +124,28 @@ describe("IPC chat frames", () => {
     expect(chat.subscriberCount).toBe(0);
   });
 
+  it("double chat_subscribe on one socket delivers each event once and leaves no leak on close", async () => {
+    const socket = createConnection(socketPath);
+    await collectMessages(socket, 1); // hello
+
+    socket.write(encode({ type: "chat_subscribe" }));
+    socket.write(encode({ type: "chat_subscribe" }));
+    await new Promise((r) => setTimeout(r, 20));
+    // the guard replaces the first subscription instead of stacking a second
+    expect(chat.subscriberCount).toBe(1);
+
+    const ev: ChatEvent = { kind: "assistant_delta", text: "once", at: "2026-01-01T00:00:00.000Z" };
+    chat.emit(ev);
+    // exactly ONE chat_event arrives — a second copy would resolve this early
+    const [first] = await collectMessages(socket, 1);
+    expect(first).toEqual({ type: "chat_event", event: ev });
+    await expect(collectMessages(socket, 1, 150)).rejects.toThrow(/timeout/);
+
+    socket.end();
+    await new Promise((r) => setTimeout(r, 20));
+    expect(chat.subscriberCount).toBe(0);
+  });
+
   it("chat_history / chat_status / chat_rearm map to manager methods", async () => {
     const socket = createConnection(socketPath);
     await collectMessages(socket, 1); // hello
