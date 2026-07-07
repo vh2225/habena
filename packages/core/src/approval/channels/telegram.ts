@@ -21,19 +21,25 @@
  *    allowed from here — only denied. This is enforced twice: `buildKeyboard`
  *    (telegram-format.ts) never renders an Allow button for such a prompt,
  *    and — defense in depth, in case a client fabricates callback_data for a
- *    button that was never shown — `handleUpdate` below refuses to act on an
- *    `allow_once` tap for a telegram-origin prompt even though it parses and
- *    passes owner auth. The token is NOT consumed in that case, so the still-
- *    live prompt's Deny path keeps working. A phone commands; only the Mac
- *    dashboard (web origin, or no origin) can allow.
+ *    button that was never shown — `handleUpdate` below refuses to act on ANY
+ *    non-deny tap for a telegram-origin prompt even though it parses and
+ *    passes owner auth (default-deny: a future third CallbackChoice value
+ *    fails closed here too). The token is NOT consumed in that case, so the
+ *    still-live prompt's Deny path keeps working. Every later re-render of
+ *    the prompt (the D5 "expiring soon" edit) re-supplies the SAME
+ *    origin-aware text + keyboard captured at delivery, so an edit can never
+ *    resurrect an Allow button. A phone commands; only the Mac dashboard
+ *    (web origin, or no origin) can allow.
  */
 import { randomUUID } from "node:crypto";
 import type { ApprovalChannel } from "../channel.js";
 import type { ApprovalQueue } from "../queue.js";
 import type { PendingApproval, ApprovalResponse } from "../types.js";
 import { serializePending } from "../../ipc/protocol.js";
+import type { SerializedPendingApproval } from "../../ipc/protocol.js";
 import type { TelegramApi } from "./telegram-api.js";
 import { parseCallback, promptText, buildKeyboard } from "./telegram-format.js";
+import type { InlineKeyboard } from "./telegram-format.js";
 
 interface TrackedPrompt {
   approvalId: string;
@@ -42,9 +48,18 @@ interface TrackedPrompt {
   /**
    * Which channel's run produced this approval ("web" | "telegram" |
    * undefined). SECURITY (Task 8): when "telegram", `handleUpdate` refuses to
-   * resolve an allow_once tap for this prompt — see the header note above.
+   * resolve any non-deny tap for this prompt — see the header note above.
    */
-  origin?: string;
+  origin?: SerializedPendingApproval["origin"];
+  /**
+   * The prompt text and origin-aware keyboard exactly as delivered, reused
+   * verbatim by the D5 warning edit. SECURITY (Task 8): re-renders must never
+   * regenerate the keyboard without consulting origin — reusing the captured
+   * one guarantees a telegram-origin prompt stays deny-only (and keeps its
+   * Mac notice) across every edit.
+   */
+  text: string;
+  keyboard: InlineKeyboard;
   /**
    * One-time "expiring soon" warning timer (D5). Cleared in EVERY consume path
    * and in stop(), so a consumed/stopped prompt never edits the message later.
@@ -168,17 +183,16 @@ export class TelegramApprovalChannel implements ApprovalChannel {
     try {
       const serialized = serializePending(p);
       const text = promptText(serialized);
-      const sent = await this.api.sendMessage(
-        this.ownerId,
-        text,
-        buildKeyboard(serialized, token)
-      );
+      const keyboard = buildKeyboard(serialized, token);
+      const sent = await this.api.sendMessage(this.ownerId, text, keyboard);
       // Only track once we actually have a message to edit later.
       const tracked: TrackedPrompt = {
         approvalId: p.id,
         chatId: this.ownerId,
         messageId: sent.message_id,
         origin: serialized.origin,
+        text,
+        keyboard,
       };
       this.prompts.set(token, tracked);
       this.tokenByApprovalId.set(p.id, token);
@@ -298,10 +312,12 @@ export class TelegramApprovalChannel implements ApprovalChannel {
 
     // SECURITY (Task 8, defense in depth): buildKeyboard() never renders an
     // Allow button for a telegram-origin prompt, but this guard covers a
-    // forged/replayed callback_data that names allow_once anyway. Answer and
-    // return WITHOUT consuming the token or calling queue.respond() — the
-    // prompt stays live so a genuine Deny tap on the same token still works.
-    if (prompt.origin === "telegram" && parsed.choice === "allow_once") {
+    // forged/replayed callback_data that names an allow choice anyway.
+    // Default-deny: anything that is not literally "deny" is refused, so a
+    // future third CallbackChoice value fails closed too. Answer and return
+    // WITHOUT consuming the token or calling queue.respond() — the prompt
+    // stays live so a genuine Deny tap on the same token still works.
+    if (prompt.origin === "telegram" && parsed.choice !== "deny") {
       await this.api
         .answerCallbackQuery(cq.id, "Approve from your Mac dashboard")
         .catch(() => {});
@@ -345,11 +361,17 @@ export class TelegramApprovalChannel implements ApprovalChannel {
       // Re-check by identity: the entry must still be THIS prompt (not consumed,
       // not replaced). If it was consumed, the warning is a no-op.
       if (this.prompts.get(token) !== tracked) return;
+      // Re-render the ORIGINAL prompt text (Mac notice included for
+      // telegram-origin approvals) with the warning appended, and re-supply
+      // the SAME origin-aware keyboard — a text edit without reply_markup
+      // would strip the buttons, and regenerating them without consulting
+      // origin could resurrect an Allow button (Task 8 invariant).
       void this.api
         .editMessageText(
           tracked.chatId,
           tracked.messageId,
-          "⏳ Expiring soon — tap to decide before this approval times out."
+          `${tracked.text}\n\n⏳ Expiring soon — tap to decide before this approval times out.`,
+          tracked.keyboard
         )
         .catch(() => {
           // best-effort; swallow (transport detail must not surface)

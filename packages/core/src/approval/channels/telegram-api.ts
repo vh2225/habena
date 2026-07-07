@@ -91,18 +91,29 @@ export class TelegramApi {
     return this.call<{ message_id: number }>("sendMessage", body);
   }
 
+  /**
+   * Edit a message's text. Telegram removes the inline keyboard on any text
+   * edit unless `reply_markup` is re-supplied — pass `inlineKeyboard` when the
+   * buttons must survive the edit (e.g. the "expiring soon" warning), omit it
+   * when the buttons should disappear (final resolution edits).
+   */
   async editMessageText(
     chatId: string | number,
     messageId: number,
-    text: string
+    text: string,
+    inlineKeyboard?: InlineKeyboard
   ): Promise<void> {
-    await this.call("editMessageText", {
+    const body: Record<string, unknown> = {
       chat_id: chatId,
       message_id: messageId,
       text,
       parse_mode: "Markdown",
       disable_web_page_preview: true,
-    });
+    };
+    if (inlineKeyboard) {
+      body.reply_markup = { inline_keyboard: inlineKeyboard };
+    }
+    await this.call("editMessageText", body);
   }
 
   async getUpdates(offset: number, timeoutSec: number): Promise<TelegramUpdate[]> {

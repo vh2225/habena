@@ -40,6 +40,7 @@ interface EditedMessage {
   chatId: string | number;
   messageId: number;
   text: string;
+  inlineKeyboard?: Array<Array<{ text: string; callback_data: string }>>;
 }
 interface AnsweredCallback {
   cqId: string;
@@ -70,9 +71,10 @@ class FakeTelegramApi {
   async editMessageText(
     chatId: string | number,
     messageId: number,
-    text: string
+    text: string,
+    inlineKeyboard?: Array<Array<{ text: string; callback_data: string }>>
   ): Promise<void> {
-    this.edited.push({ chatId, messageId, text });
+    this.edited.push({ chatId, messageId, text, inlineKeyboard });
   }
 
   async answerCallbackQuery(cqId: string, text?: string): Promise<void> {
@@ -492,6 +494,42 @@ describe("TelegramApprovalChannel", () => {
       // Advance well past the warning instant — the timer was cleared on stop().
       await vi.advanceTimersByTimeAsync(120000);
       expect(api.edited.some((e) => /expir/i.test(e.text))).toBe(false);
+    });
+
+    it("12. SECURITY (Task 8): the warning edit keeps a telegram-origin prompt deny-only (no Allow button resurrected, Mac notice survives)", async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(0);
+      const c = new TelegramApprovalChannel(queue, {
+        api: api as never,
+        ownerId: OWNER_ID,
+        autoPoll: false,
+        warnBeforeMs: 10000,
+      });
+      await c.start();
+      void queue.request(sampleDecision(), telegramOriginRequest(), 60000);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(api.sent).toHaveLength(1);
+
+      // Cross the warning instant (t=50s for a 60s expiry, warnBeforeMs 10s).
+      await vi.advanceTimersByTimeAsync(51000);
+      const warnEdits = api.edited.filter((e) => /expiring soon/i.test(e.text));
+      expect(warnEdits).toHaveLength(1);
+      const warn = warnEdits[0];
+
+      // The re-rendered message must still carry the Mac-approval notice...
+      expect(warn.text).toMatch(/approve from your Mac/i);
+      // ...and must re-supply a keyboard (editMessageText without reply_markup
+      // strips the buttons entirely, leaving Deny unreachable)...
+      expect(warn.inlineKeyboard).toBeDefined();
+      const labels = warn.inlineKeyboard!.flat().map((b) => b.text);
+      // ...that is STILL deny-only: the warning edit must not resurrect Allow.
+      expect(labels.join(" ")).not.toMatch(/allow/i);
+      expect(labels.join(" ")).toMatch(/deny/i);
+      const data = warn.inlineKeyboard!.flat().map((b) => b.callback_data);
+      expect(data.some((d) => d.startsWith("ag:allow_once:"))).toBe(false);
+      expect(data.some((d) => d.startsWith("ag:deny:"))).toBe(true);
+
+      await c.stop();
     });
   });
 });
