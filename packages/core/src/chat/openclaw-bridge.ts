@@ -9,9 +9,14 @@ export interface OpenClawBridgeOptions {
   sessionKey: string;
   /** Reconnect backoff schedule in ms. Injectable for tests. Default [1000, 2000, 5000, 10000, 30000]. */
   backoffMs?: number[];
+  /** Handshake budget (socket open → hello-ok) in ms. Injectable for tests. Default 10000. */
+  connectTimeoutMs?: number;
 }
 
 const DEFAULT_BACKOFF = [1000, 2000, 5000, 10000, 30000];
+const DEFAULT_CONNECT_TIMEOUT_MS = 10000;
+/** How long stop() waits for the socket's close event before giving up. */
+const STOP_CLOSE_TIMEOUT_MS = 250;
 
 /**
  * WS client to the OpenClaw gateway, speaking the dialect recorded in
@@ -29,6 +34,13 @@ const DEFAULT_BACKOFF = [1000, 2000, 5000, 10000, 30000];
  * every scoped RPC (including chat.send) fails — so this is a correctness
  * requirement, not a style choice.
  *
+ * CONNECTION GENERATIONS: every connect attempt (and every stop()) bumps
+ * `this.generation`; each socket's handlers capture their generation and
+ * no-op if it is no longer current. This is what makes stop()→start() and
+ * start()-while-reconnect-pending safe: a superseded socket's late close or
+ * message can never mutate live state, emit spurious connection events, or
+ * arm rogue reconnect timers.
+ *
  * SECURITY: opts.token must never reach an emitted event, thrown error, or
  * log line (mirrors the discipline in src/approval/channels/telegram.ts).
  */
@@ -38,6 +50,7 @@ export class OpenClawBridge implements AgentBridge {
   private up = false;
   private stopped = false;
   private attempt = 0;
+  private generation = 0;
   private listeners = new Set<(ev: BridgeEvent) => void>();
   private reconnectTimer?: ReturnType<typeof setTimeout>;
   private connectReqId?: string;
@@ -61,16 +74,55 @@ export class OpenClawBridge implements AgentBridge {
 
   start(): Promise<void> {
     this.stopped = false;
+    // Cancel any pending reconnect: this start() owns connectivity now.
+    this.clearReconnectTimer();
+    // Orphan any existing socket from a previous life (its handlers are
+    // invalidated by the generation bump inside connect()).
+    const old = this.ws;
+    this.ws = undefined;
+    old?.terminate();
     return this.connect(/* initial */ true);
   }
 
   private connect(initial: boolean): Promise<void> {
     return new Promise((resolve, reject) => {
+      const gen = ++this.generation;
+      // Fresh connection: correlation state from any previous socket is stale.
+      this.connectReqId = undefined;
+      this.pendingSendReqId = undefined;
+      this.activeRunId = undefined;
+
       const ws = new WebSocket(this.opts.url);
       this.ws = ws;
       let settled = false;
 
+      const isCurrent = () => gen === this.generation && ws === this.ws;
+
+      /** Handshake failed in a non-auth way (timeout, malformed hello):
+       *  tear this socket down; reject (initial) or feed the backoff path. */
+      const failConnect = (reason: string) => {
+        clearTimeout(connectTimer);
+        const current = isCurrent();
+        if (current) {
+          this.generation++; // orphan this socket's remaining handlers
+          this.ws = undefined;
+        }
+        ws.terminate();
+        if (!settled) {
+          settled = true;
+          if (initial) reject(new Error(reason));
+          else resolve();
+        }
+        if (current && !initial) this.scheduleReconnect();
+      };
+
+      const connectTimer = setTimeout(
+        () => failConnect("gateway connect timed out"),
+        this.opts.connectTimeoutMs ?? DEFAULT_CONNECT_TIMEOUT_MS,
+      );
+
       ws.on("message", (data) => {
+        if (!isCurrent()) return;
         let frame: any;
         try {
           frame = JSON.parse(data.toString());
@@ -114,7 +166,10 @@ export class OpenClawBridge implements AgentBridge {
         if (frame.type === "res" && frame.id === this.connectReqId) {
           if (frame.ok === false) {
             // Auth/handshake rejection: config problem — do not retry-loop.
+            clearTimeout(connectTimer);
             this.stopped = true;
+            this.generation++; // orphan this socket's remaining handlers
+            this.ws = undefined;
             const detail = frame.error?.message ?? "unauthorized";
             if (!settled) {
               settled = true;
@@ -123,6 +178,7 @@ export class OpenClawBridge implements AgentBridge {
             return;
           }
           if (frame.payload?.type === "hello-ok") {
+            clearTimeout(connectTimer);
             this.up = true;
             this.attempt = 0;
             if (!settled) {
@@ -130,7 +186,10 @@ export class OpenClawBridge implements AgentBridge {
               resolve();
             }
             this.emit({ kind: "connection", state: "up" });
+            return;
           }
+          // ok !== false but not a hello-ok: don't hang start() forever.
+          failConnect("gateway connect failed: unexpected connect response");
           return;
         }
 
@@ -172,14 +231,20 @@ export class OpenClawBridge implements AgentBridge {
       });
 
       const onDown = () => {
-        const wasUp = this.up;
-        this.up = false;
-        if (wasUp) this.emit({ kind: "connection", state: "down" });
+        clearTimeout(connectTimer);
+        const stale = !isCurrent();
         if (!settled) {
           settled = true;
-          if (initial) reject(new Error("gateway connection failed"));
-          else resolve(); // background retries resolve silently
+          // A superseded initial attempt (stopped/replaced mid-handshake)
+          // resolves silently — being cancelled is not a connect error.
+          if (initial && !stale) reject(new Error("gateway connection failed"));
+          else resolve();
         }
+        if (stale) return; // a newer socket (or stop()) owns the state now
+        const wasUp = this.up;
+        this.up = false;
+        this.ws = undefined;
+        if (wasUp) this.emit({ kind: "connection", state: "down" });
         this.scheduleReconnect();
       };
       ws.on("close", onDown);
@@ -189,14 +254,22 @@ export class OpenClawBridge implements AgentBridge {
     });
   }
 
+  private clearReconnectTimer(): void {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = undefined;
+    }
+  }
+
   private scheduleReconnect(): void {
-    if (this.stopped) return;
+    if (this.stopped || this.reconnectTimer) return;
     const backoff = this.opts.backoffMs ?? DEFAULT_BACKOFF;
     const delay = backoff[Math.min(this.attempt, backoff.length - 1)];
     this.attempt += 1;
     this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = undefined;
       void this.connect(false).catch(() => {
-        /* scheduleReconnect already queued by onDown */
+        /* background attempts settle via onDown/failConnect, which requeue */
       });
     }, delay);
   }
@@ -218,8 +291,26 @@ export class OpenClawBridge implements AgentBridge {
 
   async stop(): Promise<void> {
     this.stopped = true;
-    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.generation++; // invalidate all in-flight socket handlers
+    this.clearReconnectTimer();
+    const wasUp = this.up;
     this.up = false;
-    this.ws?.terminate();
+    const ws = this.ws;
+    this.ws = undefined;
+    this.activeRunId = undefined;
+    this.pendingSendReqId = undefined;
+    if (wasUp) this.emit({ kind: "connection", state: "down" });
+    if (ws && ws.readyState !== WebSocket.CLOSED) {
+      // Await teardown (bounded) so stop() → start() is deterministic: the
+      // old socket is fully closed before a new connection is attempted.
+      await new Promise<void>((resolve) => {
+        const t = setTimeout(resolve, STOP_CLOSE_TIMEOUT_MS);
+        ws.once("close", () => {
+          clearTimeout(t);
+          resolve();
+        });
+        ws.terminate();
+      });
+    }
   }
 }

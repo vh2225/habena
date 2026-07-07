@@ -28,11 +28,26 @@ export class FakeGateway {
   private scripted: Scripted = { chunks: [], final: "" };
   readonly received: Array<Record<string, unknown>> = [];
   private readonly requireToken?: string;
+  /**
+   * Task 5 test hook: accept sockets and record inbound frames but never send
+   * anything (no challenge, no responses) — models a gateway that accepts the
+   * WS connection and then hangs, for connect-timeout regression tests.
+   */
+  private readonly silent: boolean;
+  /**
+   * Task 5 test hook: ack chat.send normally but hold the scripted streamed
+   * reply until flushReply() is called, so tests can inject noise frames
+   * while the run is ACTIVE (after the ack, before the final).
+   */
+  private readonly holdReplies: boolean;
+  private heldReply?: { ws: WebSocket; runId: string; sessionKey: string };
   private eventSeq = 0;
   private readonly clients = new Set<WebSocket>();
 
-  constructor(opts?: { requireToken?: string }) {
+  constructor(opts?: { requireToken?: string; silent?: boolean; holdReplies?: boolean }) {
     this.requireToken = opts?.requireToken;
+    this.silent = opts?.silent ?? false;
+    this.holdReplies = opts?.holdReplies ?? false;
   }
 
   get url(): string {
@@ -56,6 +71,17 @@ export class FakeGateway {
     for (const ws of this.clients) ws.send(JSON.stringify(frame));
   }
 
+  /**
+   * Release a reply held back by the `holdReplies` option: streams the
+   * scripted delta/final frames for the most recent acked chat.send.
+   */
+  flushReply(): void {
+    const held = this.heldReply;
+    if (!held) throw new Error("FakeGateway.flushReply: no held reply (was holdReplies set and chat.send acked?)");
+    this.heldReply = undefined;
+    this.streamReply(held.ws, held.runId, held.sessionKey);
+  }
+
   start(port?: number): Promise<number> {
     return new Promise((resolve) => {
       this.wss = new WebSocketServer({ host: "127.0.0.1", port: port ?? 0 }, () => {
@@ -70,16 +96,19 @@ export class FakeGateway {
     this.clients.add(ws);
     ws.on("close", () => this.clients.delete(ws));
     // fixtures/gateway-frames.json frames[0]: challenge pushed on connect.
-    ws.send(
-      JSON.stringify({
-        type: "event",
-        event: "connect.challenge",
-        payload: { nonce: "n", ts: 1 },
-      }),
-    );
+    if (!this.silent) {
+      ws.send(
+        JSON.stringify({
+          type: "event",
+          event: "connect.challenge",
+          payload: { nonce: "n", ts: 1 },
+        }),
+      );
+    }
     ws.on("message", (data) => {
       const frame = JSON.parse(data.toString()) as Record<string, unknown>;
       this.received.push(frame);
+      if (this.silent) return;
       if (frame.type !== "req") return;
       const params = frame.params as Record<string, unknown> | undefined;
 
@@ -133,41 +162,51 @@ export class FakeGateway {
             payload: { runId, status: "started" },
           }),
         );
-        // Streamed reply: chat delta events with deltaText + cumulative
-        // message snapshot, then the final frame with stopReason.
-        let cumulative = "";
-        let payloadSeq = 1;
-        const chatEvent = (payload: Record<string, unknown>) =>
-          ws.send(
-            JSON.stringify({
-              type: "event",
-              event: "chat",
-              payload: { runId, sessionKey, seq: ++payloadSeq, ...payload },
-              seq: ++this.eventSeq,
-            }),
-          );
-        for (const deltaText of this.scripted.chunks) {
-          cumulative += deltaText;
-          chatEvent({
-            state: "delta",
-            deltaText,
-            message: {
-              role: "assistant",
-              content: [{ type: "text", text: cumulative }],
-              timestamp: 1,
-            },
-          });
+        if (this.holdReplies) {
+          this.heldReply = { ws, runId, sessionKey };
+          return;
         }
-        chatEvent({
-          state: "final",
-          stopReason: "stop",
-          message: {
-            role: "assistant",
-            content: [{ type: "text", text: this.scripted.final }],
-            timestamp: 1,
-          },
-        });
+        this.streamReply(ws, runId, sessionKey);
       }
+    });
+  }
+
+  /**
+   * Streamed reply: chat delta events with deltaText + cumulative message
+   * snapshot, then the final frame with stopReason.
+   */
+  private streamReply(ws: WebSocket, runId: string, sessionKey: string): void {
+    let cumulative = "";
+    let payloadSeq = 1;
+    const chatEvent = (payload: Record<string, unknown>) =>
+      ws.send(
+        JSON.stringify({
+          type: "event",
+          event: "chat",
+          payload: { runId, sessionKey, seq: ++payloadSeq, ...payload },
+          seq: ++this.eventSeq,
+        }),
+      );
+    for (const deltaText of this.scripted.chunks) {
+      cumulative += deltaText;
+      chatEvent({
+        state: "delta",
+        deltaText,
+        message: {
+          role: "assistant",
+          content: [{ type: "text", text: cumulative }],
+          timestamp: 1,
+        },
+      });
+    }
+    chatEvent({
+      state: "final",
+      stopReason: "stop",
+      message: {
+        role: "assistant",
+        content: [{ type: "text", text: this.scripted.final }],
+        timestamp: 1,
+      },
     });
   }
 

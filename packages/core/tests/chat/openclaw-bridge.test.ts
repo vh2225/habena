@@ -11,6 +11,7 @@ const until = async (pred: () => boolean, ms = 3000) => {
     await new Promise((r) => setTimeout(r, 10));
   }
 };
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 let gw: FakeGateway;
 let bridge: OpenClawBridge;
@@ -61,7 +62,7 @@ describe("OpenClawBridge", () => {
 
     // No reconnect loop: give the 10ms backoff several chances to fire and
     // confirm the bridge never climbs back up or re-sends connect.
-    await new Promise((r) => setTimeout(r, 100));
+    await sleep(100);
     expect(bridge.isUp()).toBe(false);
     expect(gw.received.filter((r) => r.method === "connect").length).toBe(1);
   });
@@ -81,8 +82,12 @@ describe("OpenClawBridge", () => {
     await until(() => bridge.isUp(), 5000);
   });
 
-  it("filters chat events by runId, ignoring background noise on the same socket", async () => {
-    gw = new FakeGateway({ requireToken: "tok" });
+  it("filters chat events by runId while a run is ACTIVE, ignoring background noise", async () => {
+    // holdReplies: the fake acks chat.send (activating the run) but holds the
+    // streamed reply until flushReply(), so the noise below is injected while
+    // the run is active — proving filtering happens by runId mismatch, not by
+    // the no-active-run short-circuit.
+    gw = new FakeGateway({ requireToken: "tok", holdReplies: true });
     await gw.start();
     gw.replyWith(["Hi ", "there"], "Hi there");
     bridge = new OpenClawBridge({ url: gw.url, token: "tok", sessionKey: "habena-chat" });
@@ -90,11 +95,15 @@ describe("OpenClawBridge", () => {
     bridge.onEvent((e) => events.push(e));
     await bridge.start();
 
-    // Background noise: an unrelated run's chat event sharing the socket
+    await bridge.send("hello");
+    // Wait until the fake has received chat.send — its ack is then already on
+    // the wire, so the same-socket ordering guarantees the bridge processes
+    // the ack (activating the run) BEFORE the noise frames emitted below.
+    await until(() => gw.received.some((r) => r.method === "chat.send"));
+
+    // Background noise: an unrelated run's chat events sharing the socket
     // (fixtures/README.md "Filter by runId" — active-memory-* jobs and
     // ambient events interleave with the real reply on the live gateway).
-    // FakeGateway has no built-in way to script this, so this task adds a
-    // minimal emitRaw() broadcast hook to the double.
     gw.emitRaw({
       type: "event",
       event: "chat",
@@ -119,19 +128,19 @@ describe("OpenClawBridge", () => {
         message: { role: "assistant", content: [{ type: "text", text: "IGNORE ME" }], timestamp: 1 },
       },
     });
+    // Now release the real (held) reply.
+    gw.flushReply();
 
-    await bridge.send("hello");
     await until(() => events.some((e) => e.kind === "final"));
-
     expect(events.some((e) => e.kind === "delta" && (e as any).text === "IGNORE ME")).toBe(false);
     expect(events.filter((e) => e.kind === "final")).toHaveLength(1);
     expect(events.find((e) => e.kind === "final")).toMatchObject({ text: "Hi there" });
+    expect(events.filter((e) => e.kind === "run_state" && (e as any).state === "finished")).toHaveLength(1);
   });
 
   it("maps chat state:error to a run_state error event, still filtered by runId", async () => {
-    gw = new FakeGateway({ requireToken: "tok" });
+    gw = new FakeGateway({ requireToken: "tok", holdReplies: true });
     await gw.start();
-    gw.replyWith([], "unused");
     bridge = new OpenClawBridge({ url: gw.url, token: "tok", sessionKey: "habena-chat" });
     const events: BridgeEvent[] = [];
     bridge.onEvent((e) => events.push(e));
@@ -146,7 +155,7 @@ describe("OpenClawBridge", () => {
       event: "chat",
       payload: { runId: "other-run", sessionKey: "habena-chat", seq: 1, state: "error", errorMessage: "unrelated" },
     });
-    // Real error for our run.
+    // Real error for our run (the held reply is never flushed).
     gw.emitRaw({
       type: "event",
       event: "chat",
@@ -157,5 +166,66 @@ describe("OpenClawBridge", () => {
     const errs = events.filter((e) => e.kind === "run_state" && (e as any).state === "error") as any[];
     expect(errs).toHaveLength(1);
     expect(errs[0].detail).toBe("boom");
+  });
+
+  it("stop() then start() does not leak the old socket's teardown into the new connection", async () => {
+    gw = new FakeGateway();
+    await gw.start();
+    bridge = new OpenClawBridge({ url: gw.url, sessionKey: "s", backoffMs: [50, 50] });
+    const events: BridgeEvent[] = [];
+    bridge.onEvent((e) => events.push(e));
+    await bridge.start();
+    await bridge.stop();
+    await bridge.start();
+    expect(bridge.isUp()).toBe(true);
+
+    // Give a rogue reconnect timer (the bug: the old socket's close scheduling
+    // a reconnect against the new generation) several backoff ticks to fire.
+    await sleep(300);
+    expect(bridge.isUp()).toBe(true);
+    // Exactly one down (the deliberate stop()); no spurious down from the old
+    // socket's close landing after the new hello-ok.
+    expect(events.filter((e) => e.kind === "connection" && (e as any).state === "down")).toHaveLength(1);
+    // Exactly two connects (one per start()); no duplicate-socket storm.
+    expect(gw.received.filter((r) => r.method === "connect")).toHaveLength(2);
+  });
+
+  it("start() while a reconnect timer is pending cancels it instead of racing it", async () => {
+    gw = new FakeGateway();
+    const port = await gw.start();
+    bridge = new OpenClawBridge({ url: gw.url, sessionKey: "s", backoffMs: [200, 200] });
+    const events: BridgeEvent[] = [];
+    bridge.onEvent((e) => events.push(e));
+    await bridge.start();
+    await gw.stop();
+    await until(() => events.some((e) => e.kind === "connection" && (e as any).state === "down"));
+    // A reconnect timer is now armed (~200ms). Revive the gateway and call
+    // start() before it fires.
+    gw = new FakeGateway();
+    await gw.start(port);
+    await bridge.start();
+    expect(bridge.isUp()).toBe(true);
+
+    // Wait past the pending timer's deadline: if it wasn't cancelled it would
+    // open a second socket and send a second connect req.
+    await sleep(400);
+    expect(bridge.isUp()).toBe(true);
+    expect(gw.received.filter((r) => r.method === "connect")).toHaveLength(1);
+  });
+
+  it("start() rejects after connectTimeoutMs when the gateway accepts the socket but never responds", async () => {
+    gw = new FakeGateway({ silent: true });
+    await gw.start();
+    bridge = new OpenClawBridge({ url: gw.url, sessionKey: "s", connectTimeoutMs: 100, backoffMs: [50] });
+    const events: BridgeEvent[] = [];
+    bridge.onEvent((e) => events.push(e));
+    await expect(bridge.start()).rejects.toThrow(/timed out/i);
+    expect(bridge.isUp()).toBe(false);
+
+    // Initial-connect timeout is a start() failure, not a background drop: no
+    // reconnect loop hammering the hung gateway.
+    await sleep(200);
+    expect(bridge.isUp()).toBe(false);
+    expect(events.some((e) => e.kind === "connection" && (e as any).state === "up")).toBe(false);
   });
 });
