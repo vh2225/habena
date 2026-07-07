@@ -60,6 +60,12 @@ describe("chat E2E", () => {
   let mgr: ChatChannelManager;
   let queue: ApprovalQueue;
   let ipc: IpcServer;
+  // Floor-test resources registered for the afterEach teardown
+  // (tests/proxy/channel-floor.test.ts pattern), so a mid-test assertion
+  // failure can't leak a live approval timer or an open sqlite handle into
+  // the rmSync below.
+  const floorQueues: ApprovalQueue[] = [];
+  const floorLoggers: AuditLogger[] = [];
 
   beforeEach(async () => {
     dir = mkdtempSync(join(tmpdir(), "agentguard-chat-e2e-"));
@@ -82,6 +88,8 @@ describe("chat E2E", () => {
   });
 
   afterEach(async () => {
+    for (const q of floorQueues.splice(0)) q.shutdown();
+    for (const a of floorLoggers.splice(0)) a.close();
     await ipc.stop();
     queue.shutdown();
     await bridge.stop();
@@ -175,7 +183,9 @@ describe("chat E2E", () => {
     // the SAME manager instance driving this suite's real bridge, so
     // chatFloor.active() reflects the real activeChannel() set by drain().
     const audit = new AuditLogger(join(dir, "floor-audit.db"));
+    floorLoggers.push(audit);
     const approval = new ApprovalQueue();
+    floorQueues.push(approval);
     const preset = getPreset("cautious");
     if (!preset) throw new Error("cautious preset missing");
 
@@ -213,8 +223,6 @@ describe("chat E2E", () => {
     approval.respond(pending[0].id, { choice: "allow_once" });
     const result = await pendingPromise;
     expect(result.decision.action).toBe("allow");
-
-    approval.shutdown();
-    audit.close();
+    // teardown happens in afterEach via floorQueues/floorLoggers
   });
 });

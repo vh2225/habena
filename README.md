@@ -109,12 +109,14 @@ habena start
 
 **Chat from the dashboard.** `habena dashboard` gets a `/chat` page: type a message, watch the reply stream in, and allow or deny any tool call it triggers inline, without switching to `habena watch`.
 
-**Chat from Telegram.** The same bot that taps your phone for approvals can take commands too — turn on inbound:
+**Chat from Telegram.** The same bot that taps your phone for approvals can take commands too — turn on inbound, nested under the same `chat:` block (not the top-level approval `channels:`):
 
 ```yaml
-channels:
-  telegram:
-    inbound: true
+chat:
+  enabled: true
+  channels:
+    telegram:
+      inbound: true
 ```
 
 > **The safety model for inbound chat.** A channel that can talk to your agent
