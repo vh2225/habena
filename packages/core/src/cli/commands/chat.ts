@@ -10,8 +10,8 @@ import type { ClientMessage, ServerMessage } from "../../ipc/protocol.js";
  *                                surface that got disarmed).
  */
 
-const VALID_CHANNELS = new Set(["web", "telegram"]);
 const KNOWN_CHANNELS = ["web", "telegram"] as const;
+const VALID_CHANNELS = new Set<string>(KNOWN_CHANNELS);
 
 /**
  * One-shot request/response against the proxy's IPC socket. Mirrors the
@@ -67,7 +67,7 @@ export async function chatStatusCommand(): Promise<void> {
 export async function chatRearmCommand(channel: string): Promise<void> {
   if (!VALID_CHANNELS.has(channel)) {
     console.error(chalk.red(`Invalid channel: ${channel}`));
-    console.error(chalk.gray(`Use one of: web, telegram`));
+    console.error(chalk.gray(`Use one of: ${KNOWN_CHANNELS.join(", ")}`));
     process.exit(1);
   }
 

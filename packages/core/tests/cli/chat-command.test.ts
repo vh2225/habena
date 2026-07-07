@@ -144,6 +144,33 @@ describe("chat status", () => {
     expect(result.stdout).toContain("telegram: armed");
   });
 
+  it("renders DISARMED on every disarmed channel when all are tripped", async () => {
+    // Guards the per-channel branching: if rendering keyed off only the
+    // first element of `disarmed` (or collapsed it into one boolean),
+    // one of the two DISARMED assertions below would fail.
+    const stub = await startStub(socketPath, (msg, socket) => {
+      if (msg.type === "chat_status") {
+        socket.write(
+          encode({
+            type: "chat_status_result",
+            bridgeUp: true,
+            running: false,
+            disarmed: ["web", "telegram"],
+            queueDepth: 1,
+          })
+        );
+      }
+    });
+
+    const result = await runAsync(["chat", "status"]);
+    await stub.stop();
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("web: DISARMED");
+    expect(result.stdout).toContain("telegram: DISARMED");
+    expect(result.stdout).not.toContain(": armed"); // no channel may still read as armed
+  });
+
   it("fails with a clear message when the proxy isn't running", () => {
     // No stub server started and no socket file present.
     const result = run(["chat", "status"]);
