@@ -54,8 +54,8 @@ open Task 5 decision.
 Two parallel broadcast families carry the reply:
 
 - `event: "chat"` — the high-level stream to mirror. Discriminated by
-  `payload.state`: `"delta" | "final" | "error" | "aborted"` (delta/final/error
-  are present in these captures; aborted is schema-confirmed). Delta payloads
+  `payload.state`: `"delta" | "final" | "error" | "aborted"` (delta/final are
+  present in these captures; error/aborted are schema-confirmed only). Delta payloads
   carry `deltaText` (the new chunk) plus `message` — the **cumulative**
   assistant snapshot `{ role: "assistant", content: [{ type: "text", text }],
   timestamp }`. Final carries `stopReason` + the full `message`. Error carries
