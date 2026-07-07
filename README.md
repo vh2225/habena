@@ -88,6 +88,49 @@ habena dashboard    # http://localhost:7700 (first run downloads habena-web)
 habena install openclaw
 ```
 
+## Talk to your agent
+
+Habena isn't only a gate for tool calls — it can carry your side of the conversation too. Point it at your OpenClaw gateway and a chat panel shows up next to the approvals queue, backed by the same policy, audit log, and rate limits as everything else.
+
+**Enable it.** In `~/.habena/config.yaml`:
+
+```yaml
+chat:
+  enabled: true
+  bridge:
+    token_env: OPENCLAW_GATEWAY_TOKEN   # env var holding the gateway token — never inline it in config.yaml
+```
+
+Restart the proxy to pick it up:
+
+```bash
+habena start
+```
+
+**Chat from the dashboard.** `habena dashboard` gets a `/chat` page: type a message, watch the reply stream in, and allow or deny any tool call it triggers inline, without switching to `habena watch`.
+
+**Chat from Telegram.** The same bot that taps your phone for approvals can take commands too — turn on inbound:
+
+```yaml
+channels:
+  telegram:
+    inbound: true
+```
+
+> **The safety model for inbound chat.** A channel that can talk to your agent
+> is a channel that can be abused, so three guards hold it back. A per-channel
+> rate-limit breaker trips on a burst of messages and rejects everything from
+> that channel until you run `habena chat rearm telegram` (`habena chat
+> status` shows what's disarmed). A **Telegram policy floor** holds any run
+> that started from a Telegram message to at least the `cautious` preset,
+> merged stricter-of-two with your own policy — Telegram can't talk its way
+> into a looser rule than your config allows, though your policy can still
+> deny it outright. And simplest of all: **commands from your phone can only
+> be approved from your Mac** — a write or destructive call triggered from
+> Telegram shows up for approval on the web dashboard or `habena watch`,
+> never as a button inside Telegram itself. Your phone can ask; only your Mac
+> can say yes.
+
 ## The demo (what makes it click)
 
 This runs end to end with only the commands above and the default `cautious` policy — no custom YAML needed. The `cautious` preset already requires approval for writes and destructive operations.

@@ -2,7 +2,7 @@
 
 Living progress tracker. Update when phases start and finish. Detailed phase plans live in `docs/plans/`; the implementation history below keeps the original phase names (and the pre-rename `agentguard` command names) for traceability.
 
-Last updated: 2026-06-10 (v0.4.0 on npm).
+Last updated: 2026-07 (inbound chat commands shipped).
 
 ## Status key
 
@@ -53,6 +53,9 @@ Auto-restart with exponential backoff on death (refresh-triggered + after failed
 ### ✅ npm packages
 `habena` + `habena-web` published (0.4.0), install-from-tarball verified, CI green on Node 20/22.
 
+### ✅ Inbound chat commands (Phase 7 V1) (2026-07)
+Outbound approvals (Telegram) shipped earlier; this closes the inbound half spec'd at `docs/specs/2026-04-15-phase7-chat-channels.md`. Shipped: an `OpenClawBridge` gateway client (WS control-plane, reconnect/backoff, one session/run at a time); a `ChatChannelManager` that serializes inbound messages across channels and fans out streamed replies; a web chat page (`/chat`) with SSE streaming and inline approval cards; Telegram inbound with owner-only auth; a per-channel rate-limit circuit breaker (`habena chat status` / `habena chat rearm <channel>`); a Telegram policy floor (stricter-of-two against the configured preset, same mechanism as the host-policy floor — never loosens a user rule); and the two-channel approval rule — a write/destructive call triggered from a Telegram message can only be approved from the web dashboard or `habena watch`, never from Telegram itself.
+
 ---
 
 ## Next
@@ -62,9 +65,6 @@ Demo recording + Show HN / r/LocalLLaMA posts. Kit ready at `docs/launch-post-dr
 
 ### 🧭 Provider-side cost ingestion
 Pull real LLM spend from provider usage APIs / gateways (LiteLLM, OpenRouter) and attribute per agent, on top of declared per-tool pricing. Makes the dollar limits enforce on measured data.
-
-### 🧭 Inbound chat commands (Phase 7 V1)
-Outbound approvals ship (Telegram). The inbound half — commanding agents from your phone with per-remote scope binding, two-channel confirmation for irreversible actions, rate-limit circuit breakers — stays spec'd at `docs/specs/2026-04-15-phase7-chat-channels.md`.
 
 ### 🧭 Richer threat-alerts surface
 Basic visibility ships (overview card, threat-filtered decisions). A dedicated page with severity/scope grouping and ack/snooze is the next dashboard increment.
