@@ -143,7 +143,30 @@ export async function startCommand(): Promise<void> {
   let chatBridge: OpenClawBridge | undefined;
   let chatManager: ChatChannelManager | undefined;
   let chatFloor: { active(): "web" | "telegram" | null; engine: PolicyEngine } | undefined;
+  // Effective telegram-inbound flag: starts from config but FAILS CLOSED if
+  // the configured policy floor can't be built (see below). The Telegram
+  // chat binding is only wired when this stays true.
+  let telegramInbound = chatResolved?.telegram.inbound ?? false;
   if (chatResolved) {
+    // Telegram policy floor — built only when telegram inbound is on (it
+    // only ever applies to telegram-originated runs). FAIL CLOSED: if the
+    // configured preset doesn't exist we cannot enforce the floor, so
+    // telegram inbound is disabled for this boot rather than letting phone
+    // commands run without their floor. Web chat is unaffected.
+    let floorEngine: PolicyEngine | undefined;
+    if (telegramInbound) {
+      const floorPreset = getPreset(chatResolved.telegram.policyFloor);
+      if (floorPreset) {
+        floorEngine = new PolicyEngine(floorPreset.rules);
+      } else {
+        telegramInbound = false;
+        console.error(
+          chalk.yellow(
+            `! telegram inbound disabled: unknown chat.channels.telegram.policy_floor "${chatResolved.telegram.policyFloor}" — fix the preset name and restart`
+          )
+        );
+      }
+    }
     chatBridge = new OpenClawBridge({
       url: chatResolved.bridge.url,
       token: chatResolved.bridge.token,
@@ -151,7 +174,7 @@ export async function startCommand(): Promise<void> {
     });
     chatManager = new ChatChannelManager({
       bridge: chatBridge,
-      limits: chatResolved.telegram.inbound
+      limits: telegramInbound
         ? { telegram: { limit: chatResolved.telegram.commandsPer10Min, windowMs: 600_000 } }
         : undefined,
       onAudit: (e) =>
@@ -170,17 +193,11 @@ export async function startCommand(): Promise<void> {
           resultStatus: e.accepted ? "success" : "error",
         }),
     });
-    const floorPreset = getPreset(chatResolved.telegram.policyFloor);
-    if (!floorPreset) {
-      console.error(
-        chalk.yellow(
-          `! chat policy_floor preset "${chatResolved.telegram.policyFloor}" not found; telegram chat runs get no extra floor`
-        )
-      );
+    if (floorEngine) {
+      const managerForFloor = chatManager;
+      const engineForFloor = floorEngine;
+      chatFloor = { active: () => managerForFloor.activeChannel(), engine: engineForFloor };
     }
-    const floorEngine = new PolicyEngine(floorPreset?.rules ?? []);
-    const managerForFloor = chatManager;
-    chatFloor = { active: () => managerForFloor.activeChannel(), engine: floorEngine };
   }
 
   const socketPath = join(getConfigDir(), "agentguard.sock");
@@ -212,14 +229,27 @@ export async function startCommand(): Promise<void> {
     } else {
       const api = new TelegramApi(token);
       // Habena Home chat bridge (Task 10): only wired when chat is enabled
-      // AND telegram inbound is explicitly turned on — this is the phone
-      // acting as a full chat surface, not just approval taps.
+      // AND telegram inbound is effectively on (config flag, and the policy
+      // floor built — telegramInbound fails closed above if it didn't) —
+      // this is the phone acting as a full chat surface, not approval taps.
       let binding: TelegramChatBinding | undefined;
-      if (chatResolved?.telegram.inbound && chatManager) {
+      if (telegramInbound && chatManager) {
         binding = new TelegramChatBinding({
           manager: chatManager,
           ownerId: telegramCfg.owner_id,
-          send: (text) => api.sendMessage(telegramCfg.owner_id, text).then(() => {}),
+          // Outbound delivery is best-effort: a blocked bot / network error
+          // must never become an unhandled rejection (the binding also
+          // swallows, defense in depth). Log a token-free static line plus
+          // the error class name only — TelegramApi error messages are
+          // token-free by construction, but message text stays out of logs.
+          send: (text) =>
+            api.sendMessage(telegramCfg.owner_id, text).then(
+              () => {},
+              (err: unknown) => {
+                const name = err instanceof Error ? err.name : "Error";
+                console.error(chalk.yellow(`! chat: telegram reply delivery failed (${name})`));
+              }
+            ),
         });
         chatBinding = binding;
       }
@@ -376,9 +406,6 @@ export async function startCommand(): Promise<void> {
     })
     .catch(() => { /* boot checks are advisory; never block startup */ });
 
-  // Start approval channels best-effort (after the proxy is otherwise up).
-  await startChannels(channels, { warn: (msg) => console.error(chalk.yellow(msg)) });
-
   // Chat bridge connect is best-effort and non-blocking: a down or
   // misconfigured OpenClaw gateway must never delay or crash proxy startup.
   // Chat simply reports offline (ChatChannelManager.status().bridgeUp) until
@@ -388,10 +415,23 @@ export async function startCommand(): Promise<void> {
       console.error(chalk.yellow(`! chat bridge offline: ${(err as Error).message}`));
     });
   }
+  // ORDERING: the binding must subscribe BEFORE the Telegram poll loop goes
+  // live (startChannels below) — an update pending from before a restart is
+  // delivered on the first poll, and its reply/rejection events would
+  // otherwise fan out to zero listeners and be silently dropped.
   if (chatBinding) chatBinding.start();
+
+  // Start approval channels best-effort (after the proxy is otherwise up).
+  await startChannels(channels, { warn: (msg) => console.error(chalk.yellow(msg)) });
 
   const shutdown = async () => {
     console.error(chalk.yellow("\nShutting down Habena..."));
+    // Mirror of the startup ordering (binding starts first, channels last →
+    // channels stop first, binding last): stopping the channels first kills
+    // the poll loop — the only producer of handleMessage — so no inbound
+    // message can arrive while the binding is unsubscribed but the process
+    // still lives. In-flight manager events during teardown at worst go to
+    // an already-unsubscribed listener set, which is safe (fan-out no-op).
     await stopChannels(channels);
     if (chatBinding) chatBinding.stop();
     if (chatBridge) await chatBridge.stop().catch(() => {});

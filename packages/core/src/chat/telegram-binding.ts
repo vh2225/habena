@@ -44,16 +44,35 @@ export class TelegramChatBinding {
 
   start(): void {
     this.unsubscribe = this.opts.manager.subscribe((ev: ChatEvent) => {
-      if (ev.kind === "status" && ev.state === "running") this.telegramRunActive = ev.channel === "telegram";
-      if (ev.kind === "assistant_final" && this.telegramRunActive) void this.opts.send(ev.text);
+      if (ev.kind === "status") {
+        if (ev.state === "running") this.telegramRunActive = ev.channel === "telegram";
+        // Run over (idle) or bridge gone (offline): no telegram run can be
+        // active. Defensive reset so a stray `final` emitted outside any run
+        // is never forwarded to the phone. (The manager emits `final` BEFORE
+        // the closing `status idle`, so real replies still flow.)
+        else if (ev.state === "idle" || ev.state === "offline") this.telegramRunActive = false;
+      }
+      if (ev.kind === "assistant_final" && this.telegramRunActive) this.safeSend(ev.text);
       if (ev.kind === "rejected" && ev.channel === "telegram") {
-        void this.opts.send(REJECTION_TEXT[ev.reason] ?? "Couldn't accept that message.");
+        this.safeSend(REJECTION_TEXT[ev.reason] ?? "Couldn't accept that message.");
       }
     });
   }
 
   stop(): void {
     this.unsubscribe?.();
+  }
+
+  /**
+   * Outbound delivery is best-effort: a blocked bot, network error, or
+   * Telegram rate limit makes send() reject, and an uncaught rejection here
+   * would take down the whole proxy. Swallow it — the reply is lost (the web
+   * dashboard still has it via the manager's history) but the binding keeps
+   * working for the next event. start.ts's send additionally logs a
+   * token-free warning before this catch sees anything.
+   */
+  private safeSend(text: string): void {
+    void this.opts.send(text).catch(() => {});
   }
 
   /** Wire into TelegramApprovalChannel's onChatMessage hook. */

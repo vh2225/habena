@@ -79,4 +79,49 @@ describe("TelegramChatBinding", () => {
     expect(sent).toHaveLength(1);
     expect(sent[0]).not.toMatch(/offline/i); // send_failed has its own text
   });
+
+  // A blocked bot / network error / Telegram rate limit makes send() reject.
+  // That rejection must be swallowed inside the binding — an unhandled
+  // rejection here would crash the whole proxy — and must not wedge the
+  // binding: later events still get delivered.
+  it("swallows send() rejections and keeps delivering later events", async () => {
+    binding.stop(); // replace the default (always-succeeding) binding
+    let failFirst = true;
+    const flaky = new TelegramChatBinding({
+      manager: mgr,
+      ownerId: 42,
+      send: async (t) => {
+        if (failFirst) {
+          failFirst = false;
+          throw new Error("Telegram sendMessage failed: 403");
+        }
+        sent.push(t);
+      },
+    });
+    flaky.start();
+    try {
+      flaky.handleMessage("one");
+      bridge.emit({ kind: "final", text: "reply one" }); // send() rejects here
+      bridge.emit({ kind: "run_state", state: "finished" });
+      // Let the rejected promise settle — if the binding didn't .catch it,
+      // vitest's unhandled-rejection detector fails the run.
+      await new Promise((r) => setTimeout(r, 0));
+      flaky.handleMessage("two");
+      bridge.emit({ kind: "final", text: "reply two" });
+      expect(sent).toEqual(["reply two"]); // first was lost to the outage, second flows
+    } finally {
+      flaky.stop();
+    }
+  });
+
+  // Defensive: telegramRunActive must reset when the run ends (status
+  // idle/offline), so a stray final emitted outside any telegram run is
+  // never forwarded to the phone.
+  it("does not forward a stray final after the telegram run finished", () => {
+    binding.handleMessage("question");
+    bridge.emit({ kind: "final", text: "answer" });
+    bridge.emit({ kind: "run_state", state: "finished" }); // manager emits status idle
+    bridge.emit({ kind: "final", text: "stray" }); // no run active
+    expect(sent).toEqual(["answer"]);
+  });
 });
