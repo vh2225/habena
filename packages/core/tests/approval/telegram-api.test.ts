@@ -100,7 +100,11 @@ describe("TelegramApi.getUpdates", () => {
     );
     expect(calls[0].body.offset).toBe(10);
     expect(calls[0].body.timeout).toBe(30);
-    expect(calls[0].body.allowed_updates).toEqual(["callback_query"]);
+    // Both entries must ship together: allowed_updates is sticky server-side
+    // (Telegram remembers the last value across polls), so omitting "message"
+    // here would silently disable inbound plain-text delivery — including the
+    // /lockdown onCommand path — in production forever, not just this call.
+    expect(calls[0].body.allowed_updates).toEqual(["callback_query", "message"]);
     expect(res).toEqual(updates);
   });
 });

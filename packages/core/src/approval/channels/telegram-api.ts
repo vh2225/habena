@@ -120,7 +120,12 @@ export class TelegramApi {
     return this.call<TelegramUpdate[]>("getUpdates", {
       offset,
       timeout: timeoutSec,
-      allowed_updates: ["callback_query"],
+      // allowed_updates is STICKY server-side: Telegram remembers the filter
+      // from the last getUpdates call and applies it to future polls too.
+      // Both entries must always ship together — omitting "message" here (even
+      // once) silently disables inbound plain-text delivery, which is what the
+      // /lockdown onCommand path (and all inbound chat) depends on.
+      allowed_updates: ["callback_query", "message"],
     });
   }
 
