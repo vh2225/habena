@@ -24,6 +24,7 @@ import {
   approvalsRespondCommand,
   approvalsForwardCommand,
 } from "./commands/approvals.js";
+import { chatStatusCommand, chatRearmCommand } from "./commands/chat.js";
 import { learnCommand } from "./commands/learn.js";
 import { packsListCommand, packsShowCommand } from "./commands/packs.js";
 import { securityAuditCommand } from "./commands/security.js";
@@ -132,6 +133,18 @@ approvalsCmd
   .option("--hmac-secret <s>", "Secret for signing payloads with HMAC-SHA256 (or set AGENTGUARD_WEBHOOK_HMAC)")
   .option("--hmac-header <name>", "Header name carrying the HMAC (default: x-agentguard-signature)")
   .action(approvalsForwardCommand);
+
+const chatCmd = program
+  .command("chat")
+  .description("Chat bridge status and rate-limit re-arm (IPC)");
+chatCmd
+  .command("status")
+  .description("Show chat bridge/running/disarmed-channel/queue-depth state")
+  .action(chatStatusCommand);
+chatCmd
+  .command("rearm <channel>")
+  .description("Re-arm a rate-limit-disarmed chat channel (web|telegram) from a distinct surface")
+  .action(chatRearmCommand);
 
 const downstreamCmd = program
   .command("downstream")
