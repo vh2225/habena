@@ -17,7 +17,12 @@ export interface ApprovalResponse {
 export interface PendingApproval {
   id: string;
   decision: PolicyDecision;
-  request: ToolCallRequest;
+  /**
+   * `origin` marks which channel (web UI vs Telegram chat bridge) produced
+   * the run that triggered this approval, set from `chatFloor.active()` at
+   * creation time in the proxy. Undefined when no chat run is active.
+   */
+  request: ToolCallRequest & { origin?: "web" | "telegram" };
   createdAt: Date;
   expiresAt: Date;
 }

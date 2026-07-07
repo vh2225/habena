@@ -23,6 +23,16 @@ export interface DispatcherDeps {
   approval?: ApprovalQueue;           // NEW
   approvalTimeoutMs?: number;         // NEW, default 5 minutes
   threat?: ThreatEngine;
+  /**
+   * When set, a Telegram-originated chat run never runs looser than this
+   * floor engine's decision — merged stricter-of-two, exactly like the
+   * budget/threat merges above. Web runs and the no-active-run case are
+   * unaffected. `engine` is built from the configured floor preset's rules.
+   */
+  chatFloor?: {
+    active(): "web" | "telegram" | null;
+    engine: PolicyEngine;
+  };
   /** Declared USD-per-call pricing from config.yaml (see cost/tool-pricing.ts). */
   pricing?: Record<string, number>;
 }
@@ -96,10 +106,24 @@ export class ProxyDispatcher {
       }
     }
 
+    // 2c. Chat channel floor: a phone-originated run never runs looser than
+    // the configured floor preset, no matter what the user policy allows.
+    if (this.deps.chatFloor?.active() === "telegram") {
+      const floorDecision = this.deps.chatFloor.engine.evaluate({
+        tool: req.tool,
+        args: req.args,
+      });
+      decision = stricter(decision, floorDecision);
+    }
+
     // 2b. If decision is require_approval AND approval queue is available, ask the human.
     if (decision.action === "require_approval" && this.deps.approval) {
       const timeoutMs = this.deps.approvalTimeoutMs ?? 5 * 60 * 1000;
-      const response = await this.deps.approval.request(decision, req, timeoutMs);
+      const approvalReq: ToolCallRequest & { origin?: "web" | "telegram" } = {
+        ...req,
+        origin: this.deps.chatFloor?.active() ?? undefined,
+      };
+      const response = await this.deps.approval.request(decision, approvalReq, timeoutMs);
 
       if (response.choice === "allow_once") {
         decision = { ...decision, action: "allow", reason: `approved: ${decision.reason}` };

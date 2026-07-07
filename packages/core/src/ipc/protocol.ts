@@ -40,6 +40,8 @@ export interface SerializedPendingApproval {
   estimatedCost: number;
   createdAt: string;
   expiresAt: string;
+  /** Which channel's run produced this approval ("web" | "telegram"), when known. */
+  origin?: string;
 }
 
 export function serializePending(p: PendingApproval): SerializedPendingApproval {
@@ -53,6 +55,7 @@ export function serializePending(p: PendingApproval): SerializedPendingApproval 
     estimatedCost: p.request.estimatedCost,
     createdAt: p.createdAt.toISOString(),
     expiresAt: p.expiresAt.toISOString(),
+    origin: p.request.origin,
   };
 }
 
