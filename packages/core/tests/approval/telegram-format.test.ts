@@ -3,6 +3,8 @@ import {
   parseCallback,
   truncateArgs,
   promptText,
+  escapeHtml,
+  markdownToHtml,
 } from "../../src/approval/channels/telegram-format.js";
 import type { SerializedPendingApproval } from "../../src/ipc/protocol.js";
 
@@ -138,5 +140,57 @@ describe("promptText", () => {
   it("includes an expiry hint", () => {
     const text = promptText(makePending());
     expect(text.toLowerCase()).toContain("expire");
+  });
+});
+
+describe("escapeHtml", () => {
+  it("escapes the three HTML-significant chars, & first", () => {
+    expect(escapeHtml("<&>")).toBe("&lt;&amp;&gt;");
+    expect(escapeHtml("a & b < c > d")).toBe("a &amp; b &lt; c &gt; d");
+  });
+});
+
+describe("markdownToHtml", () => {
+  it("converts bold, italic, and strikethrough", () => {
+    expect(markdownToHtml("**b**")).toBe("<b>b</b>");
+    expect(markdownToHtml("__b__")).toBe("<b>b</b>");
+    expect(markdownToHtml("*i*")).toBe("<i>i</i>");
+    expect(markdownToHtml("_i_")).toBe("<i>i</i>");
+    expect(markdownToHtml("~~s~~")).toBe("<s>s</s>");
+  });
+
+  it("wraps inline code and escapes its contents without applying markdown inside", () => {
+    expect(markdownToHtml("`a<b>**x**`")).toBe("<code>a&lt;b&gt;**x**</code>");
+  });
+
+  it("renders links, preserving underscores in the URL", () => {
+    expect(markdownToHtml("[G](https://g.com/a_b)")).toBe(
+      '<a href="https://g.com/a_b">G</a>'
+    );
+  });
+
+  it("renders headers as bold and bullets as glyphs", () => {
+    expect(markdownToHtml("## Title")).toBe("<b>Title</b>");
+    expect(markdownToHtml("- a\n- b")).toBe("• a\n• b");
+  });
+
+  it("escapes plain ampersands and does not collide a bare number with a slot", () => {
+    expect(markdownToHtml("Tom & Jerry")).toBe("Tom &amp; Jerry");
+    expect(markdownToHtml("see `x` on line 5 now")).toBe(
+      "see <code>x</code> on line 5 now"
+    );
+  });
+
+  it("converts fenced code blocks, escaping contents", () => {
+    expect(markdownToHtml("```\nx<1 && y\n```")).toBe("<pre>x&lt;1 &amp;&amp; y</pre>");
+    expect(markdownToHtml("```js\nfoo()\n```")).toBe(
+      '<pre><code class="language-js">foo()</code></pre>'
+    );
+  });
+
+  it("returns empty string for nullish input", () => {
+    expect(markdownToHtml(null)).toBe("");
+    expect(markdownToHtml(undefined)).toBe("");
+    expect(markdownToHtml("")).toBe("");
   });
 });

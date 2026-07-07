@@ -6,6 +6,7 @@
  * URL and never logged, never placed in an error message, and never returned.
  * There is intentionally no console logging in this client.
  */
+import { markdownToHtml } from "./telegram-format.js";
 
 export interface TelegramUpdate {
   update_id: number;
@@ -81,8 +82,8 @@ export class TelegramApi {
   ): Promise<{ message_id: number }> {
     const body: Record<string, unknown> = {
       chat_id: chatId,
-      text,
-      parse_mode: "Markdown",
+      text: markdownToHtml(text),
+      parse_mode: "HTML",
       disable_web_page_preview: true,
     };
     if (inlineKeyboard) {
@@ -99,8 +100,8 @@ export class TelegramApi {
     await this.call("editMessageText", {
       chat_id: chatId,
       message_id: messageId,
-      text,
-      parse_mode: "Markdown",
+      text: markdownToHtml(text),
+      parse_mode: "HTML",
       disable_web_page_preview: true,
     });
   }
