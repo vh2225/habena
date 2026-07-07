@@ -9,6 +9,8 @@ import type { AuditLogger } from "../audit/logger.js";
 import type { InstanceTracker } from "../identity/instances.js";
 import type { PolicyDecision } from "../policy/decisions.js";
 import type { ApprovalQueue } from "../approval/queue.js";
+import type { ApprovalToolCallRequest } from "../approval/types.js";
+import type { ChatChannelId } from "../chat/types.js";
 import type { Rule } from "../policy/types.js";
 import { Server as McpServer } from "@modelcontextprotocol/sdk/server/index.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
@@ -30,7 +32,7 @@ export interface DispatcherDeps {
    * unaffected. `engine` is built from the configured floor preset's rules.
    */
   chatFloor?: {
-    active(): "web" | "telegram" | null;
+    active(): ChatChannelId | null;
     engine: PolicyEngine;
   };
   /** Declared USD-per-call pricing from config.yaml (see cost/tool-pricing.ts). */
@@ -106,7 +108,7 @@ export class ProxyDispatcher {
       }
     }
 
-    // 2c. Chat channel floor: a phone-originated run never runs looser than
+    // 2b. Chat channel floor: a phone-originated run never runs looser than
     // the configured floor preset, no matter what the user policy allows.
     if (this.deps.chatFloor?.active() === "telegram") {
       const floorDecision = this.deps.chatFloor.engine.evaluate({
@@ -116,10 +118,10 @@ export class ProxyDispatcher {
       decision = stricter(decision, floorDecision);
     }
 
-    // 2b. If decision is require_approval AND approval queue is available, ask the human.
+    // 2c. If decision is require_approval AND approval queue is available, ask the human.
     if (decision.action === "require_approval" && this.deps.approval) {
       const timeoutMs = this.deps.approvalTimeoutMs ?? 5 * 60 * 1000;
-      const approvalReq: ToolCallRequest & { origin?: "web" | "telegram" } = {
+      const approvalReq: ApprovalToolCallRequest = {
         ...req,
         origin: this.deps.chatFloor?.active() ?? undefined,
       };

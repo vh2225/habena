@@ -109,6 +109,30 @@ describe("chat channel policy floor", () => {
     expect(res.forwarded).toBe(true);
   });
 
+  it("never loosens: a user-policy deny stays deny even though the floor would only require_approval", async () => {
+    // User policy DENIES write_file; the cautious floor would merely
+    // require_approval for it. stricter() must keep the deny — the floor
+    // can only tighten a decision, never relax one.
+    const queue = new ApprovalQueue();
+    queues.push(queue);
+    const deps = baseDeps(() => "telegram", queue);
+    deps.policy = new PolicyEngine([
+      { match: { tool: "write_file" }, action: "deny", reason: "user denies writes" },
+    ]);
+    const dispatcher = new ProxyDispatcher(deps);
+
+    const res = await dispatcher.handleToolCall({
+      agentType: "openclaw",
+      instanceId: "openclaw/test",
+      tool: "write_file",
+      args: { path: "/tmp/x" },
+      estimatedCost: 0,
+    });
+    expect(res.decision.action).toBe("deny");
+    expect(res.forwarded).toBe(false);
+    expect(queue.list()).toHaveLength(0); // a deny never reaches the approval queue
+  });
+
   it("tags approvals created during a telegram run with origin", async () => {
     const queue = new ApprovalQueue();
     queues.push(queue);

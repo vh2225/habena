@@ -1,8 +1,7 @@
 import { EventEmitter } from "node:events";
 import { randomUUID } from "node:crypto";
 import type { PolicyDecision } from "../policy/decisions.js";
-import type { ToolCallRequest } from "../proxy/server.js";
-import type { PendingApproval, ApprovalResponse } from "./types.js";
+import type { ApprovalToolCallRequest, PendingApproval, ApprovalResponse } from "./types.js";
 
 interface QueuedApproval {
   pending: PendingApproval;
@@ -35,7 +34,7 @@ export class ApprovalQueue extends EventEmitter {
 
   request(
     decision: PolicyDecision,
-    request: ToolCallRequest,
+    request: ApprovalToolCallRequest,
     timeoutMs: number
   ): Promise<ApprovalResponse> {
     const id = randomUUID();

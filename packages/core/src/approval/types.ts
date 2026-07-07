@@ -1,5 +1,16 @@
 import type { PolicyDecision } from "../policy/decisions.js";
 import type { ToolCallRequest } from "../proxy/server.js";
+import type { ChatChannelId } from "../chat/types.js";
+
+/**
+ * A tool-call request as seen by the approval layer: the proxy's request
+ * plus the chat channel ("web" | "telegram") that originated the run, when
+ * one is active. Single source of truth for the origin field — the proxy
+ * builds it, ApprovalQueue.request() accepts it, PendingApproval carries it.
+ */
+export type ApprovalToolCallRequest = ToolCallRequest & {
+  origin?: ChatChannelId;
+};
 
 export type ApprovalChoice =
   | "allow_once"
@@ -18,11 +29,12 @@ export interface PendingApproval {
   id: string;
   decision: PolicyDecision;
   /**
-   * `origin` marks which channel (web UI vs Telegram chat bridge) produced
-   * the run that triggered this approval, set from `chatFloor.active()` at
-   * creation time in the proxy. Undefined when no chat run is active.
+   * `request.origin` marks which channel (web UI vs Telegram chat bridge)
+   * produced the run that triggered this approval, set from
+   * `chatFloor.active()` at creation time in the proxy. Undefined when no
+   * chat run is active.
    */
-  request: ToolCallRequest & { origin?: "web" | "telegram" };
+  request: ApprovalToolCallRequest;
   createdAt: Date;
   expiresAt: Date;
 }
