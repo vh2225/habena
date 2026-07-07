@@ -1,5 +1,6 @@
 import type { PendingApproval, ApprovalResponse } from "../approval/types.js";
 import type { AuditEntry } from "../audit/types.js";
+import type { ChatEvent } from "../chat/types.js";
 
 /** Messages sent from server (proxy) to client (watcher / Tauri UI). */
 export type ServerMessage =
@@ -12,6 +13,10 @@ export type ServerMessage =
   | { type: "overrides_list"; lockdown: boolean; overrides: SerializedOverride[] }
   | { type: "revoke_ack"; id: string; ok: boolean }
   | { type: "audit"; entry: AuditEntry }
+  | { type: "chat_ack"; ok: boolean; reason?: string }
+  | { type: "chat_event"; event: ChatEvent }
+  | { type: "chat_history_result"; events: ChatEvent[] }
+  | { type: "chat_status_result"; bridgeUp: boolean; running: boolean; disarmed: string[]; queueDepth: number }
   | { type: "error"; message: string };
 
 /** Messages sent from client to server. */
@@ -20,7 +25,12 @@ export type ClientMessage =
   | { type: "list_pending" }
   | { type: "set_lockdown"; on: boolean }
   | { type: "list_overrides" }
-  | { type: "revoke_override"; id: string };
+  | { type: "revoke_override"; id: string }
+  | { type: "chat_send"; text: string }
+  | { type: "chat_subscribe" }
+  | { type: "chat_history"; limit?: number }
+  | { type: "chat_status" }
+  | { type: "chat_rearm"; channel: "web" | "telegram" };
 
 /** An active allow_session grant, as shown to the operator. */
 export interface SerializedOverride {

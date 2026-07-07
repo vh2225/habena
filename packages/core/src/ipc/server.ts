@@ -4,6 +4,7 @@ import { existsSync, unlinkSync, chmodSync } from "node:fs";
 import type { ApprovalQueue } from "../approval/queue.js";
 import type { PolicyEngine } from "../policy/engine.js";
 import type { PendingApproval, ApprovalResponse } from "../approval/types.js";
+import type { ChatChannelManager } from "../chat/manager.js";
 import {
   encode,
   decodeLines,
@@ -15,6 +16,8 @@ import {
 export class IpcServer {
   private server: Server | null = null;
   private clients: Set<Socket> = new Set();
+  /** Per-connection chat_subscribe unsubscribe, so close cleanup can undo it. */
+  private chatUnsubscribes = new Map<Socket, () => void>();
 
   private onApprovalRequest = (pending: PendingApproval): void => {
     this.broadcast({
@@ -36,7 +39,9 @@ export class IpcServer {
     private queue: ApprovalQueue,
     private socketPath: string,
     /** When present, lockdown + session-override operator commands work. */
-    private policy?: PolicyEngine
+    private policy?: PolicyEngine,
+    /** When present, the chat_* frames are wired to the chat channel manager. */
+    private chat?: ChatChannelManager
   ) {}
 
   async start(): Promise<void> {
@@ -75,6 +80,10 @@ export class IpcServer {
       client.destroy();
     }
     this.clients.clear();
+    for (const unsubscribe of this.chatUnsubscribes.values()) {
+      unsubscribe();
+    }
+    this.chatUnsubscribes.clear();
 
     if (this.server) {
       await new Promise<void>((resolve) => this.server!.close(() => resolve()));
@@ -115,13 +124,17 @@ export class IpcServer {
       }
     });
 
-    socket.on("close", () => {
+    const cleanup = () => {
       this.clients.delete(socket);
-    });
+      const unsubscribe = this.chatUnsubscribes.get(socket);
+      if (unsubscribe) {
+        unsubscribe();
+        this.chatUnsubscribes.delete(socket);
+      }
+    };
 
-    socket.on("error", () => {
-      this.clients.delete(socket);
-    });
+    socket.on("close", cleanup);
+    socket.on("error", cleanup);
   }
 
   private handleClientMessage(socket: Socket, msg: ClientMessage): void {
@@ -187,6 +200,52 @@ export class IpcServer {
         id: msg.id,
         ok: this.policy.revokeSessionOverride(msg.id),
       }));
+    } else if (
+      msg.type === "chat_send" ||
+      msg.type === "chat_subscribe" ||
+      msg.type === "chat_history" ||
+      msg.type === "chat_status" ||
+      msg.type === "chat_rearm"
+    ) {
+      this.handleChatMessage(socket, msg);
+    }
+  }
+
+  private handleChatMessage(
+    socket: Socket,
+    msg: Extract<ClientMessage, { type: "chat_send" | "chat_subscribe" | "chat_history" | "chat_status" | "chat_rearm" }>
+  ): void {
+    if (!this.chat) {
+      socket.write(encode({ type: "error", message: "chat disabled" }));
+      return;
+    }
+    const chat = this.chat;
+
+    if (msg.type === "chat_send") {
+      const result = chat.handleInbound({ channel: "web", sender: "local", text: msg.text });
+      socket.write(encode({ type: "chat_ack", ok: result.accepted, reason: result.reason }));
+    } else if (msg.type === "chat_subscribe") {
+      // A reconnect-without-disconnect (or duplicate subscribe) must not leak
+      // a second subscription for the same socket.
+      this.chatUnsubscribes.get(socket)?.();
+      const unsubscribe = chat.subscribe((event) => {
+        socket.write(encode({ type: "chat_event", event }));
+      });
+      this.chatUnsubscribes.set(socket, unsubscribe);
+    } else if (msg.type === "chat_history") {
+      socket.write(encode({ type: "chat_history_result", events: chat.history(msg.limit) }));
+    } else if (msg.type === "chat_status") {
+      const status = chat.status();
+      socket.write(encode({
+        type: "chat_status_result",
+        bridgeUp: status.bridgeUp,
+        running: status.running,
+        disarmed: status.disarmed,
+        queueDepth: status.queueDepth,
+      }));
+    } else if (msg.type === "chat_rearm") {
+      chat.rearm(msg.channel);
+      socket.write(encode({ type: "chat_ack", ok: true }));
     }
   }
 
