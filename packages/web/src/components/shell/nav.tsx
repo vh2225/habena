@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 /* 16px stroke icons, inherit currentColor. Decorative only (aria-hidden). */
 const I = {
   overview: <path d="M2.5 8.5 8 3l5.5 5.5M4 7.5V13h8V7.5" />,
+  chat: <path d="M2.5 3.5h11v7h-5.2L5 13v-2.5H2.5z" />,
   decisions: <path d="M3 4.5h10M3 8h10M3 11.5h6" />,
   approvals: <path d="M8 1.8 13.5 4v4c0 3.2-2.2 5.6-5.5 6.7C4.7 13.6 2.5 11.2 2.5 8V4L8 1.8ZM5.8 8l1.6 1.6 2.8-3" />,
   threats: <path d="M8 1.8 13.5 4v4c0 3.2-2.2 5.6-5.5 6.7C4.7 13.6 2.5 11.2 2.5 8V4L8 1.8ZM8 5.2v3.2M8 10.8v.2" />,
@@ -17,6 +18,7 @@ const I = {
 type Item = { label: string; href: string; icon: ReactNode };
 const ITEMS: Item[] = [
   { label: "Overview", href: "/", icon: I.overview },
+  { label: "Chat", href: "/chat", icon: I.chat },
   { label: "Decisions", href: "/decisions", icon: I.decisions },
   { label: "Approvals", href: "/approvals", icon: I.approvals },
   { label: "Threats", href: "/threats", icon: I.threats },
