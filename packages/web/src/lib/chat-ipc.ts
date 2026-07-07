@@ -15,7 +15,7 @@ export interface IpcOptions {
   timeoutMs?: number;
 }
 function defaultConnect(): Duplex {
-  return createConnection(socketPath()) as unknown as Duplex;
+  return createConnection(socketPath());
 }
 
 /**
@@ -109,6 +109,7 @@ export async function chatRearm(
  * Long-lived subscription: opens a connection, sends chat_subscribe, and forwards every
  * chat_event to `onEvent` until the returned closer is called. Socket errors/close (that
  * the caller didn't initiate) route to `onError`; server `{type:"error"}` frames do too.
+ * Note: `opts.timeoutMs` is intentionally a no-op here — the subscription is long-lived.
  */
 export function chatSubscribe(
   onEvent: (ev: ChatEventWire) => void,
@@ -137,6 +138,10 @@ export function chatSubscribe(
   });
   conn.on("error", (err: Error) => {
     if (closed) return;
+    // A real socket failure emits "error" then "close" — mark closed and detach
+    // BEFORE reporting, so the trailing "close" can't fire a second generic onError.
+    closed = true;
+    detach();
     onError(err);
   });
   conn.on("close", () => {

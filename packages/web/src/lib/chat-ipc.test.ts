@@ -141,4 +141,19 @@ describe("chat-ipc", () => {
     expect(onError.mock.calls[0][0].message).toMatch(/socket blew up/);
     expect(onEvent).not.toHaveBeenCalled();
   });
+
+  it("chatSubscribe calls onError exactly once when error is followed by close", async () => {
+    // A real socket failure emits "error" then "close" — the subscriber must
+    // report only the original error, not a second generic close error.
+    const conn = new PassThrough();
+    const onEvent = vi.fn();
+    const onError = vi.fn();
+    chatSubscribe(onEvent, onError, { connect: () => conn as unknown as Duplex });
+    conn.emit("error", new Error("socket blew up"));
+    conn.emit("close");
+    await vi.waitFor(() => expect(onError).toHaveBeenCalled());
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0][0].message).toMatch(/socket blew up/);
+    expect(onEvent).not.toHaveBeenCalled();
+  });
 });
