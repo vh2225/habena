@@ -50,7 +50,18 @@ export class TelegramChatBinding {
         // active. Defensive reset so a stray `final` emitted outside any run
         // is never forwarded to the phone. (The manager emits `final` BEFORE
         // the closing `status idle`, so real replies still flow.)
-        else if (ev.state === "idle" || ev.state === "offline") this.telegramRunActive = false;
+        else if (ev.state === "idle" || ev.state === "offline") {
+          // Capture BEFORE resetting: a run_state error surfaces as
+          // `status idle` + `detail` (manager.ts) rather than a `final` event
+          // — there is no other signal that a telegram-originated run just
+          // failed. Check the flag as it was WHILE the run was active, not
+          // after this same event resets it.
+          const wasTelegramRun = this.telegramRunActive;
+          this.telegramRunActive = false;
+          if (ev.state === "idle" && ev.detail && wasTelegramRun) {
+            this.safeSend("⚠️ Your assistant hit an error on that request — try again.");
+          }
+        }
       }
       if (ev.kind === "assistant_final" && this.telegramRunActive) this.safeSend(ev.text);
       if (ev.kind === "rejected" && ev.channel === "telegram") {

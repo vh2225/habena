@@ -54,6 +54,13 @@ function applyEvent(prev: ChatMessage[], ev: ChatEventWire): ChatMessage[] {
     case "rejected":
       return [...prev, { id: nextId(), role: "system", text: `Rejected (${ev.channel}): ${ev.reason}` }];
     case "status":
+      // A run error surfaces as `idle` + `detail` (the bridge is still up —
+      // see ChatChannelManager) rather than `offline`. Surface it as a cheap
+      // transient system bubble instead of silently dropping it; a plain
+      // `idle`/`running`/`offline` transition with no detail stays a no-op.
+      if (ev.state === "idle" && ev.detail) {
+        return [...prev, { id: nextId(), role: "system", text: ev.detail }];
+      }
       return prev;
     default:
       return prev;
@@ -150,7 +157,12 @@ export function ChatPanel() {
         liveStatusSeenRef.current = true;
         setOffline(ev.state === "offline");
         setRunning(ev.state === "running");
-        return; // status events never touch the message list
+        // A status event only touches the message list when it carries a
+        // detail worth surfacing (e.g. a run error) — applyEvent's "status"
+        // case is a no-op otherwise, so this can't spuriously insert bubbles
+        // for ordinary idle/running/offline transitions.
+        if (ev.detail) setMessages((prev) => applyEvent(prev, ev));
+        return;
       }
       liveEventSeenRef.current = true;
       setMessages((prev) => applyEvent(prev, ev));

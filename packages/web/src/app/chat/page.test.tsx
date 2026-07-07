@@ -224,6 +224,20 @@ describe("Chat page", () => {
     await waitFor(() => expect(screen.queryByText("fs.write")).not.toBeInTheDocument());
   });
 
+  it("shows a transient system notice (not the offline banner) when a run errors mid-conversation", async () => {
+    vi.stubGlobal("fetch", mockFetch());
+    const ChatPage = (await import("./page")).default;
+    render(<ChatPage />);
+    await waitFor(() => expect(FakeEventSource.instances.length).toBeGreaterThan(0));
+    const es = lastEventSource();
+
+    es.emit({ kind: "status", state: "idle", detail: "run failed", at: "t" });
+    await waitFor(() => expect(screen.getByText(/run failed/i)).toBeInTheDocument());
+    expect(screen.queryByText(/assistant offline/i)).not.toBeInTheDocument();
+    const input = screen.getByLabelText(/message/i);
+    expect(input).not.toBeDisabled();
+  });
+
   it("shows a 'requested from Telegram' badge for telegram-origin approvals", async () => {
     const pending = [
       {

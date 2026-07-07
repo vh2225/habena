@@ -131,4 +131,25 @@ describe("ChatChannelManager", () => {
     expect(mgr.activeChannel()).toBeNull();
     expect(mgr.status().queueDepth).toBe(0);
   });
+
+  // A single failed run is NOT a bridge-down event: the bridge is still up
+  // and the next message can run immediately. Emitting "offline" here would
+  // incorrectly latch the web UI's offline banner (disabled composer, no
+  // recovery event) and silence the Telegram binding for an errored run.
+  it("emits status idle (not offline) with the run's error detail when a run errors", () => {
+    mgr.handleInbound({ channel: "web", sender: "local", text: "hi" });
+    bridge.emit({ kind: "run_state", state: "error", detail: "boom" });
+    const statuses = events.filter((e) => e.kind === "status") as Array<{ kind: "status"; state: string; detail?: string }>;
+    expect(statuses.some((s) => s.state === "offline")).toBe(false);
+    expect(statuses.at(-1)).toMatchObject({ state: "idle", detail: "boom" });
+    expect(mgr.activeChannel()).toBeNull();
+    // The bridge is still considered up: the very next message is accepted.
+    expect(mgr.handleInbound({ channel: "web", sender: "local", text: "again" }).accepted).toBe(true);
+  });
+
+  it("connection-down (real outage) still emits offline, unlike a run error", () => {
+    bridge.emit({ kind: "connection", state: "down" });
+    const statuses = events.filter((e) => e.kind === "status") as Array<{ kind: "status"; state: string }>;
+    expect(statuses.at(-1)).toMatchObject({ state: "offline" });
+  });
 });

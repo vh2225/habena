@@ -124,4 +124,20 @@ describe("TelegramChatBinding", () => {
     bridge.emit({ kind: "final", text: "stray" }); // no run active
     expect(sent).toEqual(["answer"]);
   });
+
+  // The manager now turns a run_state error into `status idle` + `detail`
+  // (not `offline` — see manager.ts/manager.test.ts). The binding must notice
+  // this specifically for a telegram-originated run and tell the phone the
+  // request failed, since no `final`/`rejected` event ever fires for it.
+  it("sends an error notice exactly once when a telegram-originated run errors", () => {
+    binding.handleMessage("question");
+    bridge.emit({ kind: "run_state", state: "error", detail: "boom" });
+    expect(sent).toEqual(["⚠️ Your assistant hit an error on that request — try again."]);
+  });
+
+  it("does not send an error notice when a web-originated run errors", () => {
+    mgr.handleInbound({ channel: "web", sender: "local", text: "hi" });
+    bridge.emit({ kind: "run_state", state: "error", detail: "boom" });
+    expect(sent).toEqual([]);
+  });
 });

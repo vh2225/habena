@@ -49,8 +49,14 @@ export class ChatChannelManager {
       else if (ev.kind === "final") this.emit({ kind: "assistant_final", text: ev.text, at });
       else if (ev.kind === "run_state" && (ev.state === "finished" || ev.state === "error")) {
         this.active = null;
+        // A run erroring is NOT the same as the bridge going down: the bridge
+        // is still up and the next message can run immediately. Emitting
+        // "offline" here would incorrectly latch the web UI's offline banner
+        // (disabled composer, no recovery event) and would look identical to
+        // a real outage to the Telegram binding. Surface it as "idle" with a
+        // detail instead — see manager.test.ts / telegram-binding.ts.
         this.emit(ev.state === "error"
-          ? { kind: "status", state: "offline", detail: ev.detail, at }
+          ? { kind: "status", state: "idle", detail: ev.detail ?? "run failed", at }
           : { kind: "status", state: "idle", at });
         this.drain();
       } else if (ev.kind === "connection") {
