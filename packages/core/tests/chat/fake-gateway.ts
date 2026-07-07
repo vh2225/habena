@@ -29,6 +29,7 @@ export class FakeGateway {
   readonly received: Array<Record<string, unknown>> = [];
   private readonly requireToken?: string;
   private eventSeq = 0;
+  private readonly clients = new Set<WebSocket>();
 
   constructor(opts?: { requireToken?: string }) {
     this.requireToken = opts?.requireToken;
@@ -43,6 +44,18 @@ export class FakeGateway {
     this.scripted = { chunks, final };
   }
 
+  /**
+   * Broadcast an arbitrary raw frame to all connected clients, bypassing the
+   * scripted chat.send reply. Added for Task 5 so tests can inject
+   * background-noise `chat` events under an unrelated runId (mirroring the
+   * `active-memory-*` / ambient events the recorded captures show
+   * interleaving with the real reply) and prove the bridge filters by runId
+   * rather than by event shape alone.
+   */
+  emitRaw(frame: Record<string, unknown>): void {
+    for (const ws of this.clients) ws.send(JSON.stringify(frame));
+  }
+
   start(port?: number): Promise<number> {
     return new Promise((resolve) => {
       this.wss = new WebSocketServer({ host: "127.0.0.1", port: port ?? 0 }, () => {
@@ -54,6 +67,8 @@ export class FakeGateway {
   }
 
   private handle(ws: WebSocket): void {
+    this.clients.add(ws);
+    ws.on("close", () => this.clients.delete(ws));
     // fixtures/gateway-frames.json frames[0]: challenge pushed on connect.
     ws.send(
       JSON.stringify({
