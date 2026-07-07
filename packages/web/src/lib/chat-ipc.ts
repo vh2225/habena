@@ -146,6 +146,16 @@ export function chatSubscribe(
   });
   conn.on("close", () => {
     if (closed) return;
+    // Mirror the "error" handler's guard: mark closed BEFORE reporting, so a
+    // late out-of-order "error" (same socket, arriving after "close") hits
+    // that handler's `if (closed) return` and can't double-fire onError.
+    // Deliberately do NOT call the full detach() here (unlike the "error"
+    // handler): Node throws if an "error" event fires with zero listeners,
+    // so removing that listener would turn a late out-of-order "error" into
+    // an uncaught exception instead of the harmless no-op the guard gives us.
+    closed = true;
+    conn.removeAllListeners("data");
+    conn.removeAllListeners("close");
     onError(new Error("Proxy connection closed"));
   });
   conn.write(encode({ type: "chat_subscribe" }));

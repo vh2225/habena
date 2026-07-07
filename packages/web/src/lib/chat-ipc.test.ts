@@ -156,4 +156,20 @@ describe("chat-ipc", () => {
     expect(onError.mock.calls[0][0].message).toMatch(/socket blew up/);
     expect(onEvent).not.toHaveBeenCalled();
   });
+
+  it("chatSubscribe calls onError exactly once when close is followed by an out-of-order error", async () => {
+    // Symmetric guard: "close" must also mark the subscription closed and
+    // detach listeners, so a late out-of-order "error" event (same socket,
+    // arriving after "close") can't double-fire onError.
+    const conn = new PassThrough();
+    const onEvent = vi.fn();
+    const onError = vi.fn();
+    chatSubscribe(onEvent, onError, { connect: () => conn as unknown as Duplex });
+    conn.emit("close");
+    conn.emit("error", new Error("late out-of-order error"));
+    await vi.waitFor(() => expect(onError).toHaveBeenCalled());
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0][0].message).toMatch(/Proxy connection closed/);
+    expect(onEvent).not.toHaveBeenCalled();
+  });
 });
