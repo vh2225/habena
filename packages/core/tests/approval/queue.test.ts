@@ -108,4 +108,31 @@ describe("ApprovalQueue", () => {
     vi.useRealTimers();
     q.shutdown();
   });
+
+  // SECURITY: a stolen/unlocked phone must never be able to command-and-wait
+  // its way into an auto-allow — regardless of any configured allow-on-timeout
+  // behavior, a telegram-origin approval must deny on timeout.
+  it("telegram-origin approvals always deny on timeout, even when timeout_action is allow", async () => {
+    vi.useFakeTimers();
+    const q = new ApprovalQueue({ timeoutAction: "allow" });
+    const telegramRequest = { ...sampleRequest(), origin: "telegram" as const };
+    const promise = q.request(sampleDecision(), telegramRequest, 100);
+    vi.advanceTimersByTime(150);
+    const response = await promise;
+    expect(response.choice).toBe("deny");
+    vi.useRealTimers();
+    q.shutdown();
+  });
+
+  it("non-telegram-origin approvals still honor timeout_action=allow", async () => {
+    vi.useFakeTimers();
+    const q = new ApprovalQueue({ timeoutAction: "allow" });
+    const webRequest = { ...sampleRequest(), origin: "web" as const };
+    const promise = q.request(sampleDecision(), webRequest, 100);
+    vi.advanceTimersByTime(150);
+    const response = await promise;
+    expect(response.choice).toBe("allow_once");
+    vi.useRealTimers();
+    q.shutdown();
+  });
 });

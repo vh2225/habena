@@ -52,9 +52,16 @@ export class ApprovalQueue extends EventEmitter {
         const entry = this.queue.get(id);
         if (!entry) return;
         this.queue.delete(id);
+        // SECURITY: a telegram-origin approval must NEVER auto-allow on
+        // timeout, regardless of the configured timeout_action — otherwise a
+        // stolen/unlocked phone could command a risky tool call and simply
+        // wait it out to bypass the second (dashboard) confirmation channel.
+        const forcedDeny = request.origin === "telegram";
         const response: ApprovalResponse = {
-          choice: this.timeoutAction === "allow" ? "allow_once" : "deny",
-          note: "auto-resolved on timeout",
+          choice: !forcedDeny && this.timeoutAction === "allow" ? "allow_once" : "deny",
+          note: forcedDeny && this.timeoutAction === "allow"
+            ? "auto-resolved on timeout (telegram origin forces deny)"
+            : "auto-resolved on timeout",
         };
         this.emit("approval_timeout", pending);
         this.emit("approval_resolved", pending, response);
