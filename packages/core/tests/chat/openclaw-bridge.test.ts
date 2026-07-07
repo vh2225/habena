@@ -67,6 +67,19 @@ describe("OpenClawBridge", () => {
     expect(gw.received.filter((r) => r.method === "connect").length).toBe(1);
   });
 
+  it("terminates its socket after an auth rejection even if the gateway keeps it open", async () => {
+    // keepOpenOnReject: the fake sends res ok:false but does NOT close the
+    // connection server-side — the client must tear the socket down itself
+    // or it stays orphaned forever.
+    gw = new FakeGateway({ requireToken: "tok", keepOpenOnReject: true });
+    await gw.start();
+    bridge = new OpenClawBridge({ url: gw.url, token: "WRONG", sessionKey: "s", backoffMs: [10] });
+    await expect(bridge.start()).rejects.toThrow(/unauthorized/i);
+    expect(bridge.isUp()).toBe(false);
+    // The fake sees the connection close only if the CLIENT terminates it.
+    await until(() => gw.openConnections === 0);
+  });
+
   it("emits connection down and reconnects when the gateway drops", async () => {
     gw = new FakeGateway();
     const port = await gw.start();

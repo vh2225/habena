@@ -77,9 +77,12 @@ export class OpenClawBridge implements AgentBridge {
     // Cancel any pending reconnect: this start() owns connectivity now.
     this.clearReconnectTimer();
     // Orphan any existing socket from a previous life (its handlers are
-    // invalidated by the generation bump inside connect()).
+    // invalidated by the generation bump inside connect()). We are between
+    // connections now, so drop `up` — silently: this is a re-handshake, not
+    // an observed outage, and hello-ok emits the next `up`.
     const old = this.ws;
     this.ws = undefined;
+    this.up = false;
     old?.terminate();
     return this.connect(/* initial */ true);
   }
@@ -110,7 +113,9 @@ export class OpenClawBridge implements AgentBridge {
         ws.terminate();
         if (!settled) {
           settled = true;
-          if (initial) reject(new Error(reason));
+          // A superseded (stale) initial attempt was cancelled by stop() or a
+          // newer start() — resolve silently, mirroring onDown.
+          if (initial && current) reject(new Error(reason));
           else resolve();
         }
         if (current && !initial) this.scheduleReconnect();
@@ -170,6 +175,9 @@ export class OpenClawBridge implements AgentBridge {
             this.stopped = true;
             this.generation++; // orphan this socket's remaining handlers
             this.ws = undefined;
+            // The gateway may reject and leave the connection open — tear the
+            // socket down ourselves or it is orphaned forever.
+            ws.terminate();
             const detail = frame.error?.message ?? "unauthorized";
             if (!settled) {
               settled = true;

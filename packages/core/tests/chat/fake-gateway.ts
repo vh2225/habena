@@ -40,18 +40,35 @@ export class FakeGateway {
    * while the run is ACTIVE (after the ack, before the final).
    */
   private readonly holdReplies: boolean;
+  /**
+   * Task 5 test hook: on auth rejection send the res ok:false but do NOT
+   * close the connection server-side — models a gateway that rejects and
+   * leaves the socket open, so tests can prove the CLIENT tears it down.
+   */
+  private readonly keepOpenOnReject: boolean;
   private heldReply?: { ws: WebSocket; runId: string; sessionKey: string };
   private eventSeq = 0;
   private readonly clients = new Set<WebSocket>();
 
-  constructor(opts?: { requireToken?: string; silent?: boolean; holdReplies?: boolean }) {
+  constructor(opts?: {
+    requireToken?: string;
+    silent?: boolean;
+    holdReplies?: boolean;
+    keepOpenOnReject?: boolean;
+  }) {
     this.requireToken = opts?.requireToken;
     this.silent = opts?.silent ?? false;
     this.holdReplies = opts?.holdReplies ?? false;
+    this.keepOpenOnReject = opts?.keepOpenOnReject ?? false;
   }
 
   get url(): string {
     return `ws://127.0.0.1:${this.port}`;
+  }
+
+  /** Number of currently open client connections (test observability). */
+  get openConnections(): number {
+    return this.clients.size;
   }
 
   /** Script the reply to the next chat.send: emits deltas then a final. */
@@ -123,7 +140,7 @@ export class FakeGateway {
               error: { code: "UNAUTHORIZED", message: "unauthorized" },
             }),
           );
-          ws.close();
+          if (!this.keepOpenOnReject) ws.close();
           return;
         }
         // Trimmed hello-ok mirroring fixtures/gateway-frames.json frames[2].
