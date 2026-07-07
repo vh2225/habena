@@ -106,6 +106,16 @@ export interface TelegramApprovalChannelOptions {
    * messages are ignored as before.
    */
   onCommand?: (command: string) => Promise<string | null>;
+  /**
+   * Owner plain-text (non-slash) chat message hook — the Habena Home chat
+   * bridge's Telegram inbound path (Task 10). Called for owner messages that
+   * do NOT start with "/", after the same owner-auth check as onCommand;
+   * never called for a non-owner sender, and never called for slash text
+   * (that always goes to onCommand, never both). This channel does not reply
+   * on its own behalf here — the chat binding (via manager events) owns any
+   * response. Optional — without it, plain text is ignored as before.
+   */
+  onChatMessage?: (text: string) => void;
 }
 
 export class TelegramApprovalChannel implements ApprovalChannel {
@@ -120,6 +130,7 @@ export class TelegramApprovalChannel implements ApprovalChannel {
   private readonly autoPoll: boolean;
   private readonly warnBeforeMs: number;
   private readonly onCommand?: (command: string) => Promise<string | null>;
+  private readonly onChatMessage?: (text: string) => void;
 
   private running = false;
   private offset = 0;
@@ -148,6 +159,7 @@ export class TelegramApprovalChannel implements ApprovalChannel {
     this.pollTimeoutSec = opts.pollTimeoutSec ?? 30;
     this.idlePollMs = opts.idlePollMs ?? 250;
     this.onCommand = opts.onCommand;
+    this.onChatMessage = opts.onChatMessage;
     this.autoPoll = opts.autoPoll ?? true;
     this.warnBeforeMs = opts.warnBeforeMs ?? 30000;
   }
@@ -275,15 +287,24 @@ export class TelegramApprovalChannel implements ApprovalChannel {
   private async handleUpdate(
     update: import("./telegram-api.js").TelegramUpdate
   ): Promise<void> {
-    // Owner text commands (/lockdown, /status, ...). Same trust boundary as
-    // taps: sender id must match the owner before anything else happens.
+    // Owner text messages: slash-commands (/lockdown, /status, ...) go to
+    // onCommand; everything else (plain chat) goes to onChatMessage (Task
+    // 10 — Habena Home chat bridge). Same trust boundary as taps: sender id
+    // must match the owner before EITHER hook runs; a non-owner text message
+    // never reaches either one.
     const msg = update.message;
-    if (msg?.text?.startsWith("/") && this.onCommand) {
+    if (msg?.text) {
       if (String(msg.from?.id ?? "") !== String(this.ownerId)) return;
-      const reply = await this.onCommand(msg.text.trim()).catch(
-        (err: Error) => `Command failed: ${err.message}`
-      );
-      if (reply) await this.api.sendMessage(msg.chat.id, reply).catch(() => {});
+      if (msg.text.startsWith("/")) {
+        if (this.onCommand) {
+          const reply = await this.onCommand(msg.text.trim()).catch(
+            (err: Error) => `Command failed: ${err.message}`
+          );
+          if (reply) await this.api.sendMessage(msg.chat.id, reply).catch(() => {});
+        }
+        return;
+      }
+      this.onChatMessage?.(msg.text);
       return;
     }
 

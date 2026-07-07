@@ -6,6 +6,11 @@ import { loadSignatureFeed } from "../../threat/signatures.js";
 import { loadYaml, loadConfigWithPacks, loadHostPolicy } from "../../config/loader.js";
 import type { AgentGuardConfig } from "../../policy/types.js";
 import { PolicyEngine } from "../../policy/engine.js";
+import { getPreset } from "../../policy/presets.js";
+import { resolveChatConfig } from "../../chat/config.js";
+import { OpenClawBridge } from "../../chat/openclaw-bridge.js";
+import { ChatChannelManager } from "../../chat/manager.js";
+import { TelegramChatBinding } from "../../chat/telegram-binding.js";
 import { CostTracker } from "../../cost/tracker.js";
 import { BudgetEnforcer } from "../../cost/budget.js";
 import { AuditLogger } from "../../audit/logger.js";
@@ -127,8 +132,59 @@ export async function startCommand(): Promise<void> {
   const approval = new ApprovalQueue({
     timeoutAction: config.approval?.timeout_action ?? "deny",
   });
+
+  // Chat bridge (Habena Home): OpenClaw gateway + channel manager + Telegram
+  // inbound binding. `chat.enabled` defaults to false — when absent, all of
+  // this is skipped and the proxy behaves exactly as it did before this
+  // feature existed. A down/misconfigured bridge must never crash the proxy
+  // or affect tool proxying — chat just reports offline (see bridge.start()
+  // below and ChatChannelManager's fail-closed behavior).
+  const chatResolved = resolveChatConfig(config);
+  let chatBridge: OpenClawBridge | undefined;
+  let chatManager: ChatChannelManager | undefined;
+  let chatFloor: { active(): "web" | "telegram" | null; engine: PolicyEngine } | undefined;
+  if (chatResolved) {
+    chatBridge = new OpenClawBridge({
+      url: chatResolved.bridge.url,
+      token: chatResolved.bridge.token,
+      sessionKey: chatResolved.bridge.sessionKey,
+    });
+    chatManager = new ChatChannelManager({
+      bridge: chatBridge,
+      limits: chatResolved.telegram.inbound
+        ? { telegram: { limit: chatResolved.telegram.commandsPer10Min, windowMs: 600_000 } }
+        : undefined,
+      onAudit: (e) =>
+        audit.log({
+          timestamp: new Date(),
+          agentType: "chat",
+          instanceId: e.channel,
+          tool: "chat.command",
+          args: { text: e.text },
+          mcpServer: "habena-chat",
+          decision: e.accepted ? "allow" : "deny",
+          tier: "user",
+          reason: e.reason,
+          cost: null,
+          latencyMs: null,
+          resultStatus: e.accepted ? "success" : "error",
+        }),
+    });
+    const floorPreset = getPreset(chatResolved.telegram.policyFloor);
+    if (!floorPreset) {
+      console.error(
+        chalk.yellow(
+          `! chat policy_floor preset "${chatResolved.telegram.policyFloor}" not found; telegram chat runs get no extra floor`
+        )
+      );
+    }
+    const floorEngine = new PolicyEngine(floorPreset?.rules ?? []);
+    const managerForFloor = chatManager;
+    chatFloor = { active: () => managerForFloor.activeChannel(), engine: floorEngine };
+  }
+
   const socketPath = join(getConfigDir(), "agentguard.sock");
-  const ipcServer = new IpcServer(approval, socketPath, policy);
+  const ipcServer = new IpcServer(approval, socketPath, policy, chatManager);
   try {
     await ipcServer.start();
     console.error(chalk.gray(`IPC:    ${socketPath}`));
@@ -141,6 +197,7 @@ export async function startCommand(): Promise<void> {
   // is otherwise up, stopped in the shutdown path. A channel that fails to
   // start must never crash the proxy (startChannels logs + continues).
   const channels: ApprovalChannel[] = [];
+  let chatBinding: TelegramChatBinding | undefined;
   const telegramCfg = config.approval?.channels?.telegram;
   if (telegramCfg) {
     const token =
@@ -153,9 +210,22 @@ export async function startCommand(): Promise<void> {
         )
       );
     } else {
+      const api = new TelegramApi(token);
+      // Habena Home chat bridge (Task 10): only wired when chat is enabled
+      // AND telegram inbound is explicitly turned on — this is the phone
+      // acting as a full chat surface, not just approval taps.
+      let binding: TelegramChatBinding | undefined;
+      if (chatResolved?.telegram.inbound && chatManager) {
+        binding = new TelegramChatBinding({
+          manager: chatManager,
+          ownerId: telegramCfg.owner_id,
+          send: (text) => api.sendMessage(telegramCfg.owner_id, text).then(() => {}),
+        });
+        chatBinding = binding;
+      }
       channels.push(
         new TelegramApprovalChannel(approval, {
-          api: new TelegramApi(token),
+          api,
           ownerId: telegramCfg.owner_id,
           // Owner text commands: the phone-side panic button.
           onCommand: async (command) => {
@@ -182,6 +252,8 @@ export async function startCommand(): Promise<void> {
             }
             return null; // unknown command — stay silent
           },
+          // Owner plain text (non-slash): route to the chat bridge, if wired.
+          onChatMessage: binding ? (text: string) => binding!.handleMessage(text) : undefined,
         })
       );
     }
@@ -197,6 +269,7 @@ export async function startCommand(): Promise<void> {
     threat,
     pricing: config.pricing,
     approvalTimeoutMs: parseDurationToMs(config.approval?.timeout ?? "5m"),
+    chatFloor,
   });
 
   // Spawn downstream MCP servers
@@ -306,9 +379,22 @@ export async function startCommand(): Promise<void> {
   // Start approval channels best-effort (after the proxy is otherwise up).
   await startChannels(channels, { warn: (msg) => console.error(chalk.yellow(msg)) });
 
+  // Chat bridge connect is best-effort and non-blocking: a down or
+  // misconfigured OpenClaw gateway must never delay or crash proxy startup.
+  // Chat simply reports offline (ChatChannelManager.status().bridgeUp) until
+  // it reconnects; tool proxying is unaffected either way.
+  if (chatBridge) {
+    void chatBridge.start().catch((err) => {
+      console.error(chalk.yellow(`! chat bridge offline: ${(err as Error).message}`));
+    });
+  }
+  if (chatBinding) chatBinding.start();
+
   const shutdown = async () => {
     console.error(chalk.yellow("\nShutting down Habena..."));
     await stopChannels(channels);
+    if (chatBinding) chatBinding.stop();
+    if (chatBridge) await chatBridge.stop().catch(() => {});
     await downstream.stop().catch(() => {});
     await ipcServer.stop().catch(() => {});
     approval.shutdown();

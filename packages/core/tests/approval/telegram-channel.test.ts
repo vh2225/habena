@@ -591,3 +591,66 @@ describe("TelegramApprovalChannel owner text commands", () => {
     expect(api.sent).toHaveLength(0); // null reply means no message
   });
 });
+
+describe("TelegramApprovalChannel owner chat messages (onChatMessage)", () => {
+  let queue: ApprovalQueue;
+  let api: FakeTelegramApi;
+  let channel: TelegramApprovalChannel;
+  let commands: string[];
+  let chatMessages: string[];
+
+  function textUpdate(updateId: number, fromId: number, text: string, chatId = 42): TelegramUpdate {
+    return { update_id: updateId, message: { from: { id: fromId }, chat: { id: chatId }, text } };
+  }
+
+  beforeEach(() => {
+    queue = new ApprovalQueue();
+    api = new FakeTelegramApi();
+    commands = [];
+    chatMessages = [];
+    channel = new TelegramApprovalChannel(queue, {
+      api: api as never,
+      ownerId: OWNER_ID,
+      backoffMs: 0,
+      idlePollMs: 0,
+      autoPoll: false,
+      onCommand: async (cmd) => {
+        commands.push(cmd);
+        return null;
+      },
+      onChatMessage: (text) => {
+        chatMessages.push(text);
+      },
+    });
+  });
+
+  afterEach(async () => {
+    await channel.stop();
+    queue.shutdown();
+  });
+
+  it("routes an owner plain-text (non-slash) message to onChatMessage only", async () => {
+    await channel.start();
+    api.inject([textUpdate(1, OWNER_ID, "what is on my calendar?")]);
+    await channel.pollOnce();
+    expect(chatMessages).toEqual(["what is on my calendar?"]);
+    expect(commands).toEqual([]); // never reaches onCommand
+    expect(api.sent).toHaveLength(0); // the channel itself never replies
+  });
+
+  it("ignores plain text from non-owners (neither hook called)", async () => {
+    await channel.start();
+    api.inject([textUpdate(2, 999999, "what is on my calendar?")]);
+    await channel.pollOnce();
+    expect(chatMessages).toEqual([]);
+    expect(commands).toEqual([]);
+  });
+
+  it("still routes a slash command to onCommand only, not onChatMessage", async () => {
+    await channel.start();
+    api.inject([textUpdate(3, OWNER_ID, "/status")]);
+    await channel.pollOnce();
+    expect(commands).toEqual(["/status"]);
+    expect(chatMessages).toEqual([]);
+  });
+});
