@@ -32,11 +32,31 @@ describe("GET /api/chat/history", () => {
     expect(mockHistory).toHaveBeenCalledWith(50);
   });
 
-  it("returns 502 when the ipc call rejects (proxy down)", async () => {
-    mockHistory.mockRejectedValue(new Error("ECONNREFUSED"));
+  it("defaults a negative limit to 50", async () => {
+    mockHistory.mockResolvedValue([]);
+    await GET(req("?limit=-5"));
+    expect(mockHistory).toHaveBeenCalledWith(50);
+  });
+
+  it("defaults a zero limit to 50", async () => {
+    mockHistory.mockResolvedValue([]);
+    await GET(req("?limit=0"));
+    expect(mockHistory).toHaveBeenCalledWith(50);
+  });
+
+  it("clamps an oversized limit to 500", async () => {
+    mockHistory.mockResolvedValue([]);
+    await GET(req("?limit=9999"));
+    expect(mockHistory).toHaveBeenCalledWith(500);
+  });
+
+  it("returns 502 with a masked reason when the ipc call rejects (proxy down)", async () => {
+    mockHistory.mockRejectedValue(new Error("connect ECONNREFUSED /run/user/1000/secret-name.sock"));
     const res = await GET(req());
     expect(res.status).toBe(502);
     const body = await res.json();
     expect(body.ok).toBe(false);
+    // Never pass the IPC layer's rejection text through to the client.
+    expect(body.reason).toBe("offline");
   });
 });

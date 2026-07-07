@@ -28,12 +28,14 @@ describe("GET /api/chat/status", () => {
     expect(body.disarmed).toEqual([]);
   });
 
-  it("returns 502 when the ipc call rejects (proxy down)", async () => {
-    mockStatus.mockRejectedValue(new Error("ECONNREFUSED"));
+  it("returns 502 with a masked reason when the ipc call rejects (proxy down)", async () => {
+    mockStatus.mockRejectedValue(new Error("connect ECONNREFUSED /run/user/1000/secret-name.sock"));
     const res = await GET();
     expect(res.status).toBe(502);
     const body = await res.json();
     expect(body.ok).toBe(false);
+    // Never pass the IPC layer's rejection text through to the client.
+    expect(body.reason).toBe("offline");
   });
 });
 
@@ -71,11 +73,13 @@ describe("POST /api/chat/status (rearm)", () => {
     expect(mockRearm).not.toHaveBeenCalled();
   });
 
-  it("returns 502 when the ipc call rejects (proxy down)", async () => {
-    mockRearm.mockRejectedValue(new Error("ECONNREFUSED"));
+  it("returns 502 with a masked reason when the ipc call rejects (proxy down)", async () => {
+    mockRearm.mockRejectedValue(new Error("connect ECONNREFUSED /run/user/1000/secret-name.sock"));
     const res = await POST(req({ rearm: "web" }));
     expect(res.status).toBe(502);
     const body = await res.json();
     expect(body.ok).toBe(false);
+    // Never pass the IPC layer's rejection text through to the client.
+    expect(body.reason).toBe("offline");
   });
 });

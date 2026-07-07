@@ -10,11 +10,9 @@ export async function GET() {
   try {
     const status = await chatStatus();
     return NextResponse.json(status);
-  } catch (err) {
-    return NextResponse.json(
-      { ok: false, reason: err instanceof Error ? err.message : "offline" },
-      { status: 502 }
-    );
+  } catch {
+    // Static reason: never pass the IPC layer's rejection text to the client.
+    return NextResponse.json({ ok: false, reason: "offline" }, { status: 502 });
   }
 }
 
@@ -36,10 +34,8 @@ export async function POST(request: Request) {
   try {
     const result = await chatRearm(rearm as "web" | "telegram");
     return NextResponse.json(result);
-  } catch (err) {
-    return NextResponse.json(
-      { ok: false, reason: err instanceof Error ? err.message : "offline" },
-      { status: 502 }
-    );
+  } catch {
+    // Static reason: never pass the IPC layer's rejection text to the client.
+    return NextResponse.json({ ok: false, reason: "offline" }, { status: 502 });
   }
 }

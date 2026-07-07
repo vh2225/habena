@@ -43,6 +43,20 @@ describe("POST /api/chat/send", () => {
     expect(mockSend).not.toHaveBeenCalled();
   });
 
+  it("rejects text longer than 8000 chars with 400", async () => {
+    const res = await POST(req({ text: "x".repeat(8001) }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).reason).toMatch(/too long/i);
+    expect(mockSend).not.toHaveBeenCalled();
+  });
+
+  it("accepts text exactly at the 8000-char cap", async () => {
+    mockSend.mockResolvedValue({ ok: true });
+    const res = await POST(req({ text: "x".repeat(8000) }));
+    expect(res.status).toBe(200);
+    expect(mockSend).toHaveBeenCalledTimes(1);
+  });
+
   it("rejects invalid JSON with 400 (no crash)", async () => {
     const res = await POST(
       new Request("http://localhost/api/chat/send", { method: "POST", body: "not json" })

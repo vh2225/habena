@@ -55,6 +55,16 @@ describe("GET /api/chat/stream", () => {
     expect(closeFn).toHaveBeenCalledTimes(1);
   });
 
+  it("ignores events delivered after the reader is cancelled (no throw)", async () => {
+    const res = await GET();
+    const reader = res.body!.getReader();
+    await reader.cancel();
+    expect(closeFn).toHaveBeenCalledTimes(1);
+    const late: ChatEventWire = { kind: "assistant_final", text: "late", at: "2026-01-01T00:00:01.000Z" };
+    // Delivery on an already-cancelled stream must not throw inside the IPC path.
+    expect(() => capturedOnEvent!(late)).not.toThrow();
+  });
+
   it("closes the stream controller when chatSubscribe reports an error", async () => {
     const res = await GET();
     const reader = res.body!.getReader();
