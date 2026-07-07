@@ -54,6 +54,10 @@ export class ChatChannelManager {
           : { kind: "status", state: "idle", at });
         this.drain();
       } else if (ev.kind === "connection") {
+        if (ev.state === "down") {
+          this.active = null;
+          this.flushQueue("offline");
+        }
         this.emit({ kind: "status", state: ev.state === "up" ? "idle" : "offline", at });
       }
     });
@@ -99,15 +103,22 @@ export class ChatChannelManager {
       return { accepted: false, reason };
     };
     if (!msg.text.trim()) return reject("empty");
+    if (!this.bridge.isUp()) return reject("offline");
     const limiter = this.limiters.get(msg.channel);
     if (limiter && !limiter.tryAcquire()) return reject("rate_limited");
-    if (!this.bridge.isUp()) return reject("offline");
     if (this.queue.length >= this.queueDepth && this.active !== null) return reject("busy");
     this.onAudit?.({ channel: msg.channel, sender: msg.sender, text: msg.text, accepted: true });
     this.emit({ kind: "user", channel: msg.channel, text: msg.text, at });
     this.queue.push(msg);
     if (this.active === null) this.drain();
     return { accepted: true };
+  }
+
+  private flushQueue(reason: string): void {
+    for (const msg of this.queue.splice(0)) {
+      this.onAudit?.({ channel: msg.channel, sender: msg.sender, text: msg.text, accepted: false, reason });
+      this.emit({ kind: "rejected", channel: msg.channel, reason, at: this.now().toISOString() });
+    }
   }
 
   private drain(): void {
@@ -117,7 +128,10 @@ export class ChatChannelManager {
     this.emit({ kind: "status", state: "running", channel: next.channel, at: this.now().toISOString() });
     void this.bridge.send(next.text).catch(() => {
       this.active = null;
+      this.onAudit?.({ channel: next.channel, sender: next.sender, text: next.text, accepted: false, reason: "send_failed" });
+      this.emit({ kind: "rejected", channel: next.channel, reason: "send_failed", at: this.now().toISOString() });
       this.emit({ kind: "status", state: "offline", detail: "send failed", at: this.now().toISOString() });
+      this.drain();
     });
   }
 }

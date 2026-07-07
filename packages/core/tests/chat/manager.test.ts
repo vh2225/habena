@@ -7,6 +7,7 @@ import type { AgentBridge, BridgeEvent, ChatEvent } from "../../src/chat/types.j
 class StubBridge implements AgentBridge {
   readonly kind = "stub";
   up = true;
+  failNext = false;
   sent: string[] = [];
   private cbs = new Set<(ev: BridgeEvent) => void>();
   async start() {}
@@ -14,7 +15,7 @@ class StubBridge implements AgentBridge {
   isUp() { return this.up; }
   onEvent(cb: (ev: BridgeEvent) => void) { this.cbs.add(cb); return () => this.cbs.delete(cb); }
   emit(ev: BridgeEvent) { for (const cb of this.cbs) cb(ev); }
-  async send(text: string) { this.sent.push(text); this.emit({ kind: "run_state", state: "started" }); }
+  async send(text: string) { if (this.failNext) { this.failNext = false; throw new Error("boom"); } this.sent.push(text); this.emit({ kind: "run_state", state: "started" }); }
 }
 
 let bridge: StubBridge;
@@ -91,5 +92,43 @@ describe("ChatChannelManager", () => {
     expect(small.handleInbound({ channel: "web", sender: "local", text: "c" }))
       .toEqual({ accepted: false, reason: "busy" });
     expect(small.history().length).toBeLessThanOrEqual(3);
+  });
+
+  it("continues draining after a failed send", async () => {
+    bridge.failNext = true;
+    mgr.handleInbound({ channel: "web", sender: "local", text: "M1" }); // active; send will throw async
+    mgr.handleInbound({ channel: "web", sender: "local", text: "M2" }); // queued behind M1
+    await new Promise((r) => setTimeout(r, 0));
+    expect(events.some((e) => e.kind === "rejected" && e.channel === "web" && e.reason === "send_failed")).toBe(true);
+    expect(audits.some((a) => a.accepted === false && a.reason === "send_failed" && a.text === "M1")).toBe(true);
+    expect(bridge.sent).toContain("M2");
+    expect(mgr.activeChannel()).toBe("web"); // M2 running
+  });
+
+  it("offline rejections do not consume rate-limit quota", () => {
+    const b = new StubBridge();
+    b.up = false;
+    const m = new ChatChannelManager({
+      bridge: b,
+      limits: { telegram: { limit: 1, windowMs: 600_000 } },
+      now: () => new Date("2026-07-05T00:00:00Z"),
+    });
+    expect(m.handleInbound({ channel: "telegram", sender: "42", text: "a" }))
+      .toEqual({ accepted: false, reason: "offline" });
+    expect(m.handleInbound({ channel: "telegram", sender: "42", text: "b" }))
+      .toEqual({ accepted: false, reason: "offline" });
+    expect(m.status().disarmed).toEqual([]);
+    b.up = true;
+    expect(m.handleInbound({ channel: "telegram", sender: "42", text: "c" }).accepted).toBe(true);
+  });
+
+  it("connection down flushes queued messages fail-closed", () => {
+    mgr.handleInbound({ channel: "web", sender: "local", text: "M1" }); // running
+    mgr.handleInbound({ channel: "web", sender: "local", text: "M2" }); // queued
+    bridge.emit({ kind: "connection", state: "down" });
+    expect(events.some((e) => e.kind === "rejected" && e.reason === "offline")).toBe(true);
+    expect(audits.at(-1)).toMatchObject({ accepted: false, reason: "offline", text: "M2" });
+    expect(mgr.activeChannel()).toBeNull();
+    expect(mgr.status().queueDepth).toBe(0);
   });
 });
