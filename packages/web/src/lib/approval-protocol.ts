@@ -3,12 +3,6 @@
 
 export type ApprovalChoice = "allow_once" | "allow_session" | "deny";
 
-/**
- * Mirror of packages/core/src/chat/types.ts ChatEvent — web can't import core.
- * Keep kinds/fields byte-identical to the core union.
- */
-export type ChatChannelId = "web" | "telegram";
-
 export interface SerializedPendingApproval {
   id: string;
   agentType: string;
@@ -20,7 +14,7 @@ export interface SerializedPendingApproval {
   createdAt: string;
   expiresAt: string;
   /** Which channel's run produced this approval ("web" | "telegram"), when known. */
-  origin?: ChatChannelId;
+  origin?: string;
 }
 
 export interface SerializedOverride {
@@ -29,6 +23,12 @@ export interface SerializedOverride {
   reason: string;
   expiresAt: string;
 }
+
+/**
+ * Mirror of packages/core/src/chat/types.ts ChatEvent — web can't import core.
+ * Keep kinds/fields byte-identical to the core union.
+ */
+export type ChatChannelId = "web" | "telegram";
 
 export type ChatEventWire =
   | { kind: "user"; channel: ChatChannelId; text: string; at: string }

@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -98,6 +98,17 @@ export function ChatPanel() {
   const [running, setRunning] = useState(false);
   const [pending, setPending] = useState<SerializedPendingApproval[]>([]);
 
+  // Seed-vs-SSE race guards: the one-shot history/status fetches can resolve AFTER
+  // live SSE events have already been folded (e.g. page refresh mid-run). The live
+  // stream is always the fresher source, so a late-resolving seed must no-op rather
+  // than clobber streamed deltas or tear down `running`. Two refs because a status
+  // event arriving first shouldn't block the (independent) history seed, and vice versa.
+  const liveEventSeenRef = useRef(false);   // any conversation event folded from SSE
+  const liveStatusSeenRef = useRef(false);  // any status event applied from SSE
+  // Hard send lock — set synchronously before the fetch so a rapid double-Enter
+  // can't double-POST (React state (`sending`) flushes too late for same-tick repeats).
+  const sendingRef = useRef(false);
+
   // Seed history + status once, then let the SSE stream carry live updates.
   useEffect(() => {
     let cancelled = false;
@@ -105,19 +116,21 @@ export function ChatPanel() {
       try {
         const r = (await fetch("/api/chat/history?limit=100", { cache: "no-store" }).then((x) => x.json())) as HistoryResp;
         if (!cancelled && Array.isArray(r.events)) {
-          setMessages(r.events.reduce(applyEvent, [] as ChatMessage[]));
+          const seeded = r.events.reduce(applyEvent, [] as ChatMessage[]);
+          // Functional update: skip the seed if the live stream got here first.
+          setMessages((prev) => (liveEventSeenRef.current ? prev : seeded));
         }
       } catch {
         /* history is best-effort — the live stream still works without it */
       }
       try {
         const s = (await fetch("/api/chat/status", { cache: "no-store" }).then((x) => x.json())) as StatusResp;
-        if (!cancelled) {
+        if (!cancelled && !liveStatusSeenRef.current) {
           setOffline(s.ok === false || s.bridgeUp === false);
           setRunning(Boolean(s.running));
         }
       } catch {
-        if (!cancelled) setOffline(true);
+        if (!cancelled && !liveStatusSeenRef.current) setOffline(true);
       }
     })();
     return () => { cancelled = true; };
@@ -134,17 +147,25 @@ export function ChatPanel() {
         return;
       }
       if (ev.kind === "status") {
+        liveStatusSeenRef.current = true;
         setOffline(ev.state === "offline");
         setRunning(ev.state === "running");
+        return; // status events never touch the message list
       }
+      liveEventSeenRef.current = true;
       setMessages((prev) => applyEvent(prev, ev));
     };
     return () => es.close();
   }, []);
 
   // Inline approvals: only worth polling while a run is actually active.
+  // When the run ends, drop any cards immediately — the proxy expires them
+  // server-side, and a stale card here could invite a click on a dead approval.
   useEffect(() => {
-    if (!running) return;
+    if (!running) {
+      setPending([]);
+      return;
+    }
     let cancelled = false;
     const tick = async () => {
       try {
@@ -177,7 +198,8 @@ export function ChatPanel() {
 
   const send = useCallback(async () => {
     const text = input.trim();
-    if (!text || offline || sending) return;
+    if (!text || offline || sendingRef.current) return;
+    sendingRef.current = true;
     setSendError(null);
     setSending(true);
     try {
@@ -195,9 +217,10 @@ export function ChatPanel() {
     } catch {
       setSendError("Couldn't reach the assistant.");
     } finally {
+      sendingRef.current = false;
       setSending(false);
     }
-  }, [input, offline, sending]);
+  }, [input, offline]);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
@@ -227,7 +250,7 @@ export function ChatPanel() {
               <div
                 className={`max-w-[75%] whitespace-pre-wrap rounded-xl px-3 py-2 text-sm ${
                   m.role === "user"
-                    ? "bg-[var(--color-accent)] text-black"
+                    ? "bg-[var(--color-accent)] text-[var(--color-bg)]"
                     : "border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-fg)]"
                 }`}
               >
@@ -256,7 +279,7 @@ export function ChatPanel() {
           aria-label="Message"
           type="text"
           value={input}
-          disabled={offline}
+          disabled={offline || sending}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={onKeyDown}
           placeholder={offline ? "Assistant offline" : "Message your agent…"}

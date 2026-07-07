@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent, act } from "@testing-library/react";
 
 /** Minimal fake EventSource — jsdom doesn't ship one. Tests grab the latest
  * instance and call `.emit(obj)` to push a ChatEventWire down the wire. */
@@ -59,6 +59,19 @@ function mockFetch(overrides: MockOverrides = {}) {
   });
 }
 
+const PENDING_WRITE = {
+  id: "appr-1",
+  agentType: "claude",
+  instanceId: "i1",
+  tool: "fs.write",
+  args: { path: "/tmp/x" },
+  reason: "writes a file",
+  estimatedCost: 0,
+  createdAt: "2026-01-01T00:00:00.000Z",
+  expiresAt: "2026-01-01T00:01:00.000Z",
+  origin: "web",
+};
+
 beforeEach(() => {
   vi.restoreAllMocks();
   FakeEventSource.instances = [];
@@ -102,6 +115,43 @@ describe("Chat page", () => {
     expect(screen.queryByText("Hello!")).not.toBeInTheDocument();
   });
 
+  it("a live SSE delta arriving before the history seed resolves is not clobbered by the seed", async () => {
+    let resolveHistory!: () => void;
+    const historyGate = new Promise<void>((r) => { resolveHistory = r; });
+    vi.stubGlobal("fetch", vi.fn((url: string) => {
+      const u = String(url);
+      if (u.includes("/api/chat/history")) {
+        return historyGate.then(() => ({
+          ok: true,
+          json: () => Promise.resolve({
+            events: [{ kind: "user", channel: "web", text: "old message", at: "t0" }],
+          }),
+        }));
+      }
+      if (u.includes("/api/chat/status")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(STATUS_ONLINE) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    }));
+    const ChatPage = (await import("./page")).default;
+    render(<ChatPage />);
+    await waitFor(() => expect(FakeEventSource.instances.length).toBeGreaterThan(0));
+    const es = lastEventSource();
+
+    // Live stream wins the race: a delta lands while history is still in flight.
+    es.emit({ kind: "assistant_delta", text: "streamed", at: "t" });
+    await waitFor(() => expect(screen.getByText("streamed")).toBeInTheDocument());
+
+    // Now the (stale) history seed resolves — it must NOT replace the live bubble.
+    await act(async () => {
+      resolveHistory();
+      await new Promise((r) => setTimeout(r, 0));
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(screen.getByText("streamed")).toBeInTheDocument();
+    expect(screen.queryByText("old message")).not.toBeInTheDocument();
+  });
+
   it("composer POSTs to /api/chat/send and clears the input on accept", async () => {
     const fetchMock = mockFetch();
     vi.stubGlobal("fetch", fetchMock);
@@ -114,6 +164,20 @@ describe("Chat page", () => {
     const call = fetchMock.mock.calls.find(([url]) => String(url).includes("/api/chat/send"));
     expect(call).toBeTruthy();
     expect(JSON.parse((call as [string, RequestInit])[1].body as string)).toEqual({ text: "hi agent" });
+  });
+
+  it("a rapid double-Enter POSTs to /api/chat/send exactly once", async () => {
+    const fetchMock = mockFetch();
+    vi.stubGlobal("fetch", fetchMock);
+    const ChatPage = (await import("./page")).default;
+    render(<ChatPage />);
+    const input = await screen.findByLabelText(/message/i);
+    fireEvent.change(input, { target: { value: "hi agent" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() => expect(input).toHaveValue(""));
+    const sendCalls = fetchMock.mock.calls.filter(([url]) => String(url).includes("/api/chat/send"));
+    expect(sendCalls).toHaveLength(1);
   });
 
   it("shows the rejection reason and keeps the text when send is rejected", async () => {
@@ -137,21 +201,7 @@ describe("Chat page", () => {
   });
 
   it("renders a pending approval card during a run and Deny POSTs to /api/approvals/respond", async () => {
-    const pending = [
-      {
-        id: "appr-1",
-        agentType: "claude",
-        instanceId: "i1",
-        tool: "fs.write",
-        args: { path: "/tmp/x" },
-        reason: "writes a file",
-        estimatedCost: 0,
-        createdAt: "2026-01-01T00:00:00.000Z",
-        expiresAt: "2026-01-01T00:01:00.000Z",
-        origin: "web",
-      },
-    ];
-    const fetchMock = mockFetch({ status: STATUS_RUNNING, approvals: { ok: true, pending } });
+    const fetchMock = mockFetch({ status: STATUS_RUNNING, approvals: { ok: true, pending: [PENDING_WRITE] } });
     vi.stubGlobal("fetch", fetchMock);
     const ChatPage = (await import("./page")).default;
     render(<ChatPage />);
@@ -162,6 +212,16 @@ describe("Chat page", () => {
       expect(call).toBeTruthy();
       expect(JSON.parse((call as [string, RequestInit])[1].body as string)).toEqual({ id: "appr-1", choice: "deny" });
     });
+  });
+
+  it("clears pending approval cards when the run ends", async () => {
+    vi.stubGlobal("fetch", mockFetch({ status: STATUS_RUNNING, approvals: { ok: true, pending: [PENDING_WRITE] } }));
+    const ChatPage = (await import("./page")).default;
+    render(<ChatPage />);
+    await waitFor(() => expect(screen.getByText("fs.write")).toBeInTheDocument());
+    // Run ends: the assistant goes idle — a stale approval card must not linger.
+    lastEventSource().emit({ kind: "status", state: "idle", at: "t" });
+    await waitFor(() => expect(screen.queryByText("fs.write")).not.toBeInTheDocument());
   });
 
   it("shows a 'requested from Telegram' badge for telegram-origin approvals", async () => {
