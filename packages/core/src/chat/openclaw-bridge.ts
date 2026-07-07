@@ -118,7 +118,15 @@ export class OpenClawBridge implements AgentBridge {
           if (initial && current) reject(new Error(reason));
           else resolve();
         }
-        if (current && !initial) this.scheduleReconnect();
+        // Schedule a background reconnect for ANY current failure, including
+        // the initial attempt: a gateway that accepts the TCP socket but
+        // hangs the handshake at boot must retry just like the ECONNREFUSED
+        // boot path (onDown, below), not leave chat offline until a manual
+        // proxy restart. start() has already rejected above, so the caller
+        // sees the failure immediately; this just arms recovery in the
+        // background. scheduleReconnect() itself no-ops if stop() already
+        // set `stopped` (e.g. an auth rejection, handled separately).
+        if (current) this.scheduleReconnect();
       };
 
       const connectTimer = setTimeout(

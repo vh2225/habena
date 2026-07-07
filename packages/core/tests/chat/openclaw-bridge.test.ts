@@ -235,10 +235,35 @@ describe("OpenClawBridge", () => {
     await expect(bridge.start()).rejects.toThrow(/timed out/i);
     expect(bridge.isUp()).toBe(false);
 
-    // Initial-connect timeout is a start() failure, not a background drop: no
-    // reconnect loop hammering the hung gateway.
+    // A gateway that stays silent forever must never come up, no matter how
+    // many background reconnect attempts fire against it (see the dedicated
+    // retry-and-recover test below for what happens once it responds).
     await sleep(200);
     expect(bridge.isUp()).toBe(false);
     expect(events.some((e) => e.kind === "connection" && (e as any).state === "up")).toBe(false);
+  });
+
+  it("retries after a boot-time handshake timeout and reconnects once the gateway responds, without a new start() call", async () => {
+    gw = new FakeGateway({ silent: true });
+    const port = await gw.start();
+    bridge = new OpenClawBridge({ url: gw.url, sessionKey: "s", connectTimeoutMs: 80, backoffMs: [40, 40, 40] });
+    const events: BridgeEvent[] = [];
+    bridge.onEvent((e) => events.push(e));
+
+    // Boot-time handshake hang: the gateway accepts the TCP socket but never
+    // completes the hello — start() must reject on the connect timeout...
+    await expect(bridge.start()).rejects.toThrow(/timed out/i);
+    expect(bridge.isUp()).toBe(false);
+
+    // ...but (the fix) it must ALSO have armed a background reconnect, the
+    // same as the ECONNREFUSED-at-boot path via onDown. Revive the gateway
+    // (now responsive) on the same port before the retry fires.
+    await gw.stop();
+    gw = new FakeGateway();
+    await gw.start(port);
+
+    // No second start() call anywhere below: recovery must come from the
+    // bridge's own background retry loop.
+    await until(() => bridge.isUp(), 3000);
   });
 });
