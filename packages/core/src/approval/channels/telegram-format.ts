@@ -72,17 +72,120 @@ export function truncateArgs(args: Record<string, unknown>, max = 500): string {
   return s;
 }
 
-/** Markdown approval message for the owner's chat. */
+/** Escape the three HTML-significant characters for Telegram HTML parse mode. */
+export function escapeHtml(s: string): string {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function escapeAttr(s: string): string {
+  return escapeHtml(s).replace(/"/g, "&quot;");
+}
+
+// Slot sentinel for the stash/unstash pass below. A private-use codepoint:
+// it can never appear in real chat text, and (unlike a NUL byte) keeps this
+// file plain text for git/diff tooling.
+const SLOT = "\uE000";
+
+// Inline markdown -> Telegram HTML for a single line.
+function inline(text: string): string {
+  const slots: string[] = [];
+  const stash = (h: string): string => `${SLOT}${slots.push(h) - 1}${SLOT}`;
+
+  let s = String(text ?? "");
+  // Protect code spans and links BEFORE escaping/emphasis so their contents
+  // (which may contain <, &, *, _) are never reinterpreted.
+  s = s.replace(/`([^`]+)`/g, (_m, code: string) => stash(`<code>${escapeHtml(code)}</code>`));
+  s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_m, label: string, url: string) =>
+    stash(`<a href="${escapeAttr(url)}">${escapeHtml(label)}</a>`)
+  );
+
+  s = escapeHtml(s);
+
+  s = s.replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>");
+  s = s.replace(/__([^_]+)__/g, "<b>$1</b>");
+  s = s.replace(/~~([^~]+)~~/g, "<s>$1</s>");
+  s = s.replace(/\*([^*\n]+)\*/g, "<i>$1</i>");
+  s = s.replace(/(^|[^\w])_([^_\n]+)_(?=[^\w]|$)/g, "$1<i>$2</i>");
+
+  s = s.replace(new RegExp(`${SLOT}(\\d+)${SLOT}`, "g"), (_m, i: string) => slots[Number(i)]);
+  return s;
+}
+
+/**
+ * Convert the markdown our approval messages use into Telegram-safe HTML.
+ *
+ * Telegram's legacy "Markdown" parse mode only renders `*single*`/`` `code` ``
+ * and 400s on stray punctuation; HTML is robust (only & < > need escaping) and
+ * renders `**bold**`, `## headers`, `- bullets`, and `[links](url)`. Emphasis
+ * follows standard markdown: `**`/`__` = bold, `*`/`_` = italic. Plain text is
+ * simply escaped, so non-markdown command replies pass through safely.
+ */
+export function markdownToHtml(md: string | null | undefined): string {
+  if (md == null) return "";
+  const lines = String(md).replace(/\r\n?/g, "\n").split("\n");
+  const out: string[] = [];
+  let quote: string[] = [];
+  const flushQuote = (): void => {
+    if (quote.length) {
+      out.push(`<blockquote>${quote.join("\n")}</blockquote>`);
+      quote = [];
+    }
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    const fence = line.match(/^```(\w*)\s*$/);
+    if (fence) {
+      flushQuote();
+      const body: string[] = [];
+      i++;
+      while (i < lines.length && !/^```\s*$/.test(lines[i])) body.push(lines[i++]);
+      const code = escapeHtml(body.join("\n"));
+      const lang = fence[1];
+      out.push(lang ? `<pre><code class="language-${lang}">${code}</code></pre>` : `<pre>${code}</pre>`);
+      continue;
+    }
+
+    const q = line.match(/^>\s?(.*)$/);
+    if (q) { quote.push(inline(q[1])); continue; }
+    flushQuote();
+
+    if (/^\s*([-*_])\1{2,}\s*$/.test(line)) { out.push("──────────"); continue; }
+
+    const h = line.match(/^\s{0,3}(#{1,6})\s+(.*?)\s*#*\s*$/);
+    if (h) { out.push(`<b>${inline(h[2])}</b>`); continue; }
+
+    const b = line.match(/^(\s*)[-*+]\s+(.*)$/);
+    if (b) { out.push(`${b[1]}• ${inline(b[2])}`); continue; }
+
+    const n = line.match(/^(\s*)(\d+)\.\s+(.*)$/);
+    if (n) { out.push(`${n[1]}${n[2]}. ${inline(n[3])}`); continue; }
+
+    out.push(inline(line));
+  }
+  flushQuote();
+  return out.join("\n");
+}
+
+/**
+ * Markdown approval message for the owner's chat (rendered to HTML by
+ * TelegramApi at send time). `**` markers so labels stay bold under
+ * standard-markdown emphasis rules.
+ */
 export function promptText(p: SerializedPendingApproval): string {
   const inst = p.instanceId ? ` / ${p.instanceId}` : "";
   const cost =
     p.estimatedCost > 0
-      ? `*Est. cost:* $${p.estimatedCost.toFixed(4)}\n`
+      ? `**Est. cost:** $${p.estimatedCost.toFixed(4)}\n`
       : "";
 
   let expires = "";
   try {
-    expires = `*Expires:* ${new Date(p.expiresAt).toLocaleTimeString("en-US")}\n`;
+    expires = `**Expires:** ${new Date(p.expiresAt).toLocaleTimeString("en-US")}\n`;
   } catch {
     expires = "";
   }
@@ -96,13 +199,13 @@ export function promptText(p: SerializedPendingApproval): string {
       : "";
 
   return (
-    `🛡️ *Habena approval*\n\n` +
-    `*Tool:* \`${p.tool}\`\n` +
-    `*Agent:* ${p.agentType}${inst}\n` +
-    `*Why:* ${p.reason}\n` +
+    `🛡️ **Habena approval**\n\n` +
+    `**Tool:** \`${p.tool}\`\n` +
+    `**Agent:** ${p.agentType}${inst}\n` +
+    `**Why:** ${p.reason}\n` +
     cost +
     expires +
-    `\n*Args:*\n\`\`\`\n${truncateArgs(p.args)}\n\`\`\`` +
+    `\n**Args:**\n\`\`\`\n${truncateArgs(p.args)}\n\`\`\`` +
     macNotice
   );
 }

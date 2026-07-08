@@ -50,8 +50,18 @@ describe("TelegramApi.sendMessage", () => {
     expect(calls[0].body.chat_id).toBe("12345");
     expect(calls[0].body.text).toBe("hello");
     expect(calls[0].body.reply_markup.inline_keyboard).toEqual(keyboard);
-    expect(calls[0].body.parse_mode).toBe("Markdown");
+    expect(calls[0].body.parse_mode).toBe("HTML");
     expect(calls[0].body.disable_web_page_preview).toBe(true);
+  });
+
+  it("renders markdown text to HTML before sending", async () => {
+    const { impl, calls } = fakeFetch(() => ({
+      json: { ok: true, result: { message_id: 1 } },
+    }));
+    const api = new TelegramApi(TOKEN, impl);
+    await api.sendMessage("12345", "**bold** & `code`");
+    expect(calls[0].body.text).toBe("<b>bold</b> &amp; <code>code</code>");
+    expect(calls[0].body.parse_mode).toBe("HTML");
   });
 
   it("omits reply_markup when no keyboard is passed", async () => {
@@ -66,7 +76,7 @@ describe("TelegramApi.sendMessage", () => {
 });
 
 describe("TelegramApi.editMessageText", () => {
-  it("posts message_id and text with Markdown + no preview", async () => {
+  it("posts message_id and text with HTML + no preview", async () => {
     const { impl, calls } = fakeFetch(() => ({
       json: { ok: true, result: { message_id: 5 } },
     }));
@@ -78,7 +88,7 @@ describe("TelegramApi.editMessageText", () => {
     expect(calls[0].body.chat_id).toBe("12345");
     expect(calls[0].body.message_id).toBe(5);
     expect(calls[0].body.text).toBe("edited");
-    expect(calls[0].body.parse_mode).toBe("Markdown");
+    expect(calls[0].body.parse_mode).toBe("HTML");
     expect(calls[0].body.disable_web_page_preview).toBe(true);
   });
 });
